@@ -2,11 +2,13 @@
 /*
  * Copyright (C) Igor Sysoev
  * Copyright (C) Nginx, Inc.
+ * Copyright (C) Intel, Inc.
  */
 
 
 #include <ngx_config.h>
 #include <ngx_core.h>
+#include <ngx_ssl_engine.h>
 #include <ngx_http.h>
 
 
@@ -337,6 +339,12 @@ ngx_http_init_connection(ngx_connection_t *c)
         }
 
         hc->ssl = 1;
+
+        c->ssl_enabled = 1;
+
+        if (ngx_use_ssl_engine && ngx_ssl_engine_enable_heuristic_polling) {
+            (void) ngx_atomic_fetch_add(ngx_ssl_active, 1);
+        }
 
         rev->handler = ngx_http_ssl_handshake;
     }
@@ -727,6 +735,8 @@ ngx_http_ssl_handshake(ngx_event_t *rev)
                 return;
             }
 
+            ngx_reusable_connection(c, 0);
+
             rc = ngx_ssl_handshake(c);
 
             if (rc == NGX_AGAIN) {
@@ -734,8 +744,6 @@ ngx_http_ssl_handshake(ngx_event_t *rev)
                 if (!rev->timer_set) {
                     ngx_add_timer(rev, c->listening->post_accept_timeout);
                 }
-
-                ngx_reusable_connection(c, 0);
 
                 c->ssl->handler = ngx_http_ssl_handshake_handler;
                 return;
@@ -3590,6 +3598,12 @@ ngx_http_close_connection(ngx_connection_t *c)
     pool = c->pool;
 
     ngx_close_connection(c);
+
+    if (c->ssl_enabled && ngx_use_ssl_engine
+        && ngx_ssl_engine_enable_heuristic_polling) {
+        (void) ngx_atomic_fetch_add(ngx_ssl_active, -1);
+        ngx_ssl_engine_heuristic_poll(c->log);
+    }
 
     ngx_destroy_pool(pool);
 }

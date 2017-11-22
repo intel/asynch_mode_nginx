@@ -2,6 +2,7 @@
 /*
  * Copyright (C) Igor Sysoev
  * Copyright (C) Nginx, Inc.
+ * Copyright (C) Intel, Inc.
  */
 
 
@@ -158,6 +159,7 @@ struct ngx_connection_s {
 #if (NGX_SSL)
     ngx_ssl_connection_t  *ssl;
     ngx_flag_t          asynch;
+    unsigned            ssl_enabled:1;
 #endif
 
     struct sockaddr    *local_sockaddr;

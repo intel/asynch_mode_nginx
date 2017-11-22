@@ -2,12 +2,14 @@
 /*
  * Copyright (C) Igor Sysoev
  * Copyright (C) Nginx, Inc.
+ * Copyright (C) Intel, Inc.
  */
 
 
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_event.h>
+#include <ngx_ssl_engine.h>
 
 
 static ngx_int_t ngx_enable_accept_events(ngx_cycle_t *cycle);
@@ -774,6 +776,12 @@ ngx_close_accepted_connection(ngx_connection_t *c)
 #if (NGX_STAT_STUB)
     (void) ngx_atomic_fetch_add(ngx_stat_active, -1);
 #endif
+
+    if (c->ssl_enabled && ngx_use_ssl_engine
+        && ngx_ssl_engine_enable_heuristic_polling) {
+        (void) ngx_atomic_fetch_add(ngx_ssl_active, -1);
+        ngx_ssl_engine_heuristic_poll(c->log);
+    }
 }
 
 

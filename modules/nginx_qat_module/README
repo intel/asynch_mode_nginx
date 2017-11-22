@@ -1,0 +1,135 @@
+# Copyright (C) Intel, Inc.
+
+This module is developed of QAT engine in Nginx engine framework.
+
+
+Installation
+
+1. Add below configuration line into the config.example
+    --add-dynamic-module=modules/nginx_qat_module/
+2. Build Nginx with the addon modules
+    $ ./config.example
+    $ make && make install
+
+
+Configuration
+
+1. Add dynamic loading configuration in nginx.conf
+    $ load_module modules/ngx_ssl_engine_qat_module.so;
+
+2. Using ssl_engine block to configure QAT engine
+    ssl_engine {
+        use_engine qat;
+        default_algorithms ALL;
+        qat_engine {
+            #qat_offload_mode async;
+            #qat_notify_mode poll;
+
+            #qat_poll_mode internal;
+            #qat_internal_poll_interval 10000;
+
+            #qat_poll_mode external;
+            #qat_external_poll_interval 1;
+
+            qat_poll_mode heuristic;
+        }
+    }
+
+
+Directives
+
+    Syntax:     qat_offload_mode async | sync;
+    Default:    async
+    Dependency: Consistent with the use of "ssl_async" directive
+    Description:
+                Synchronous or Asynchronous mode
+
+    Syntax:     qat_notify_mode event | poll;
+    Default:    poll
+    Dependency: N/A
+    Description:
+                QAT engine uses event driven polling feature or not
+
+    Syntax:     qat_poll_mode inline | internal | external | heuristic;
+    Default:    internal
+    Dependency: N/A
+    Description:
+                Different kinds of polling mode to check for messages from the
+                hardware accelerator
+                * inline: a busy loop is used, currently only available in the
+                synchronous RSA computation
+                * internal: a internal polling thread is created by QAT engine
+                * external: a timer-based polling is employed in each Nginx
+                worker process
+                * heuristic: an improvement of the external polling mode,
+                leveraging the application knowledge to intelligently determine
+                the proper polling moment
+
+    Syntax:     qat_internal_poll_interval time;
+    Default:    10000
+    Dependency: Valid if (qat_poll_mode=internal)
+    Description:
+                Internal polling time interval (ns)
+                Valid value: 1 ~ 10000000
+
+    Syntax:     qat_external_poll_interval time;
+    Default:    1
+    Dependency: Valid if (qat_poll_mode=external)
+    Description:
+                External polling time interval (ms)
+                Valid value: 1 ~ 1000
+
+    Syntax:     qat_heuristic_poll_asym_threshold num;
+    Default:    32
+    Dependency: Valid if (qat_poll_mode=heuristic)
+    Description:
+                Threshold of the number of in-flight asymmetric-key requests to
+                trigger a polling operation
+                Valid value: 1 ~ 512
+
+
+    Syntax:     qat_heuristic_poll_cipher_threshold num;
+    Default:    16
+    Dependency: Valid if (qat_poll_mode=heuristic)
+    Description:
+                Threshold of the number of in-flight cipher requests to trigger
+                a polling operation
+                Valid value: 1 ~ 512
+
+    Syntax:     qat_small_pkt_offload_threshold string ...;
+    Default:    2048
+    Dependency: Valid if cipher is offloaded
+    Description:
+                The input is the string of cipher algorithm name and
+                threshold value. Please refer to the README of QAT engine.
+                Example input:
+                    2048
+                    AES-128-CBC-HMAC-SHA1:4096
+                    AES-128-CBC-HMAC-SHA1:4096 AES-256-CBC-HMAC-SHA1:8192
+
+
+Note
+
+    1. Not all the combinations of offload mode, notify mode and poll mode are
+    valid. Please refer to the following tables to check the validity.
+
+    +-------+--------+----------+----------+-----------+
+    | sync  | inline | internal | external | heuristic |
+    +-------+--------+----------+----------+-----------+
+    | event |    N   |     Y    |     N    |     N     |
+    +-------+--------+----------+----------+-----------+
+    | poll  |    Y   |     Y    |     N    |     N     |
+    +-------+--------+----------+----------+-----------+
+
+    +-------+--------+----------+----------+-----------+
+    | async | inline | internal | external | heuristic |
+    +-------+--------+----------+----------+-----------+
+    | event |    N   |     Y    |     N    |     N     |
+    +-------+--------+----------+----------+-----------+
+    | poll  |    N   |     Y    |     Y    |     Y     |
+    +-------+--------+----------+----------+-----------+
+
+
+    2. Changing polling mode will not be effective until Nginx restart. It is
+    not possible to change the polling mode via soft restart, such as
+    'nginx -s reload' or 'kill -HUP [master-pid]'

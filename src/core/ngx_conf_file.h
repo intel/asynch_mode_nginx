@@ -2,6 +2,7 @@
 /*
  * Copyright (C) Igor Sysoev
  * Copyright (C) Nginx, Inc.
+ * Copyright (C) Intel, Inc.
  */
 
 
@@ -202,6 +203,12 @@ char *ngx_conf_check_num_bounds(ngx_conf_t *cf, void *post, void *data);
 #define ngx_conf_init_msec_value(conf, default)                              \
     if (conf == NGX_CONF_UNSET_MSEC) {                                       \
         conf = default;                                                      \
+    }
+
+#define ngx_conf_init_str_value(conf, default)                               \
+    if (conf.data == NULL) {                                                 \
+        conf.len = sizeof(default) - 1;                                      \
+        conf.data = (u_char *) default;                                      \
     }
 
 #define ngx_conf_merge_value(conf, prev, default)                            \

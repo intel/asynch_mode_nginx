@@ -2,6 +2,7 @@
 /*
  * Copyright (C) Igor Sysoev
  * Copyright (C) Nginx, Inc.
+ * Copyright (C) Intel, Inc.
  */
 
 
@@ -75,6 +76,10 @@ ngx_atomic_t   ngx_stat_waiting0;
 ngx_atomic_t  *ngx_stat_waiting = &ngx_stat_waiting0;
 
 #endif
+
+
+ngx_atomic_t   ngx_ssl_active0 = 0;
+ngx_atomic_t  *ngx_ssl_active = &ngx_ssl_active0;
 
 
 

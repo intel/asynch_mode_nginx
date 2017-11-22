@@ -2,6 +2,7 @@
 /*
  * Copyright (C) Igor Sysoev
  * Copyright (C) Nginx, Inc.
+ * Copyright (C) Intel, Inc.
  */
 
 
@@ -487,6 +488,9 @@ extern ngx_atomic_t  *ngx_stat_writing;
 extern ngx_atomic_t  *ngx_stat_waiting;
 
 #endif
+
+
+extern ngx_atomic_t  *ngx_ssl_active;
 
 
 #define NGX_UPDATE_TIME         1

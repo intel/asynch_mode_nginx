@@ -2,12 +2,14 @@
 /*
  * Copyright (C) Igor Sysoev
  * Copyright (C) Nginx, Inc.
+ * Copyright (C) Intel, Inc.
  */
 
 
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_event.h>
+#include <ngx_ssl_engine.h>
 
 
 ngx_os_io_t  ngx_io;
@@ -1275,6 +1277,11 @@ ngx_reusable_connection(ngx_connection_t *c, ngx_uint_t reusable)
 #if (NGX_STAT_STUB)
         (void) ngx_atomic_fetch_add(ngx_stat_waiting, -1);
 #endif
+
+        if (c->ssl_enabled && ngx_use_ssl_engine
+            && ngx_ssl_engine_enable_heuristic_polling) {
+            (void) ngx_atomic_fetch_add(ngx_ssl_active, 1);
+        }
     }
 
     c->reusable = reusable;
@@ -1288,6 +1295,12 @@ ngx_reusable_connection(ngx_connection_t *c, ngx_uint_t reusable)
 #if (NGX_STAT_STUB)
         (void) ngx_atomic_fetch_add(ngx_stat_waiting, 1);
 #endif
+
+        if (c->ssl_enabled && ngx_use_ssl_engine
+            && ngx_ssl_engine_enable_heuristic_polling) {
+            (void) ngx_atomic_fetch_add(ngx_ssl_active, -1);
+            ngx_ssl_engine_heuristic_poll(c->log);
+        }
     }
 }
 
