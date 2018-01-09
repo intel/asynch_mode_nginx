@@ -68,6 +68,8 @@ static void ngx_ssl_read_async_handler(ngx_event_t * aev);
 static void ngx_ssl_write_async_handler(ngx_event_t * aev);
 static void ngx_ssl_shutdown_async_handler(ngx_event_t *aev);
 
+#define NGX_ASYNC_EVENT_TIMEOUT 10000
+
 static ngx_command_t  ngx_openssl_commands[] = {
 
     { ngx_string("ssl_engine"),
@@ -113,9 +115,15 @@ int  ngx_ssl_stapling_index;
 
 
 static void
-ngx_ssl_empty_handler(ngx_event_t *aev)
+ngx_ssl_empty_handler(ngx_event_t *ev)
 {
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, aev->log, 0, "ssl empty handler");
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "ssl empty handler");
+
+    if(ev->timedout &&
+       ev->saved_handler &&
+       ev->saved_handler != ngx_ssl_empty_handler ) {
+        ev->saved_handler(ev);
+    }
 
     return;
 }
@@ -1349,6 +1357,8 @@ ngx_ssl_handshake(ngx_connection_t *c)
             c->read->handler = ngx_ssl_empty_handler;
         }
 
+        ngx_add_timer(c->async, NGX_ASYNC_EVENT_TIMEOUT);
+
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
                        "SSL ASYNC WANT recieved: \"%s\"", __func__);
 
@@ -1595,7 +1605,7 @@ ngx_ssl_handle_recv(ngx_connection_t *c, int n)
                 c->read->saved_handler = c->read->handler;
                 c->read->handler = ngx_ssl_empty_handler;
             }
-            ngx_add_timer(c->async, 3000);
+            ngx_add_timer(c->async, NGX_ASYNC_EVENT_TIMEOUT);
 
             if (ngx_ssl_async_process_fds(c) == 0) {
                 return NGX_ERROR;
@@ -1683,6 +1693,8 @@ ngx_ssl_handle_recv(ngx_connection_t *c, int n)
             c->read->saved_handler = c->read->handler;
             c->read->handler = ngx_ssl_empty_handler;
         }
+
+        ngx_add_timer(c->async, NGX_ASYNC_EVENT_TIMEOUT);
 
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
                        "SSL ASYNC WANT recieved: \"%s\"", __func__);
@@ -1990,6 +2002,8 @@ ngx_ssl_write(ngx_connection_t *c, u_char *data, size_t size)
             c->read->handler = ngx_ssl_empty_handler;
         }
 
+        ngx_add_timer(c->async, NGX_ASYNC_EVENT_TIMEOUT);
+
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
                        "SSL ASYNC WANT recieved: \"%s\"", __func__);
 
@@ -2076,7 +2090,8 @@ ngx_ssl_shutdown(ngx_connection_t *c)
              */
             if (SSL_want_async(c->ssl->connection)) {
                 ngx_ssl_async_process_fds(c);
-                ngx_add_timer(c->async, 300);
+                if(!c->async->timer_set)
+                    ngx_add_timer(c->async, NGX_ASYNC_EVENT_TIMEOUT);
                 return NGX_AGAIN;
             }
 
@@ -2207,6 +2222,7 @@ ngx_ssl_shutdown(ngx_connection_t *c)
             ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
                            "SSL ASYNC WANT recieved: \"%s\"", __func__);
 
+            ngx_add_timer(c->async, NGX_ASYNC_EVENT_TIMEOUT);
             /* Ignore errors from ngx_ssl_async_process_fds as
                we want to carry on anyway */
             ngx_ssl_async_process_fds(c);
