@@ -1391,21 +1391,12 @@ ngx_http_read_request_header(ngx_http_request_t *r)
         return n;
     }
 
-#if (NGX_HTTP_SSL)
-    if(c->asynch)
+    if (rev->ready) {
         n = c->recv(c, r->header_in->last,
-               r->header_in->end - r->header_in->last);
-    else {
-#endif
-        if (rev->ready) {
-            n = c->recv(c, r->header_in->last,
                     r->header_in->end - r->header_in->last);
-        } else {
-            n = NGX_AGAIN;
-        }
-#if (NGX_HTTP_SSL)
+    } else {
+        n = NGX_AGAIN;
     }
-#endif
 
     if (n == NGX_AGAIN) {
         if (!rev->timer_set) {

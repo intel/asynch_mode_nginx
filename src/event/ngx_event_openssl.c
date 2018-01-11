@@ -1351,6 +1351,7 @@ ngx_ssl_handshake(ngx_connection_t *c)
 
     if (c->asynch && sslerr == SSL_ERROR_WANT_ASYNC)
     {
+        c->async->ready = 0;
         c->async->handler = ngx_ssl_handshake_async_handler;
         if (c->read->handler != ngx_ssl_empty_handler) {
             c->read->saved_handler = c->read->handler;
@@ -1600,6 +1601,7 @@ ngx_ssl_handle_recv(ngx_connection_t *c, int n)
 
         if (c->asynch \
             && SSL_get_error(c->ssl->connection, n) == SSL_ERROR_WANT_ASYNC) {
+            c->async->ready = 0;
             c->async->handler = ngx_ssl_read_async_handler;
             if (c->read->handler != ngx_ssl_empty_handler) {
                 c->read->saved_handler = c->read->handler;
@@ -1688,6 +1690,7 @@ ngx_ssl_handle_recv(ngx_connection_t *c, int n)
     }
 
     if (c->asynch && sslerr == SSL_ERROR_WANT_ASYNC) {
+        c->async->ready = 0;
         c->async->handler = ngx_ssl_read_async_handler;
         if (c->read->handler != ngx_ssl_empty_handler) {
             c->read->saved_handler = c->read->handler;
@@ -1738,6 +1741,7 @@ ngx_ssl_read_async_handler(ngx_event_t *aev)
         c->read->saved_handler = ngx_ssl_empty_handler;
     }
 
+    c->read->ready = 1;
     c->read->handler(c->read);
 }
 
@@ -1996,6 +2000,7 @@ ngx_ssl_write(ngx_connection_t *c, u_char *data, size_t size)
     }
 
     if(c->asynch && sslerr == SSL_ERROR_WANT_ASYNC) {
+        c->async->ready = 0;
         c->async->handler = ngx_ssl_write_async_handler;
         if (c->read->handler != ngx_ssl_empty_handler) {
             c->read->saved_handler = c->read->handler;
@@ -2213,6 +2218,7 @@ ngx_ssl_shutdown(ngx_connection_t *c)
 
     if(c->asynch) {
         if (sslerr == SSL_ERROR_WANT_ASYNC) {
+            c->async->ready = 0;
             c->async->handler = ngx_ssl_shutdown_async_handler;
             c->read->saved_handler = ngx_ssl_shutdown_handler;
             if (c->read->handler != ngx_ssl_empty_handler)
