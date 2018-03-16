@@ -10,6 +10,7 @@
 #include <ngx_core.h>
 #include <ngx_event.h>
 #include <ngx_channel.h>
+#include <ngx_ssl_engine.h>
 #include <openssl/rand.h>
 
 static void ngx_start_worker_processes(ngx_cycle_t *cycle, ngx_int_t n,
@@ -740,12 +741,16 @@ ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 
     ngx_worker_process_init(cycle, worker);
 
+    ngx_ssl_engine_init(cycle);
+
     ngx_setproctitle("worker process");
 
     for ( ;; ) {
 
         if (ngx_exiting) {
             ngx_event_cancel_timers();
+
+            ngx_ssl_engine_release(cycle);
 
             if (ngx_event_timer_rbtree.root == ngx_event_timer_rbtree.sentinel)
             {

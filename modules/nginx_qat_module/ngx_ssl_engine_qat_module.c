@@ -43,6 +43,8 @@
 
 
 typedef struct {
+    /* if this engine can be released during worker is shutting down */
+    ngx_flag_t      releasable;
     /* sync or async (default) */
     ngx_str_t       offload_mode;
 
@@ -66,8 +68,10 @@ typedef struct {
 } ngx_ssl_engine_qat_conf_t;
 
 
+static ngx_int_t ngx_ssl_engine_qat_init(ngx_cycle_t *cycle);
 static ngx_int_t ngx_ssl_engine_qat_send_ctrl(ngx_cycle_t *cycle);
 static ngx_int_t ngx_ssl_engine_qat_register_handler(ngx_cycle_t *cycle);
+static ngx_int_t ngx_ssl_engine_qat_release(ngx_cycle_t *cycle);
 static void ngx_ssl_engine_qat_heuristic_poll(ngx_log_t *log);
 
 static char *ngx_ssl_engine_qat_block(ngx_conf_t *cf, ngx_command_t *cmd,
@@ -76,6 +80,8 @@ static char *ngx_ssl_engine_qat_set_threshold(ngx_conf_t *cf,
     ngx_command_t *cmd, void *conf);
 
 static void *ngx_ssl_engine_qat_create_conf(ngx_cycle_t *cycle);
+static char *
+ngx_ssl_engine_qat_releasable(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_ssl_engine_qat_init_conf(ngx_cycle_t *cycle, void *conf);
 
 static ngx_int_t ngx_ssl_engine_qat_process_init(ngx_cycle_t *cycle);
@@ -124,6 +130,18 @@ static int *num_cipher_requests_in_flight;
  */
 static ngx_int_t    qat_engine_init_polling_mode = 0;
 
+typedef struct qat_instance_status_s {
+    ngx_flag_t busy;
+    ngx_flag_t finished;
+    ngx_int_t  checkpoint;
+} qat_instance_status_t;
+
+static qat_instance_status_t qat_instance_status;
+
+static int  num_heuristic_poll = 0;
+static int *num_asym_requests_in_flight = NULL;
+static int *num_prf_requests_in_flight = NULL;
+static int *num_cipher_requests_in_flight = NULL;
 
 static ngx_str_t      ssl_engine_qat_name = ngx_string("qat");
 
@@ -134,6 +152,13 @@ static ngx_command_t  ngx_ssl_engine_qat_commands[] = {
       ngx_ssl_engine_qat_block,
       0,
       0,
+      NULL },
+
+    { ngx_string("qat_shutting_down_release"),
+      NGX_SSL_ENGINE_SUB_CONF|NGX_CONF_TAKE1,
+      ngx_ssl_engine_qat_releasable,
+      0,
+      offsetof(ngx_ssl_engine_qat_conf_t, releasable),
       NULL },
 
     { ngx_string("qat_offload_mode"),
@@ -201,8 +226,10 @@ ngx_ssl_engine_module_t  ngx_ssl_engine_qat_module_ctx = {
     ngx_ssl_engine_qat_init_conf,                 /* init configuration */
 
     {
+        ngx_ssl_engine_qat_init,
         ngx_ssl_engine_qat_send_ctrl,
         ngx_ssl_engine_qat_register_handler,
+        ngx_ssl_engine_qat_release,
         ngx_ssl_engine_qat_heuristic_poll
     }
 };
@@ -222,6 +249,74 @@ ngx_module_t  ngx_ssl_engine_qat_module = {
     NGX_MODULE_V1_PADDING
 };
 
+
+static ngx_int_t
+ngx_ssl_engine_qat_init(ngx_cycle_t *cycle)
+{
+    ngx_memset(&qat_instance_status, 0, sizeof(qat_instance_status));
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_ssl_engine_qat_release(ngx_cycle_t *cycle)
+{
+    unsigned int i;
+    ngx_connection_t  *c;
+
+    ngx_ssl_engine_qat_conf_t *seqcf;
+
+    seqcf = ngx_ssl_engine_get_conf(cycle->conf_ctx, ngx_ssl_engine_qat_module);
+
+    if(!seqcf->releasable || qat_instance_status.finished) {
+
+        return NGX_OK;
+    }
+
+    c = cycle->connections;
+
+    i = qat_instance_status.checkpoint;
+
+    for (; i < cycle->connection_n; i++) {
+        if (c[i].fd == -1) {
+            continue;
+        }
+
+        if ((c[i].ssl && !c[i].ssl->handshaked) ||
+            (!c[i].ssl && c[i].ssl_enabled)) {
+            ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0,
+                "connections in SSL handshake phase");
+            qat_instance_status.checkpoint = i;
+            qat_instance_status.busy = 1;
+            break;
+        }
+
+        qat_instance_status.busy = 0;
+
+    }
+
+    if(!qat_instance_status.busy) {
+        ENGINE *e = ENGINE_by_id("qat");
+        ENGINE_GEN_INT_FUNC_PTR qat_finish = ENGINE_get_finish_function(e);
+
+        if(0 == *num_asym_requests_in_flight &&
+           0 == *num_prf_requests_in_flight &&
+           0 == *num_cipher_requests_in_flight &&
+           1 == qat_finish(e)) {
+            qat_instance_status.finished = 1;
+            ngx_log_debug0(NGX_LOG_DEBUG_CORE, cycle->log, 0,
+                                 "QAT engine finished");
+        } else {
+            ngx_log_debug0(NGX_LOG_DEBUG_CORE, cycle->log, 0,
+                                 "QAT engine finished error");
+        }
+
+        ENGINE_free(e);
+    }
+
+    return NGX_OK;
+}
 
 static ngx_int_t
 ngx_ssl_engine_qat_send_ctrl(ngx_cycle_t *cycle)
@@ -411,6 +506,10 @@ qat_engine_poll(ngx_log_t *log) {
 static void
 qat_engine_external_poll_handler(ngx_event_t *ev)
 {
+    if(qat_instance_status.finished) {
+        return;
+    }
+
     if (*num_asym_requests_in_flight + *num_prf_requests_in_flight
            + *num_cipher_requests_in_flight > 0) {
         if (!qat_engine_enable_heuristic_polling) {
@@ -574,6 +673,7 @@ ngx_ssl_engine_qat_create_conf(ngx_cycle_t *cycle)
     qat_engine_enable_external_polling = 0;
     qat_engine_enable_heuristic_polling = 0;
 
+    seqcf->releasable = NGX_CONF_UNSET;
     seqcf->external_poll_interval = NGX_CONF_UNSET;
     seqcf->internal_poll_interval = NGX_CONF_UNSET;
 
@@ -587,6 +687,69 @@ ngx_ssl_engine_qat_create_conf(ngx_cycle_t *cycle)
 
 
 static char *
+ngx_ssl_engine_qat_releasable(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_str_t  *value;
+    ngx_uint_t  i;
+    char  *rv;
+    ngx_ssl_engine_conf_t *secf;
+    ngx_ssl_engine_qat_conf_t *seqcf = conf;
+
+    secf = ngx_ssl_engine_get_conf(cf->cycle->conf_ctx, ngx_ssl_engine_core_module);
+
+    if (seqcf->poll_mode.data == NULL) {
+        ngx_log_error(NGX_LOG_EMERG, cf->cycle->log, 0,
+                      "Please specify polling mode before"
+                      "qat_shutting_down_release is set");
+        return NGX_CONF_ERROR;
+    }
+
+
+    rv = ngx_conf_set_flag_slot(cf, cmd, conf);
+
+    if (rv != NGX_CONF_OK) {
+        return rv;
+    }
+
+    if (seqcf->releasable) {
+        /* Currently qat release while worker shutting down feature
+         * is unavailable when CIPHERS is offloaded to QAT.
+         * Logic in below block will prevent the release if CIPHERS
+         * is offloaded to QAT.
+         */
+        if (secf->default_algorithms == NGX_CONF_UNSET_PTR) {
+            ngx_log_error(NGX_LOG_EMERG, cf->cycle->log, 0,
+                          "QAT is unreleasable during worker shutting down due "
+                          "to CIPHERS is offloaded");
+            seqcf->releasable = 0;
+
+        } else {
+            value = secf->default_algorithms->elts;
+            for (i = 0; i < secf->default_algorithms->nelts; i++) {
+                if (ngx_strstr(value[i].data, "ALL") != NULL ||
+                    ngx_strstr(value[i].data, "CIPHERS") != NULL) {
+                    ngx_log_error(NGX_LOG_EMERG, cf->cycle->log, 0,
+                                  "QAT is unreleasable during worker shutting "
+                                  "down due to CIPHERS is offloaded");
+                    seqcf->releasable = 0;
+                }
+            }
+        }
+
+        if (ngx_strcmp(seqcf->poll_mode.data, "external") != 0 &&
+            ngx_strcmp(seqcf->poll_mode.data, "heuristic") != 0) {
+            ngx_log_error(NGX_LOG_EMERG, cf->cycle->log, 0,
+                          "QAT is releasable only external or heuristic polling "
+                          "mode is set");
+            seqcf->releasable = 0;
+        }
+    }
+
+    return NGX_CONF_OK;
+}
+
+
+static char *
 ngx_ssl_engine_qat_init_conf(ngx_cycle_t *cycle, void *conf)
 {
     ngx_ssl_engine_qat_conf_t *seqcf = conf;
@@ -596,6 +759,8 @@ ngx_ssl_engine_qat_init_conf(ngx_cycle_t *cycle, void *conf)
     ngx_conf_init_str_value(seqcf->offload_mode, "async");
     ngx_conf_init_str_value(seqcf->notify_mode, "poll");
     ngx_conf_init_str_value(seqcf->poll_mode, "internal");
+
+    ngx_conf_init_value(seqcf->releasable, 0);
 
     ngx_conf_init_value(seqcf->heuristic_poll_asym_threshold,
                         HEURISTIC_POLL_ASYM_DEFAULT_THRESHOLD);
@@ -776,11 +941,9 @@ ngx_ssl_engine_qat_process_init(ngx_cycle_t *cycle)
         return NGX_ERROR;
     }
 
-    if (qat_engine_enable_external_polling) {
-        if (qat_engine_share_info(cycle->log) != NGX_OK) {
-            ENGINE_free(qat_engine);
-            return NGX_ERROR;
-        }
+    if (qat_engine_share_info(cycle->log) != NGX_OK) {
+        ENGINE_free(qat_engine);
+        return NGX_ERROR;
     }
 
     return NGX_OK;

@@ -122,7 +122,7 @@ ngx_ssl_engine_module_t  ngx_ssl_engine_core_module_ctx = {
     ngx_ssl_engine_core_create_conf,        /* create configuration */
     NULL,                                   /* init configuration */
 
-    { NULL, NULL, NULL }
+    { NULL, NULL, NULL, NULL, NULL }
 };
 
 ngx_module_t  ngx_ssl_engine_core_module = {

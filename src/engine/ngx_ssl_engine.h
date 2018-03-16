@@ -45,8 +45,10 @@
 
 
 typedef struct {
+    ngx_int_t  (*init)(ngx_cycle_t *cycle);
     ngx_int_t  (*send_ctrl)(ngx_cycle_t *cycle);
     ngx_int_t  (*register_handler)(ngx_cycle_t *cycle);
+    ngx_int_t  (*release)(ngx_cycle_t *cycle);
     void       (*heuristic_poll)(ngx_log_t *log);
 } ngx_ssl_engine_actions_t;
 
@@ -54,8 +56,10 @@ extern ngx_uint_t                       ngx_use_ssl_engine;
 extern ngx_ssl_engine_actions_t         ngx_ssl_engine_actions;
 extern ngx_uint_t                       ngx_ssl_engine_enable_heuristic_polling;
 
+#define ngx_ssl_engine_init             ngx_ssl_engine_actions.init
 #define ngx_ssl_engine_send_ctrl        ngx_ssl_engine_actions.send_ctrl
 #define ngx_ssl_engine_register_handler ngx_ssl_engine_actions.register_handler
+#define ngx_ssl_engine_release          ngx_ssl_engine_actions.release
 #define ngx_ssl_engine_heuristic_poll   ngx_ssl_engine_actions.heuristic_poll
 
 #define NGX_SSL_ENGINE_MODULE           0x55555555

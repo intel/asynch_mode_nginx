@@ -108,8 +108,10 @@ ngx_ssl_engine_module_t  ngx_ssl_engine_dasync_module_ctx = {
     ngx_ssl_engine_dasync_init_conf,                 /* init configuration */
 
     {
+        NULL,
         ngx_ssl_engine_dasync_send_ctrl,
         ngx_ssl_engine_dasync_register_handler,
+        NULL,
         NULL
     }
 };

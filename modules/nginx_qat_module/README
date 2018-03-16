@@ -40,7 +40,7 @@ Directives
 
     Syntax:     qat_offload_mode async | sync;
     Default:    async
-    Dependency: Consistent with the use of "ssl_async" directive
+    Dependency: Consistent with the use of "ssl_asynch" directive
     Description:
                 Synchronous or Asynchronous mode
 
@@ -64,6 +64,20 @@ Directives
                 * heuristic: an improvement of the external polling mode,
                 leveraging the application knowledge to intelligently determine
                 the proper polling moment
+
+    Syntax:     qat_shutting_down_release on | off;
+    Default:    off
+    Dependency: Work with offloading all supported algorithms except CIPHERS
+                qat_poll_mode must be set before this directive and only external
+                polling and heuristic polling mode are acceptable
+    Description:
+                QAT instance will be released when worker is in shutting down
+                state if this directive is set to 'on'. This directive is designed
+                for the keep-alive connection who is completed SSL handshake and
+                waiting for more HTTP commands. To support more flexiable 'reload'
+                operation, QAT instance is released from such kind of connection.
+                Currently this feature is not supported when CIPHERS are offloaded
+                to QAT.
 
     Syntax:     qat_internal_poll_interval time;
     Default:    10000
