@@ -16,6 +16,7 @@
 - [Support for Nginx level Polling](#support-for-nginx-side-polling)
     - [External Polling Mode](#external-polling-mode)
     - [Heuristic Polling Mode](#heuristic-polling-mode)
+- [Known Issues](#known-issues)
 - [Intended Audience](#intended-audience)
 - [Legal](#legal)
 
@@ -328,6 +329,25 @@ file: `conf/nginx.conf`
         }
     }
 ```
+
+
+## Known issue
+** SSL asynch mode is not supported in HTTP proxy and Stream module **
+   If HTTP proxy and stream module are employed, QAT engine can only be configured
+   in `internal polling` mode to ensure there is polling thread, or the connection
+   will be blocked.
+
+** 'Orphan ring' errors in `dmesg` output when Nginx exit **
+   Working with current QAT driver (version 1.0.3 in 01.org), Nginx workers exit
+   with 'Orphan ring' errors. This issue has been fixed in next QAT driver release
+
+** Cache manager/loader process will allocate QAT instance via QAT engine **
+   According to current QAT engine design, child process forked by master
+   process will initialize QAT engine automatically in QAT engine `atfork`
+   hook function. If cache manager/loader processes are employed, QAT instances
+   will be allocated in the same way as worker process. Cache manager/loader
+   processes do not perform modules' `exit process` method in Nginx native design
+   which will introduce "Orphan ring" error message in `dmesg` output.
 
 
 ## Intended Audience
