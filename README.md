@@ -46,10 +46,11 @@ be found in the file headers of the relevant files.
 
 Async Mode Nginx supports Crypto offload to the following acceleration devices:
 
-* Intel&reg; C62X Series Chipset
-* [Intel&reg; Communications Chipset 8925 to 8955 Series][1]
+* [Intel&reg; C62X Series Chipset][1]
+* [Intel&reg; Communications Chipset 8925 to 8955 Series][2]
 
-[1]:https://www.intel.com/content/www/us/en/ethernet-products/gigabit-server-adapters/quickassist-adapter-8950-brief.html
+[1]:https://www.intel.com/content/www/us/en/design/products-and-solutions/processors-and-chipsets/purley/intel-xeon-scalable-processors.html
+[2]:https://www.intel.com/content/www/us/en/ethernet-products/gigabit-server-adapters/quickassist-adapter-8950-brief.html
 
 ## Software Requirements
 
