@@ -741,7 +741,9 @@ ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 
     ngx_worker_process_init(cycle, worker);
 
-    ngx_ssl_engine_init(cycle);
+    if(ngx_ssl_engine_init) {
+        ngx_ssl_engine_init(cycle);
+    }
 
     ngx_setproctitle("worker process");
 
@@ -750,7 +752,9 @@ ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
         if (ngx_exiting) {
             ngx_event_cancel_timers();
 
-            ngx_ssl_engine_release(cycle);
+            if(ngx_ssl_engine_release) {
+                ngx_ssl_engine_release(cycle);
+            }
 
             if (ngx_event_timer_rbtree.root == ngx_event_timer_rbtree.sentinel)
             {
