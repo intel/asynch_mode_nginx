@@ -1,0 +1,73 @@
+# Copyright (C) Intel, Inc.
+
+This module is developed for accelerating GZIP compression with QATzip in Nginx
+dynamic module framework.
+
+Installation
+
+1. Add below configuration line into the config.example
+    --add-dynamic-module=modules/nginx_qatzip_module
+2. Build Nginx with the addon modules
+    $ ./config.example
+    $ make && make install
+
+
+Configuration
+
+1. Add dynamic loading configuration in nginx.conf
+    $ load_module modules/ngx_http_qatzip_filter_module.so;
+
+
+Directives
+
+    Syntax:     qatzip on | off;
+    Default:    qatzip off;
+    Context:    http, server, location, if in location
+    Description:
+                Enables or disables qatzipping of responses.
+
+    Syntax:     qatzip_chunk_size size;
+    Default:    qatzip_chunk_size 64k;
+    Context:    http, server, location
+    Description:
+                Sets the chunk buffer size in which data will be compressed into
+                one deflate block. By default, the buffer size is equal to 64K.
+
+    Syntax:     qatzip_stream_size size;
+    Default:    qatzip_stream_size 256k;
+    Context:    http, server, location
+    Description:
+                Sets the size of stream buffers in which data will be compressed into
+                multiple deflate blocks and only the last block has FINAL bit being set.
+                By default, the stream buffer size is 256K.
+
+    Syntax:     qatzip_sw_threshold size;
+    Default:    qatzip_sw_threshold 1k;
+    Context:    http, server, location
+    Description:
+                Sets threshold of switching between software compression and QATzip
+                compression. When response data size shorter than that, the software
+                compression method will be used. By default, the threshold is 1K.
+
+    Syntax:     qatzip_min_length length;
+    Default:    qatzip_min_length 20;
+    Context:    http, server, location
+    Description:
+                Sets the minimum length of a response that will be qatzipped.
+                The length is determined only from the “Content-Length”
+                response header field.
+
+    Syntax:     qatzip_comp_level level;
+    Default:    qatzip_comp_level 1;
+    Context:    http, server, location
+    Description:
+                Sets a qatzip compression level of a response.
+                Acceptable values are in the range from 1 to 9.
+
+    Syntax:     qatzip_buffers number size;
+    Default:    qatzip_buffers 32 4k|16 8k;
+    Context:    http, server, location
+    Description:
+                Sets the number and size of buffers used to compress a response.
+                By default, the buffer size is equal to one memory page.
+                This is either 4K or 8K, depending on a platform.

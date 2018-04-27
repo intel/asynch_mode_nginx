@@ -51,6 +51,7 @@ fi
 --with-http_v2_module \
 --with-stream \
 --with-stream_ssl_module \
---add-dynamic-module=modules/nginx_qat_module \
---with-cc-opt="-DNGX_SECURE_MEM -I$OPENSSL_LIB/include -Wno-error=deprecated-declarations" \
---with-ld-opt="-Wl,-rpath=$OPENSSL_LIB/lib -L$OPENSSL_LIB/lib"
+--add-dynamic-module=modules/nginx_qatzip_module \
+--add-dynamic-module=modules/nginx_qat_module/ \
+--with-cc-opt="-DNGX_SECURE_MEM -DNGX_INTEL_SDL -I$OPENSSL_LIB/include -I$QZ_ROOT/include -Wno-error=deprecated-declarations" \
+--with-ld-opt="-Wl,-rpath=$OPENSSL_LIB/lib -L$OPENSSL_LIB/lib -L$QZ_ROOT/src -lqatzip -lz"
