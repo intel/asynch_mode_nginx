@@ -1056,6 +1056,24 @@ ngx_ssl_create_connection(ngx_ssl_t *ssl, ngx_connection_t *c, ngx_uint_t flags)
 
     sc->session_ctx = ssl->ctx;
 
+    if (ssl->max_pipelines > 0) {
+        SSL_CTX_set_max_pipelines(ssl->ctx, ssl->max_pipelines);
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, ssl->log, 0,
+                "Set max_pipelines = %d", ssl->max_pipelines);
+    }
+
+    if (ssl->split_send_fragment > 0) {
+        SSL_CTX_set_split_send_fragment(ssl->ctx, ssl->split_send_fragment);
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, ssl->log, 0,
+                "Set split_send_fragment = %d", ssl->split_send_fragment);
+    }
+
+    if (ssl->max_send_fragment > 0) {
+        SSL_CTX_set_max_send_fragment(ssl->ctx, ssl->max_send_fragment);
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, ssl->log, 0,
+                "Set max_send_fragment = %d", ssl->max_send_fragment);
+    }
+
     sc->connection = SSL_new(ssl->ctx);
 
     if (sc->connection == NULL) {

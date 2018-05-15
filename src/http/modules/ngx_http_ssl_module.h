@@ -30,6 +30,9 @@ typedef struct {
     ngx_uint_t                      verify_depth;
 
     size_t                          buffer_size;
+    size_t                          max_pipelines;
+    size_t                          split_send_fragment;
+    size_t                          max_send_fragment;
 
     ssize_t                         builtin_session_cache;
 

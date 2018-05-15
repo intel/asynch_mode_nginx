@@ -60,6 +60,9 @@ typedef struct {
     ngx_log_t                  *log;
     size_t                      buffer_size;
     ngx_flag_t                  asynch;
+    size_t                      max_pipelines;
+    size_t                      split_send_fragment;
+    size_t                      max_send_fragment;
 } ngx_ssl_t;
 
 
