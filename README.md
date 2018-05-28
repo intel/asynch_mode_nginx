@@ -41,6 +41,8 @@ be found in the file headers of the relevant files.
 * Asynchronous Mode in SSL/TLS processing
 * SSL Engine Framework for engine configuraion
 * Support for external polling mode and heursitic polling mode
+* Release hardware resource during worker is shutting down (For more details
+  information, please read modules/nginx_qat_module/README)
 
 ## Hardware Requirements
 
@@ -56,8 +58,8 @@ Async Mode Nginx supports Crypto offload to the following acceleration devices:
 
 This release was validated on the following:
 
-* OpenSSL-1.1.0g
-* QAT engine v0.5.35
+* OpenSSL-1.1.0h
+* QAT engine v0.5.36
 
 ## Additional Information
 
@@ -209,13 +211,12 @@ An example configuration in the `nginx.conf`:
     ...
     ssl_engine {
         use_engine qat;
-        default_algorithms ALL;
+        default_algorithms RSA,EC,DH,PKEY_CRYPTO;
         qat_engine {
             qat_offload_mode async;
             qat_notify_mode poll;
-
-            qat_poll_mode internal;
-            qat_internal_poll_interval 10000;
+            qat_poll_mode heuristic;
+            qat_shutting_down_release on;
         }
     }
 ```
