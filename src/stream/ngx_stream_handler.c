@@ -9,7 +9,7 @@
 #include <ngx_core.h>
 #include <ngx_event.h>
 #include <ngx_stream.h>
-
+#include <ngx_ssl_engine.h>
 
 static u_char *ngx_stream_log_error(ngx_log_t *log, u_char *buf, size_t len);
 static void ngx_stream_init_session(ngx_connection_t *c);
@@ -194,6 +194,14 @@ ngx_stream_init_connection(ngx_connection_t *c)
 
     sslcf = ngx_stream_get_module_srv_conf(s, ngx_stream_ssl_module);
 
+    if(!addr_conf->ssl && sslcf->ssl.asynch == 1) {
+        c->log->action = "SSL handshaking";
+        ngx_log_error(NGX_LOG_WARN, c->log, 0,
+                      "SSL asynchronous mode is set"
+                      "which will enable SSL implicitly.");
+        addr_conf->ssl = 1;
+    }
+
     if (addr_conf->ssl) {
         c->log->action = "SSL handshaking";
 
@@ -247,6 +255,10 @@ ngx_stream_ssl_init_connection(ngx_ssl_t *ssl, ngx_connection_t *c)
     if (ngx_ssl_create_connection(ssl, c, 0) == NGX_ERROR) {
         ngx_stream_close_connection(c);
         return;
+    }
+
+    if (ngx_use_ssl_engine && ngx_ssl_engine_enable_heuristic_polling) {
+        (void) ngx_atomic_fetch_add(ngx_ssl_active, 1);
     }
 
     if (ngx_ssl_handshake(c) == NGX_AGAIN) {
@@ -310,6 +322,12 @@ ngx_stream_close_connection(ngx_connection_t *c)
     pool = c->pool;
 
     ngx_close_connection(c);
+
+    if (c->ssl_enabled && ngx_use_ssl_engine
+        && ngx_ssl_engine_enable_heuristic_polling) {
+        (void) ngx_atomic_fetch_add(ngx_ssl_active, -1);
+        ngx_ssl_engine_heuristic_poll(c->log);
+    }
 
     ngx_destroy_pool(pool);
 }

@@ -25,6 +25,7 @@ typedef struct {
 
 #if (NGX_STREAM_SSL)
     ngx_flag_t                       ssl_enable;
+    ngx_flag_t                       ssl_enable_asynch;
     ngx_flag_t                       ssl_session_reuse;
     ngx_uint_t                       ssl_protocols;
     ngx_str_t                        ssl_ciphers;
@@ -210,6 +211,13 @@ static ngx_command_t  ngx_stream_proxy_commands[] = {
       ngx_conf_set_flag_slot,
       NGX_STREAM_SRV_CONF_OFFSET,
       offsetof(ngx_stream_proxy_srv_conf_t, ssl_enable),
+      NULL },
+
+    { ngx_string("proxy_ssl_asynch"),
+      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_STREAM_SRV_CONF_OFFSET,
+      offsetof(ngx_stream_proxy_srv_conf_t, ssl_enable_asynch),
       NULL },
 
     { ngx_string("proxy_ssl_session_reuse"),
@@ -1426,6 +1434,7 @@ ngx_stream_proxy_create_srv_conf(ngx_conf_t *cf)
 
 #if (NGX_STREAM_SSL)
     conf->ssl_enable = NGX_CONF_UNSET;
+    conf->ssl_enable_asynch = NGX_CONF_UNSET;
     conf->ssl_session_reuse = NGX_CONF_UNSET;
     conf->ssl_server_name = NGX_CONF_UNSET;
     conf->ssl_verify = NGX_CONF_UNSET;
@@ -1477,6 +1486,8 @@ ngx_stream_proxy_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_value(conf->ssl_enable, prev->ssl_enable, 0);
 
+    ngx_conf_merge_value(conf->ssl_enable_asynch, prev->ssl_enable_asynch, 0);
+
     ngx_conf_merge_value(conf->ssl_session_reuse,
                               prev->ssl_session_reuse, 1);
 
@@ -1508,6 +1519,10 @@ ngx_stream_proxy_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_ptr_value(conf->ssl_passwords, prev->ssl_passwords, NULL);
 
+    if(conf->ssl_enable_asynch && !conf->ssl_enable) {
+        conf->ssl_enable = 1;
+    }
+
     if (conf->ssl_enable && ngx_stream_proxy_set_ssl(cf, conf) != NGX_OK) {
         return NGX_CONF_ERROR;
     }
@@ -1531,6 +1546,8 @@ ngx_stream_proxy_set_ssl(ngx_conf_t *cf, ngx_stream_proxy_srv_conf_t *pscf)
     }
 
     pscf->ssl->log = cf->log;
+
+    pscf->ssl->asynch = pscf->ssl_enable_asynch;
 
     if (ngx_ssl_create(pscf->ssl, pscf->ssl_protocols, NULL) != NGX_OK) {
         return NGX_ERROR;

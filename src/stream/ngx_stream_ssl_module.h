@@ -21,6 +21,8 @@ typedef struct {
 
     ngx_ssl_t        ssl;
 
+    ngx_flag_t       enable_asynch;
+
     ngx_uint_t       protocols;
 
     ssize_t          builtin_session_cache;
