@@ -9,7 +9,7 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_http.h>
-
+#include <ngx_ssl_engine.h>
 
 #if (NGX_HTTP_CACHE)
 static ngx_int_t ngx_http_upstream_cache(ngx_http_request_t *r,
@@ -1550,6 +1550,10 @@ ngx_http_upstream_ssl_init_connection(ngx_http_request_t *r,
     }
 
     r->connection->log->action = "SSL handshaking to upstream";
+
+    if (ngx_use_ssl_engine && ngx_ssl_engine_enable_heuristic_polling) {
+        (void) ngx_atomic_fetch_add(ngx_ssl_active, 1);
+    }
 
     rc = ngx_ssl_handshake(c);
 

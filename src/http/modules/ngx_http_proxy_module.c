@@ -2,6 +2,7 @@
 /*
  * Copyright (C) Igor Sysoev
  * Copyright (C) Nginx, Inc.
+ * Copyright (C) Intel, Inc.
  */
 
 
@@ -614,6 +615,13 @@ static ngx_command_t  ngx_http_proxy_commands[] = {
       &ngx_http_proxy_http_version },
 
 #if (NGX_HTTP_SSL)
+
+    { ngx_string("proxy_ssl_asynch"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_proxy_loc_conf_t, upstream.ssl_asynch),
+      NULL },
 
     { ngx_string("proxy_ssl_session_reuse"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
@@ -2863,6 +2871,7 @@ ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
     conf->upstream.intercept_errors = NGX_CONF_UNSET;
 
 #if (NGX_HTTP_SSL)
+    conf->upstream.ssl_asynch = NGX_CONF_UNSET;
     conf->upstream.ssl_session_reuse = NGX_CONF_UNSET;
     conf->upstream.ssl_server_name = NGX_CONF_UNSET;
     conf->upstream.ssl_verify = NGX_CONF_UNSET;
@@ -3170,6 +3179,9 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
 #if (NGX_HTTP_SSL)
 
+    ngx_conf_merge_value(conf->upstream.ssl_asynch,
+                              prev->upstream.ssl_asynch, 0);
+
     ngx_conf_merge_value(conf->upstream.ssl_session_reuse,
                               prev->upstream.ssl_session_reuse, 1);
 
@@ -3199,6 +3211,10 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_str_value(conf->ssl_certificate_key,
                               prev->ssl_certificate_key, "");
     ngx_conf_merge_ptr_value(conf->ssl_passwords, prev->ssl_passwords, NULL);
+
+    if(conf->upstream.ssl_asynch && !conf->ssl) {
+        conf->ssl = 1;
+    }
 
     if (conf->ssl && ngx_http_proxy_set_ssl(cf, conf) != NGX_OK) {
         return NGX_CONF_ERROR;
@@ -4291,6 +4307,8 @@ ngx_http_proxy_set_ssl(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *plcf)
     }
 
     plcf->upstream.ssl->log = cf->log;
+
+    plcf->upstream.ssl->asynch = plcf->upstream.ssl_asynch;
 
     if (ngx_ssl_create(plcf->upstream.ssl, plcf->ssl_protocols, NULL)
         != NGX_OK)
