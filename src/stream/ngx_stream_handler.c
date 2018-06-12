@@ -2,6 +2,7 @@
 /*
  * Copyright (C) Roman Arutyunyan
  * Copyright (C) Nginx, Inc.
+ * Copyright (C) Intel, Inc.
  */
 
 
@@ -194,7 +195,7 @@ ngx_stream_init_connection(ngx_connection_t *c)
 
     sslcf = ngx_stream_get_module_srv_conf(s, ngx_stream_ssl_module);
 
-    if(!addr_conf->ssl && sslcf->ssl.asynch == 1) {
+    if(!addr_conf->ssl && sslcf->ssl.asynch) {
         c->log->action = "SSL handshaking";
         ngx_log_error(NGX_LOG_WARN, c->log, 0,
                       "SSL asynchronous mode is set"

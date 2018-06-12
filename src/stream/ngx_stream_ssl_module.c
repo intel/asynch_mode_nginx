@@ -40,7 +40,7 @@ static ngx_command_t  ngx_stream_ssl_commands[] = {
       NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_FLAG,
       ngx_conf_set_flag_slot,
       NGX_STREAM_SRV_CONF_OFFSET,
-      offsetof(ngx_stream_ssl_conf_t, enable_asynch),
+      offsetof(ngx_stream_ssl_conf_t, asynch),
       NULL },
 
     { ngx_string("ssl_handshake_timeout"),
@@ -190,7 +190,7 @@ ngx_stream_ssl_create_conf(ngx_conf_t *cf)
      *     scf->shm_zone = NULL;
      */
 
-    scf->enable_asynch = NGX_CONF_UNSET;
+    scf->asynch = NGX_CONF_UNSET;
     scf->handshake_timeout = NGX_CONF_UNSET_MSEC;
     scf->passwords = NGX_CONF_UNSET_PTR;
     scf->prefer_server_ciphers = NGX_CONF_UNSET;
@@ -211,7 +211,7 @@ ngx_stream_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_pool_cleanup_t  *cln;
 
-    ngx_conf_merge_value(conf->enable_asynch, prev->enable_asynch, 0);
+    ngx_conf_merge_value(conf->asynch, prev->asynch, 0);
 
     ngx_conf_merge_msec_value(conf->handshake_timeout,
                          prev->handshake_timeout, 60000);
@@ -240,7 +240,7 @@ ngx_stream_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
 
 
     conf->ssl.log = cf->log;
-    conf->ssl.asynch = conf->enable_asynch;
+    conf->ssl.asynch = conf->asynch;
 
     if (conf->certificate.len == 0) {
         return NGX_CONF_OK;

@@ -2,6 +2,7 @@
 /*
  * Copyright (C) Igor Sysoev
  * Copyright (C) Nginx, Inc.
+ * Copyright (C) Intel, Inc.
  */
 
 
@@ -21,7 +22,7 @@ typedef struct {
 
     ngx_ssl_t        ssl;
 
-    ngx_flag_t       enable_asynch;
+    ngx_flag_t       asynch;
 
     ngx_uint_t       protocols;
 
