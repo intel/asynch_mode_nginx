@@ -342,6 +342,8 @@ ngx_http_init_connection(ngx_connection_t *c)
 
         c->ssl_enabled = 1;
 
+        c->asynch = hc->addr_conf->asynch;
+
         if (ngx_use_ssl_engine && ngx_ssl_engine_enable_heuristic_polling) {
             (void) ngx_atomic_fetch_add(ngx_ssl_active, 1);
         }

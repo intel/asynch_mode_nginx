@@ -1081,7 +1081,12 @@ ngx_ssl_create_connection(ngx_ssl_t *ssl, ngx_connection_t *c, ngx_uint_t flags)
     }
 
     c->ssl = sc;
-    c->asynch = ssl->asynch;
+
+    if(ssl->asynch && !c->asynch) {
+        c->asynch = ssl->asynch;
+    } else if (c->asynch) {
+        SSL_set_mode(sc->connection,SSL_MODE_ASYNC);
+    }
 
     return NGX_OK;
 }

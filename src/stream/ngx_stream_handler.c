@@ -206,6 +206,8 @@ ngx_stream_init_connection(ngx_connection_t *c)
     if (addr_conf->ssl) {
         c->log->action = "SSL handshaking";
 
+        c->asynch = addr_conf->asynch;
+
         if (sslcf->ssl.ctx == NULL) {
             ngx_log_error(NGX_LOG_ERR, c->log, 0,
                           "no \"ssl_certificate\" is defined "

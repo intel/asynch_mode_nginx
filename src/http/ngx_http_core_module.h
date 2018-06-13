@@ -78,6 +78,7 @@ typedef struct {
     unsigned                   wildcard:1;
 #if (NGX_HTTP_SSL)
     unsigned                   ssl:1;
+    unsigned                   asynch:1;
 #endif
 #if (NGX_HTTP_V2)
     unsigned                   http2:1;
@@ -247,6 +248,7 @@ struct ngx_http_addr_conf_s {
 
 #if (NGX_HTTP_SSL)
     unsigned                   ssl:1;
+    unsigned                   asynch:1;
 #endif
 #if (NGX_HTTP_V2)
     unsigned                   http2:1;

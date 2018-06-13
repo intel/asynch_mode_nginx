@@ -52,6 +52,7 @@ typedef struct {
     unsigned                wildcard:1;
 #if (NGX_STREAM_SSL)
     unsigned                ssl:1;
+    unsigned                asynch:1;
 #endif
 #if (NGX_HAVE_INET6 && defined IPV6_V6ONLY)
     unsigned                ipv6only:1;
@@ -75,6 +76,7 @@ typedef struct {
     ngx_str_t               addr_text;
 #if (NGX_STREAM_SSL)
     ngx_uint_t              ssl;    /* unsigned   ssl:1; */
+    ngx_uint_t              asynch;    /* unsigned   ssl:1; */
 #endif
 } ngx_stream_addr_conf_t;
 

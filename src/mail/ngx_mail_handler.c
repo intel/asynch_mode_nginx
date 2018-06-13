@@ -165,6 +165,10 @@ ngx_mail_init_connection(ngx_connection_t *c)
 
     sslcf = ngx_mail_get_module_srv_conf(s, ngx_mail_ssl_module);
 
+    if (addr_conf->asynch) {
+        c->asynch = addr_conf->asynch;
+    }
+
     if (sslcf->enable) {
         c->log->action = "SSL handshaking";
 

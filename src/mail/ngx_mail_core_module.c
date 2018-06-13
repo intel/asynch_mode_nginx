@@ -485,6 +485,19 @@ ngx_mail_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 #endif
         }
 
+        if (ngx_strcmp(value[i].data, "asynch") == 0) {
+#if (NGX_MAIL_SSL)
+            ls->ssl = 1;
+            ls->asynch = 1;
+            continue;
+#else
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "the \"asynch\" parameter requires "
+                               "ngx_mail_ssl_module");
+            return NGX_CONF_ERROR;
+#endif
+        }
+
         if (ngx_strncmp(value[i].data, "so_keepalive=", 13) == 0) {
 
             if (ngx_strcmp(&value[i].data[13], "on") == 0) {

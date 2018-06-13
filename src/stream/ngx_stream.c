@@ -459,6 +459,7 @@ ngx_stream_add_addrs(ngx_conf_t *cf, ngx_stream_port_t *stport,
         addrs[i].conf.ctx = addr[i].opt.ctx;
 #if (NGX_STREAM_SSL)
         addrs[i].conf.ssl = addr[i].opt.ssl;
+        addrs[i].conf.asynch = addr[i].opt.asynch;
 #endif
 
         len = ngx_sock_ntop(&addr[i].opt.u.sockaddr, addr[i].opt.socklen, buf,
@@ -508,6 +509,7 @@ ngx_stream_add_addrs6(ngx_conf_t *cf, ngx_stream_port_t *stport,
         addrs6[i].conf.ctx = addr[i].opt.ctx;
 #if (NGX_STREAM_SSL)
         addrs6[i].conf.ssl = addr[i].opt.ssl;
+        addrs6[i].conf.asynch = addr[i].opt.asynch;
 #endif
 
         len = ngx_sock_ntop(&addr[i].opt.u.sockaddr, addr[i].opt.socklen, buf,
