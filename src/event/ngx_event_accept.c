@@ -575,6 +575,9 @@ ngx_event_recvmsg(ngx_event_t *ev)
 
         rev->log = log;
         wev->log = log;
+#if (NGX_SSL)
+        c->async->log = log;
+#endif
 
         /*
          * TODO: MT: - ngx_atomic_fetch_add()

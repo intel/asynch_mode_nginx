@@ -110,6 +110,9 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
 
     rev->log = pc->log;
     wev->log = pc->log;
+#if (NGX_SSL)
+    c->async->log = pc->log;
+#endif
 
     pc->connection = c;
 

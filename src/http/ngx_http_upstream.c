@@ -1420,6 +1420,9 @@ ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u)
     c->log = r->connection->log;
     c->pool->log = c->log;
     c->read->log = c->log;
+#if (NGX_SSL)
+    c->async->log = c->log;
+#endif
     c->write->log = c->log;
 
     /* init or reinit the ngx_output_chain() and ngx_chain_writer() contexts */

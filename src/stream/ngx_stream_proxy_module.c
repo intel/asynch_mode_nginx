@@ -479,6 +479,9 @@ ngx_stream_proxy_connect(ngx_stream_session_t *s)
     pc->log = c->log;
     pc->pool = c->pool;
     pc->read->log = c->log;
+#if (NGX_SSL)
+    pc->async->log = c->log;
+#endif
     pc->write->log = c->log;
 
     if (rc != NGX_AGAIN) {
