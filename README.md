@@ -96,9 +96,9 @@ file: conf/nginx.conf
     }
 ```
 
-* [White Paper: Intel&reg; Quickassist Technology and OpenSSL-1.1.0:Performance][2]
+* [White Paper: Intel&reg; Quickassist Technology and OpenSSL-1.1.0:Performance][3]
 
-[2]: https://01.org/sites/default/files/downloads/intelr-quickassist-technology/intelquickassisttechnologyopensslperformance.pdf
+[3]: https://01.org/sites/default/files/downloads/intelr-quickassist-technology/intelquickassisttechnologyopensslperformance.pdf
 
 ## Limitations
 
