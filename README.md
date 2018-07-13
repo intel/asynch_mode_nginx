@@ -38,7 +38,7 @@ be found in the file headers of the relevant files.
 
 ## Features
 
-* Asynchronous Mode in SSL/TLS processing
+* Asynchronous Mode in SSL/TLS processing (including http/stream/mail/proxy module)
 * SSL Engine Framework for engine configuraion
 * Support for external polling mode and heursitic polling mode
 * Release hardware resource during worker is shutting down (For more details
@@ -59,7 +59,7 @@ Async Mode Nginx supports Crypto offload to the following acceleration devices:
 This release was validated on the following:
 
 * OpenSSL-1.1.0h
-* QAT engine v0.5.36
+* QAT engine v0.5.37
 
 ## Additional Information
 
@@ -69,7 +69,7 @@ This release was validated on the following:
 ```bash
 Syntax:     ssl_asynch on | off;
 Default:    ssl_asynch off;
-Context:    http, server
+Context:    stream, mail, http, server
 
     Enables SSL/TLS asynchronous mode
 ```
@@ -80,19 +80,50 @@ file: conf/nginx.conf
 ```bash
     http {
         ssl_asynch  on;
+        server {...}
+    }
+```
+
+```bash
+    stream {
+        ssl_asynch  on;
+        server {...}
+    }
+```
+
+**Directives**
+```bash
+Syntax:     proxy_ssl_asynch on | off;
+Default:    proxy_ssl_asynch off;
+Context:    stream, http, server
+
+Enables the SSL/TLS protocol asynchronous mode for connections to a proxied server.
+```
+
+**Example**
+
+file: conf/nginx.conf
+
+```bash
+    http {
         server {
-            ...
+            location /ssl {
+                proxy_pass https://127.0.0.1:8082/outer;
+                proxy_ssl_asynch on;
             }
         }
     }
 ```
 
+* Async Mode Nginx provide new option `asynch` for `listen` directive.
+
+**Example**
+
+file: conf/nginx.conf
+
 ```bash
     http {
-        server {
-            ssl_asynch  on;
-            }
-        }
+        server{ listen 443 asynch; }
     }
 ```
 
