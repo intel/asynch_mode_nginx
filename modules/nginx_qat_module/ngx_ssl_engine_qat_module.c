@@ -62,7 +62,7 @@ typedef struct {
 
     ngx_int_t       heuristic_poll_asym_threshold;
 
-    ngx_int_t       heuristic_poll_cipher_threshold;
+    ngx_int_t       heuristic_poll_sym_threshold;
 
     ngx_array_t    *small_pkt_offload_threshold;
 } ngx_ssl_engine_qat_conf_t;
@@ -89,9 +89,10 @@ static void ngx_ssl_engine_qat_process_exit(ngx_cycle_t *cycle);
 
 
 #define EXTERNAL_POLL_DEFAULT_INTERVAL              1
+#define HEURISTIC_POLL_DEFAULT_INTERVAL             1
 
-#define HEURISTIC_POLL_ASYM_DEFAULT_THRESHOLD       16
-#define HEURISTIC_POLL_CIPHER_DEFAULT_THRESHOLD     32
+#define HEURISTIC_POLL_ASYM_DEFAULT_THRESHOLD       48
+#define HEURISTIC_POLL_SYM_DEFAULT_THRESHOLD        24
 
 #define GET_NUM_ASYM_REQUESTS_IN_FLIGHT             1
 #define GET_NUM_PRF_REQUESTS_IN_FLIGHT              2
@@ -115,13 +116,9 @@ static ngx_event_t      qat_engine_external_poll_event;
 static ngx_connection_t dumb;
 
 static ngx_uint_t   qat_engine_enable_heuristic_polling;
+static ngx_event_t  qat_engine_heuristic_poll_event;
 static ngx_int_t    qat_engine_heuristic_poll_asym_threshold;
-static ngx_int_t    qat_engine_heuristic_poll_cipher_threshold;
-
-static int  num_heuristic_poll;
-static int *num_asym_requests_in_flight;
-static int *num_prf_requests_in_flight;
-static int *num_cipher_requests_in_flight;
+static ngx_int_t    qat_engine_heuristic_poll_sym_threshold;
 
 /* Since any polling mode change need to restart Nginx service
  * The initial polling mode is record when Nginx master start
@@ -203,11 +200,11 @@ static ngx_command_t  ngx_ssl_engine_qat_commands[] = {
       offsetof(ngx_ssl_engine_qat_conf_t, heuristic_poll_asym_threshold),
       NULL },
 
-    { ngx_string("qat_heuristic_poll_cipher_threshold"),
+    { ngx_string("qat_heuristic_poll_sym_threshold"),
       NGX_SSL_ENGINE_SUB_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_num_slot,
       0,
-      offsetof(ngx_ssl_engine_qat_conf_t, heuristic_poll_cipher_threshold),
+      offsetof(ngx_ssl_engine_qat_conf_t, heuristic_poll_sym_threshold),
       NULL },
 
     { ngx_string("qat_small_pkt_offload_threshold"),
@@ -384,9 +381,7 @@ ngx_ssl_engine_qat_send_ctrl(ngx_cycle_t *cycle)
                       "and still use heuristic polling");
 
         qat_engine_enable_internal_polling = 0;
-        qat_engine_enable_external_polling = 1;
         qat_engine_enable_heuristic_polling = 1;
-        qat_engine_external_poll_interval = 5;
     }
 
     /* check the offloaded algorithms in the inline polling mode */
@@ -432,7 +427,7 @@ ngx_ssl_engine_qat_send_ctrl(ngx_cycle_t *cycle)
         }
     }
 
-    if (qat_engine_enable_external_polling) {
+    if (qat_engine_enable_external_polling || qat_engine_enable_heuristic_polling) {
         if (!ENGINE_ctrl_cmd(e, "ENABLE_EXTERNAL_POLLING", 0, NULL, NULL, 0)) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                           "QAT Engine failed: ENABLE_EXTERNAL_POLLING");
@@ -477,14 +472,11 @@ ngx_ssl_engine_qat_send_ctrl(ngx_cycle_t *cycle)
     } else if (qat_engine_enable_internal_polling) {
         qat_engine_init_polling_mode = INTERNAL_POLL;
 
-    } else {
-        if (qat_engine_enable_external_polling) {
-            qat_engine_init_polling_mode = EXTERNAL_POLL;
-        }
+    } else if (qat_engine_enable_external_polling) {
+        qat_engine_init_polling_mode = EXTERNAL_POLL;
 
-        if (qat_engine_enable_heuristic_polling) {
-            qat_engine_init_polling_mode = HEURISTIC_POLL;
-        }
+    } else if (qat_engine_enable_heuristic_polling) {
+        qat_engine_init_polling_mode = HEURISTIC_POLL;
     }
 
     ENGINE_free(e);
@@ -512,21 +504,13 @@ qat_engine_external_poll_handler(ngx_event_t *ev)
 
     if (*num_asym_requests_in_flight + *num_prf_requests_in_flight
            + *num_cipher_requests_in_flight > 0) {
-        if (!qat_engine_enable_heuristic_polling) {
-            qat_engine_poll(ev->log);
-        } else {
-            if (!num_heuristic_poll) {
-                qat_engine_poll(ev->log);
-            }
-            num_heuristic_poll = 0;
-        }
+        qat_engine_poll(ev->log);
     }
 
     if (ngx_event_timer_rbtree.root != ngx_event_timer_rbtree.sentinel ||
         !ngx_exiting) {
         ngx_add_timer(ev, qat_engine_external_poll_interval);
     }
-
 }
 
 
@@ -547,12 +531,52 @@ qat_engine_external_poll_init(ngx_log_t* log)
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, log, 0, "Adding initial polling timer");
 }
 
+static void
+qat_engine_heuristic_poll_handler(ngx_event_t *ev)
+{
+    if(qat_instance_status.finished) {
+        return;
+    }
+
+    if (*num_asym_requests_in_flight + *num_prf_requests_in_flight
+           + *num_cipher_requests_in_flight > 0) {
+        if (num_heuristic_poll == 0) {
+            qat_engine_poll(ev->log);
+        }
+    }
+
+    if (*num_asym_requests_in_flight + *num_prf_requests_in_flight
+           + *num_cipher_requests_in_flight > 0) {
+        if (ngx_event_timer_rbtree.root != ngx_event_timer_rbtree.sentinel ||
+            !ngx_exiting) {
+            num_heuristic_poll = 0;
+            ngx_add_timer(ev, HEURISTIC_POLL_DEFAULT_INTERVAL);
+        }
+    }
+}
+
+static void
+qat_engine_heuristic_poll_init(ngx_log_t* log)
+{
+    memset(&qat_engine_heuristic_poll_event, 0, sizeof(ngx_event_t));
+
+    dumb.fd = (ngx_socket_t) -1;
+    qat_engine_external_poll_event.data = &dumb;
+
+    qat_engine_heuristic_poll_event.handler = qat_engine_heuristic_poll_handler;
+    qat_engine_heuristic_poll_event.log = log;
+    qat_engine_heuristic_poll_event.cancelable = 0;
+}
 
 static ngx_int_t
 ngx_ssl_engine_qat_register_handler(ngx_cycle_t *cycle)
 {
     if (qat_engine_enable_external_polling) {
         qat_engine_external_poll_init(cycle->log);
+    }
+
+    if (qat_engine_enable_heuristic_polling) {
+        qat_engine_heuristic_poll_init(cycle->log);
     }
 
     return NGX_OK;
@@ -562,37 +586,39 @@ ngx_ssl_engine_qat_register_handler(ngx_cycle_t *cycle)
 static void
 ngx_ssl_engine_qat_heuristic_poll(ngx_log_t *log) {
     int polled_flag = 0;
+    int threshold;
 
-    if ((int)*ngx_ssl_active <= 0) return;
-
-    while (*num_asym_requests_in_flight + *num_prf_requests_in_flight
-           + *num_cipher_requests_in_flight >= (int) *ngx_ssl_active) {
-        qat_engine_poll(log);
-        num_heuristic_poll ++;
-        polled_flag = 1;
-    }
-
-    if (polled_flag) return;
-
-    while (*num_asym_requests_in_flight
-           >= qat_engine_heuristic_poll_asym_threshold) {
-        qat_engine_poll(log);
-        num_heuristic_poll ++;
-        polled_flag = 1;
-    }
-
-    if (polled_flag) return;
-
-    if (*num_cipher_requests_in_flight < *num_asym_requests_in_flight
-        || *num_asym_requests_in_flight
-           >= qat_engine_heuristic_poll_asym_threshold/2) {
+    if (*num_asym_requests_in_flight + *num_prf_requests_in_flight
+        + *num_cipher_requests_in_flight <= 0)
         return;
-    }
 
-    while (*num_cipher_requests_in_flight
-           >= qat_engine_heuristic_poll_cipher_threshold) {
+    /* one-time try to retrieve QAT responses */
+    if (*num_asym_requests_in_flight + *num_prf_requests_in_flight
+        + *num_cipher_requests_in_flight >= (int) *ngx_ssl_active) {
         qat_engine_poll(log);
         num_heuristic_poll ++;
+        polled_flag = 1;
+    }
+
+    if (!polled_flag) {
+        if (*num_asym_requests_in_flight > 0)
+            threshold = qat_engine_heuristic_poll_asym_threshold;
+        else
+            threshold = qat_engine_heuristic_poll_sym_threshold;
+
+        if (*num_asym_requests_in_flight + *num_prf_requests_in_flight
+            + *num_cipher_requests_in_flight >= threshold) {
+            qat_engine_poll(log);
+            num_heuristic_poll ++;
+        }
+    }
+
+    if (*num_asym_requests_in_flight + *num_prf_requests_in_flight
+        + *num_cipher_requests_in_flight > 0
+        && !qat_engine_heuristic_poll_event.timer_set) {
+        num_heuristic_poll = 0;
+        ngx_add_timer(&qat_engine_heuristic_poll_event,
+                      HEURISTIC_POLL_DEFAULT_INTERVAL);
     }
 }
 
@@ -678,7 +704,7 @@ ngx_ssl_engine_qat_create_conf(ngx_cycle_t *cycle)
     seqcf->internal_poll_interval = NGX_CONF_UNSET;
 
     seqcf->heuristic_poll_asym_threshold = NGX_CONF_UNSET;
-    seqcf->heuristic_poll_cipher_threshold = NGX_CONF_UNSET;
+    seqcf->heuristic_poll_sym_threshold = NGX_CONF_UNSET;
 
     seqcf->small_pkt_offload_threshold = NGX_CONF_UNSET_PTR;
 
@@ -765,8 +791,8 @@ ngx_ssl_engine_qat_init_conf(ngx_cycle_t *cycle, void *conf)
     ngx_conf_init_value(seqcf->heuristic_poll_asym_threshold,
                         HEURISTIC_POLL_ASYM_DEFAULT_THRESHOLD);
 
-    ngx_conf_init_value(seqcf->heuristic_poll_cipher_threshold,
-                        HEURISTIC_POLL_CIPHER_DEFAULT_THRESHOLD);
+    ngx_conf_init_value(seqcf->heuristic_poll_sym_threshold,
+                        HEURISTIC_POLL_SYM_DEFAULT_THRESHOLD);
 
 
     /* check the validity of the conf vaules */
@@ -850,7 +876,7 @@ ngx_ssl_engine_qat_init_conf(ngx_cycle_t *cycle, void *conf)
     }
 
     if (seqcf->heuristic_poll_asym_threshold > 512
-        || seqcf->heuristic_poll_cipher_threshold > 512) {
+        || seqcf->heuristic_poll_sym_threshold > 512) {
         ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                       "invalid heuristic poll threshold");
         return NGX_CONF_ERROR;
@@ -877,9 +903,7 @@ ngx_ssl_engine_qat_init_conf(ngx_cycle_t *cycle, void *conf)
 
     if (ngx_strcmp(seqcf->notify_mode.data, "poll") == 0
         && ngx_strcmp(seqcf->poll_mode.data, "heuristic") == 0) {
-        qat_engine_enable_external_polling = 1;
         qat_engine_enable_heuristic_polling = 1;
-        ngx_conf_init_value(seqcf->external_poll_interval, 5);
     }
 
     qat_engine_external_poll_interval = seqcf->external_poll_interval;
@@ -887,8 +911,8 @@ ngx_ssl_engine_qat_init_conf(ngx_cycle_t *cycle, void *conf)
     qat_engine_heuristic_poll_asym_threshold
         = seqcf->heuristic_poll_asym_threshold;
 
-    qat_engine_heuristic_poll_cipher_threshold
-        = seqcf->heuristic_poll_cipher_threshold;
+    qat_engine_heuristic_poll_sym_threshold
+        = seqcf->heuristic_poll_sym_threshold;
 
     return NGX_CONF_OK;
 }

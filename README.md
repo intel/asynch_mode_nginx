@@ -325,22 +325,22 @@ the corresponding responses (in consideration of timeliness).
 **Directives in the qat_module **
 ```bash
 Syntax:     qat_heuristic_poll_asym_threshold num;
-Default:    32
+Default:    48
 Dependency: Valid if (qat_poll_mode=heuristic)
 Context:    qat_engine
 Description:
-            Threshold of the number of in-flight asymmetric-key requests to
-            trigger a polling operation
+            Threshold of the number of in-flight requests to trigger a polling
+            operation when there are in-flight asymmetric crypto requests
             Valid value: 1 ~ 512
 
 
-Syntax:     qat_heuristic_poll_cipher_threshold num;
-Default:    16
+Syntax:     qat_heuristic_poll_sym_threshold num;
+Default:    24
 Dependency: Valid if (qat_poll_mode=heuristic)
 Context:    qat_engine
 Description:
-            Threshold of the number of in-flight cipher requests to trigger a
-            polling operation
+            Threshold of the number of in-flight requests to trigger a polling
+            operation when there is no in-flight asymmetric crypto request
             Valid value: 1 ~ 512
 ```
 **Example**
@@ -357,8 +357,8 @@ file: `conf/nginx.conf`
             qat_notify_mode poll;
 
             qat_poll_mode heuristic;
-            qat_heuristic_poll_asym_threshold 32;
-            qat_heuristic_poll_cipher_threshold 16;
+            qat_heuristic_poll_asym_threshold 48;
+            qat_heuristic_poll_sym_threshold 24;
         }
     }
 ```
