@@ -561,7 +561,7 @@ qat_engine_heuristic_poll_init(ngx_log_t* log)
     memset(&qat_engine_heuristic_poll_event, 0, sizeof(ngx_event_t));
 
     dumb.fd = (ngx_socket_t) -1;
-    qat_engine_external_poll_event.data = &dumb;
+    qat_engine_heuristic_poll_event.data = &dumb;
 
     qat_engine_heuristic_poll_event.handler = qat_engine_heuristic_poll_handler;
     qat_engine_heuristic_poll_event.log = log;
