@@ -365,11 +365,6 @@ file: `conf/nginx.conf`
 
 
 ## Known issue
-** SSL asynch mode is not supported in HTTP proxy and Stream module **
-   If HTTP proxy and stream module are employed, QAT engine can only be configured
-   in `internal polling` mode to ensure there is polling thread, or the connection
-   will be blocked.
-
 ** 'Orphan ring' errors in `dmesg` output when Nginx exit **
    Working with current QAT driver (version 1.0.3 in 01.org), Nginx workers exit
    with 'Orphan ring' errors. This issue has been fixed in next QAT driver release
