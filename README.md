@@ -43,6 +43,7 @@ be found in the file headers of the relevant files.
 * Support for external polling mode and heursitic polling mode
 * Release hardware resource during worker is shutting down (For more details
   information, please read modules/nginx_qat_module/README)
+* Support OpenSSL Cipher PIPELINE feature
 
 ## Hardware Requirements
 
@@ -127,9 +128,40 @@ file: conf/nginx.conf
     }
 ```
 
+* Support OpenSSL Cipher PIPELINE feature (Deitals information about the pipeline
+  settings, please refer to [OpenSSL Docs][6])
+
+**Directives**
+```bash
+Syntax:     ssl_max_pipelines size;
+Default:    ssl_max_pipelines 0;
+Context:    server
+
+Set MAX number of pipelines
+```
+
+**Directives**
+```bash
+Syntax:     ssl_split_send_fragment size;
+Default:    ssl_split_send_fragment 0;
+Context:    server
+
+Set split size of sending fragment
+```
+
+**Directives**
+```bash
+Syntax:     ssl_max_send_fragment size;
+Default:    ssl_max_send_fragment 0;
+Context:    server
+
+Set max number of sending fragment
+```
+
 * [White Paper: Intel&reg; Quickassist Technology and OpenSSL-1.1.0:Performance][3]
 
 [3]: https://01.org/sites/default/files/downloads/intelr-quickassist-technology/intelquickassisttechnologyopensslperformance.pdf
+[6]: https://www.openssl.org/docs/man1.1.0/ssl/SSL_CTX_set_split_send_fragment.html
 
 ## Limitations
 
