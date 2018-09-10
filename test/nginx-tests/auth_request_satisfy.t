@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 
 # (C) Maxim Dounin
-
+# (C) Intel, Inc.
 # Tests for auth request module with satisfy directive.
 
 ###############################################################################

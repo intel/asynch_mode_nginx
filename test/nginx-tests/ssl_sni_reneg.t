@@ -1,5 +1,6 @@
 #!/usr/bin/perl
 
+# (C) Intel, Inc.
 # (C) Sergey Kandaurov
 # (C) Nginx, Inc.
 
@@ -58,7 +59,7 @@ http {
     ssl_certificate localhost.crt;
 
     server {
-        listen       127.0.0.1:8080 ssl;
+        listen       127.0.0.1:8080 ssl asynch;
         server_name  localhost;
 
         location / { }

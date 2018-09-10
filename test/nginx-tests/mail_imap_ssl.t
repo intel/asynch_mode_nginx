@@ -1,5 +1,6 @@
 #!/usr/bin/perl
 
+# (C) Intel, Inc.
 # (C) Maxim Dounin
 # (C) Sergey Kandaurov
 # (C) Nginx, Inc.
@@ -58,7 +59,7 @@ mail {
     }
 
     server {
-        listen     127.0.0.1:8143 ssl;
+        listen     127.0.0.1:8143 ssl asynch;
         protocol   imap;
 
         ssl_verify_client on;
@@ -66,7 +67,7 @@ mail {
     }
 
     server {
-        listen     127.0.0.1:8145 ssl;
+        listen     127.0.0.1:8145 ssl asynch;
         protocol   imap;
 
         ssl_verify_client optional;
@@ -74,7 +75,7 @@ mail {
     }
 
     server {
-        listen     127.0.0.1:8146 ssl;
+        listen     127.0.0.1:8146 ssl asynch;
         protocol   imap;
 
         ssl_verify_client optional;
@@ -83,7 +84,7 @@ mail {
     }
 
     server {
-        listen     127.0.0.1:8147 ssl;
+        listen     127.0.0.1:8147 ssl asynch;
         protocol   imap;
 
         ssl_verify_client optional_no_ca;

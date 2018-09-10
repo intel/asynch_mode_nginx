@@ -1,5 +1,6 @@
 package Test::Nginx::SMTP;
 
+# (C) Intel, Inc.
 # (C) Maxim Dounin
 
 # Module for nginx smtp tests.

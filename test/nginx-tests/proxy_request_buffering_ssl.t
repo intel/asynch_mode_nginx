@@ -1,5 +1,6 @@
 #!/usr/bin/perl
 
+# (C) Intel, Inc.
 # (C) Maxim Dounin
 # (C) Sergey Kandaurov
 # (C) Nginx, Inc.
@@ -50,20 +51,24 @@ http {
             client_body_buffer_size 2k;
             add_header X-Body "$request_body";
             proxy_pass https://127.0.0.1:8081;
+            proxy_ssl_asynch on;
         }
         location /single {
             client_body_in_single_buffer on;
             add_header X-Body "$request_body";
             proxy_pass https://127.0.0.1:8081;
+            proxy_ssl_asynch on;
         }
         location /discard {
             return 200 "TEST\n";
         }
         location /preread {
             proxy_pass https://127.0.0.1:8081;
+            proxy_ssl_asynch on;
         }
         location /error_page {
             proxy_pass https://127.0.0.1:8081/404;
+            proxy_ssl_asynch on;
             error_page 404 /404;
             proxy_intercept_errors on;
         }
@@ -73,7 +78,7 @@ http {
     }
 
     server {
-        listen       127.0.0.1:8081 ssl;
+        listen       127.0.0.1:8081 ssl asynch;
         server_name  localhost;
 
         ssl_certificate_key localhost.key;

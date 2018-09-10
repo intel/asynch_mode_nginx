@@ -1,5 +1,6 @@
 #!/usr/bin/perl
 
+# (C) Intel, Inc.
 # (C) Maxim Dounin
 
 # Tests for nginx mail pop3 module.

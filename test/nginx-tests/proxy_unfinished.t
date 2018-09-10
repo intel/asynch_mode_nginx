@@ -1,5 +1,6 @@
 #!/usr/bin/perl
 
+# (C) Intel, Inc.
 # (C) Maxim Dounin
 
 # Tests for http proxy and prematurely closed connections.  Incomplete

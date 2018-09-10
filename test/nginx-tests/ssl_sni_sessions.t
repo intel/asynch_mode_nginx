@@ -1,5 +1,6 @@
 #!/usr/bin/perl
 
+# (C) Intel, Inc.
 # (C) Maxim Dounin
 
 # Tests for SSL session resumption with SNI.
@@ -39,7 +40,7 @@ http {
     ssl_certificate localhost.crt;
 
     server {
-        listen       127.0.0.1:8080 ssl;
+        listen       127.0.0.1:8080 ssl asynch;
         server_name  default;
 
         ssl_session_tickets off;
@@ -63,7 +64,7 @@ http {
     }
 
     server {
-        listen       127.0.0.1:8081 ssl;
+        listen       127.0.0.1:8081 ssl asynch;
         server_name  default;
 
         ssl_session_ticket_key ticket1.key;
@@ -127,8 +128,9 @@ foreach my $name ('localhost') {
 $t->write_file('ticket1.key', '1' x 48);
 $t->write_file('ticket2.key', '2' x 48);
 
+sleep $ENV{TEST_DELAY_TIME};
 $t->run();
-
+sleep $ENV{TEST_DELAY_TIME};
 ###############################################################################
 
 # check that everything works fine with default server

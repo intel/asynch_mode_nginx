@@ -1,7 +1,7 @@
 package Test::Nginx;
 
 # (C) Maxim Dounin
-
+# (C) Intel, Inc.
 # Generic module for nginx tests.
 
 ###############################################################################
@@ -209,9 +209,9 @@ sub has_module($) {
 	);
 
 	my $module = $modules{$feature};
-	if (defined $module && defined $ENV{TEST_NGINX_GLOBALS}) {
+	if (defined $module && defined $ENV{TEST_NGINX_SSL_ENGINE_MODULE}) {
 		$re = qr/load_module\s+[^;]*\Q$module\E[-\w]*\.so\s*;/;
-		return 1 if $ENV{TEST_NGINX_GLOBALS} =~ $re;
+		return 1 if $ENV{TEST_NGINX_SSL_ENGINE_MODULE} =~ $re;
 	}
 
 	return 0;
@@ -309,6 +309,7 @@ sub todo_alerts() {
 }
 
 sub run(;$) {
+        sleep $ENV{TEST_DELAY_TIME};
 	my ($self, $conf) = @_;
 
 	my $testdir = $self->{_testdir};
@@ -545,10 +546,11 @@ sub test_globals() {
 	$s .= "pid $self->{_testdir}/nginx.pid;\n";
 	$s .= "error_log $self->{_testdir}/error.log debug;\n";
 
-	$s .= $ENV{TEST_NGINX_GLOBALS}
-		if $ENV{TEST_NGINX_GLOBALS};
-
 	$s .= $self->test_globals_modules();
+
+	$s .= $ENV{TEST_NGINX_SSL_ENGINE_MODULE}
+		if $ENV{TEST_NGINX_SSL_ENGINE_MODULE};
+
 	$s .= $self->test_globals_perl5lib() if $s !~ /env PERL5LIB/;
 
 	$self->{_test_globals} = $s;
@@ -589,6 +591,8 @@ sub test_globals_modules() {
 
 	$s .= "load_module $modules/ngx_stream_geoip_module.so;\n"
 		if $self->has_module('stream_geoip\S+=dynamic');
+        
+        $s .= $ENV{TEST_LOAD_MODULE};
 
 	return $s;
 }
@@ -636,6 +640,19 @@ sub test_globals_http() {
 		if $ENV{TEST_NGINX_GLOBALS_HTTP};
 
 	$self->{_test_globals_http} = $s;
+}
+
+sub test_globals_https() {
+	my ($self) = @_;
+
+	return $self->{_test_globals_https}
+		if defined $self->{_test_globals_https};
+
+	my $s = '';
+	$s .= $ENV{TEST_NGINX_SSL_ASYNCH}
+		if $ENV{TEST_NGINX_SSL_ASYNCH};
+
+	$self->{_test_globals_https} = $s;
 }
 
 ###############################################################################

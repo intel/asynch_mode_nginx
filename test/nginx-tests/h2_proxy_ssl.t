@@ -1,5 +1,6 @@
 #!/usr/bin/perl
 
+# (C) Intel, Inc.
 # (C) Sergey Kandaurov
 # (C) Nginx, Inc.
 
@@ -28,6 +29,8 @@ my $t = Test::Nginx->new()->has(qw/http http_ssl http_v2 proxy/)
 
 $t->write_file_expand('nginx.conf', <<'EOF');
 
+
+
 %%TEST_GLOBALS%%
 
 daemon off;
@@ -40,7 +43,7 @@ http {
 
     server {
         listen       127.0.0.1:8080 http2;
-        listen       127.0.0.1:8081 ssl;
+        listen       127.0.0.1:8081 ssl asynch;
         server_name  localhost;
 
         ssl_certificate_key localhost.key;
@@ -49,6 +52,7 @@ http {
         location / { }
         location /proxy_ssl/ {
             proxy_pass https://127.0.0.1:8081/;
+            proxy_ssl_asynch on;
         }
     }
 }

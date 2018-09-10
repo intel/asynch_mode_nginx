@@ -1,5 +1,6 @@
 #!/usr/bin/perl
 
+# (C) Intel, Inc.
 # (C) Andrey Zelenkov
 # (C) Nginx, Inc.
 
@@ -52,12 +53,13 @@ http {
 
         location / {
             proxy_pass https://u/;
+            proxy_ssl_asynch on;
             proxy_set_header Connection $args;
         }
     }
 
     server {
-        listen       127.0.0.1:8081 ssl;
+        listen       127.0.0.1:8081 ssl asynch;
         server_name  localhost;
 
         ssl_certificate_key localhost.key;

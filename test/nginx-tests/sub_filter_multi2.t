@@ -2,7 +2,7 @@
 
 # (C) Dmitry Volyntsev
 # (C) Nginx, Inc.
-
+# (C) Intel, Inc.
 # Tests for sub filter with variables in search patterns.
 
 ###############################################################################

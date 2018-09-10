@@ -1,5 +1,6 @@
 #!/usr/bin/perl
 
+# (C) Intel, Inc.
 # (C) Maxim Dounin
 
 # Test for http backend returning response with Transfer-Encoding: chunked.

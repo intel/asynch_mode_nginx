@@ -1,5 +1,6 @@
 #!/usr/bin/perl
 
+# (C) Intel, Inc.
 # (C) Sergey Kandaurov
 # (C) Andrey Zelenkov
 # (C) Nginx, Inc.
@@ -31,7 +32,7 @@ plan(skip_all => 'IO::Socket::SSL too old') if $@;
 my $t = Test::Nginx->new()->has(qw/http http_ssl rewrite/)
 	->has_daemon('openssl');
 
-$t->write_file_expand('nginx.conf', <<'EOF');
+$t->plan(18)->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -48,14 +49,13 @@ http {
     ssl_session_tickets off;
 
     server {
-        listen       127.0.0.1:8085 ssl;
+        listen       127.0.0.1:8443 ssl asynch;
         listen       127.0.0.1:8080;
         server_name  localhost;
 
         ssl_certificate_key inner.key;
         ssl_certificate inner.crt;
         ssl_session_cache shared:SSL:1m;
-        ssl_verify_client optional_no_ca;
 
         location /reuse {
             return 200 "body $ssl_session_reused";
@@ -72,12 +72,6 @@ http {
         location /protocol {
             return 200 "body $ssl_protocol";
         }
-        location /issuer {
-            return 200 "body $ssl_client_i_dn:$ssl_client_i_dn_legacy";
-        }
-        location /subject {
-            return 200 "body $ssl_client_s_dn:$ssl_client_s_dn_legacy";
-        }
     }
 
     server {
@@ -86,7 +80,7 @@ http {
 
         # Special case for enabled "ssl" directive.
 
-        ssl on;
+        ssl_asynch on;
         ssl_session_cache builtin;
         ssl_session_timeout 1;
 
@@ -96,7 +90,7 @@ http {
     }
 
     server {
-        listen      127.0.0.1:8082 ssl;
+        listen      127.0.0.1:8082 ssl asynch;
         server_name  localhost;
 
         ssl_session_cache builtin:1000;
@@ -107,7 +101,7 @@ http {
     }
 
     server {
-        listen      127.0.0.1:8083 ssl;
+        listen      127.0.0.1:8083 ssl asynch;
         server_name  localhost;
 
         ssl_session_cache none;
@@ -118,7 +112,7 @@ http {
     }
 
     server {
-        listen      127.0.0.1:8084 ssl;
+        listen      127.0.0.1:8084 ssl asynch;
         server_name  localhost;
 
         ssl_session_cache off;
@@ -141,43 +135,6 @@ EOF
 
 my $d = $t->testdir();
 
-$t->write_file('ca.conf', <<EOF);
-[ ca ]
-default_ca = myca
-
-[ myca ]
-new_certs_dir = $d
-database = $d/certindex
-default_md = sha1
-policy = myca_policy
-serial = $d/certserial
-default_days = 1
-
-[ myca_policy ]
-commonName = supplied
-EOF
-
-$t->write_file('certserial', '1000');
-$t->write_file('certindex', '');
-
-system('openssl req -x509 -new '
-	. "-config '$d/openssl.conf' -subj '/CN=issuer/' "
-	. "-out '$d/issuer.crt' -keyout '$d/issuer.key' "
-	. ">>$d/openssl.out 2>&1") == 0
-	or die "Can't create certificate for issuer: $!\n";
-
-system("openssl req -new "
-	. "-config '$d/openssl.conf' -subj '/CN=subject/' "
-	. "-out '$d/subject.csr' -keyout '$d/subject.key' "
-	. ">>$d/openssl.out 2>&1") == 0
-	or die "Can't create certificate for subject: $!\n";
-
-system("openssl ca -batch -config '$d/ca.conf' "
-	. "-keyfile '$d/issuer.key' -cert '$d/issuer.crt' "
-	. "-subj '/CN=subject/' -in '$d/subject.csr' -out '$d/subject.crt' "
-	. ">>$d/openssl.out 2>&1") == 0
-	or die "Can't sign certificate for subject: $!\n";
-
 foreach my $name ('localhost', 'inner') {
 	system('openssl req -x509 -new '
 		. "-config '$d/openssl.conf' -subj '/CN=$name/' "
@@ -190,33 +147,43 @@ my $ctx = new IO::Socket::SSL::SSL_Context(
 	SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_NONE(),
 	SSL_session_cache_size => 100);
 
-$t->try_run('no ssl_client_s_dn_legacy')->plan(20);
+$t->run();
 
 ###############################################################################
 
-like(get('/reuse', 8085), qr/^body \.$/m, 'shared initial session');
-like(get('/reuse', 8085), qr/^body r$/m, 'shared session reused');
+like(http_get('/reuse', socket => get_ssl_socket($ctx)), qr/^body \.$/m,
+	'shared initial session');
+like(http_get('/reuse', socket => get_ssl_socket($ctx)), qr/^body r$/m,
+	'shared session reused');
 
-like(get('/', 8081), qr/^body \.$/m, 'builtin initial session');
-like(get('/', 8081), qr/^body r$/m, 'builtin session reused');
+like(http_get('/', socket => get_ssl_socket($ctx, 8081)), qr/^body \.$/m,
+	'builtin initial session');
+like(http_get('/', socket => get_ssl_socket($ctx, 8081)), qr/^body r$/m,
+	'builtin session reused');
 
-like(get('/', 8082), qr/^body \.$/m, 'builtin size initial session');
-like(get('/', 8082), qr/^body r$/m, 'builtin size session reused');
+like(http_get('/', socket => get_ssl_socket($ctx, 8082)), qr/^body \.$/m,
+	'builtin size initial session');
+like(http_get('/', socket => get_ssl_socket($ctx, 8082)), qr/^body r$/m,
+	'builtin size session reused');
 
-like(get('/', 8083), qr/^body \.$/m, 'reused none initial session');
-like(get('/', 8083), qr/^body \.$/m, 'session not reused 1');
+like(http_get('/', socket => get_ssl_socket($ctx, 8083)), qr/^body \.$/m,
+	'reused none initial session');
+like(http_get('/', socket => get_ssl_socket($ctx, 8083)), qr/^body \.$/m,
+	'session not reused 1');
 
-like(get('/', 8084), qr/^body \.$/m, 'reused off initial session');
-like(get('/', 8084), qr/^body \.$/m, 'session not reused 2');
+like(http_get('/', socket => get_ssl_socket($ctx, 8084)), qr/^body \.$/m,
+	'reused off initial session');
+like(http_get('/', socket => get_ssl_socket($ctx, 8084)), qr/^body \.$/m,
+	'session not reused 2');
 
 # ssl certificate inheritance
 
-my $s = get_ssl_socket($ctx, port(8081));
+my $s = get_ssl_socket($ctx, 8081);
 like($s->dump_peer_certificate(), qr/CN=localhost/, 'CN');
 
 $s->close();
 
-$s = get_ssl_socket($ctx, port(8085));
+$s = get_ssl_socket($ctx);
 like($s->dump_peer_certificate(), qr/CN=inner/, 'CN inner');
 
 $s->close();
@@ -225,36 +192,29 @@ $s->close();
 
 select undef, undef, undef, 2.1;
 
-like(get('/', 8081), qr/^body \.$/m, 'session timeout');
+like(http_get('/', socket => get_ssl_socket($ctx, 8081)), qr/^body \.$/m,
+	'session timeout');
 
 # embedded variables
 
-like(get('/id', 8085), qr/^body \w{64}$/m, 'session id');
+my ($sid) = http_get('/id', socket => get_ssl_socket($ctx)) =~ /^body (\w+)$/m;
+is(length $sid, 64, 'session id');
+
 unlike(http_get('/id'), qr/body \w/, 'session id no ssl');
-like(get('/cipher', 8085), qr/^body [\w-]+$/m, 'cipher');
-like(get('/client_verify', 8085), qr/^body NONE$/m, 'client verify');
-like(get('/protocol', 8085), qr/^body (TLS|SSL)v(\d|\.)+$/m, 'protocol');
-like(cert('/issuer', 8085), qr!^body CN=issuer:/CN=issuer$!m, 'issuer');
-like(cert('/subject', 8085), qr!^body CN=subject:/CN=subject$!m, 'subject');
+
+like(http_get('/cipher', socket => get_ssl_socket($ctx)),
+	qr/^body [\w-]+$/m, 'cipher');
+
+like(http_get('/client_verify', socket => get_ssl_socket($ctx)),
+	qr/^body NONE$/m, 'client verify');
+
+like(http_get('/protocol', socket => get_ssl_socket($ctx)),
+	qr/^body (TLS|SSL)v(\d|\.)+$/m, 'protocol');
 
 ###############################################################################
 
-sub get {
-	my ($uri, $port) = @_;
-	my $s = get_ssl_socket($ctx, port($port)) or return;
-	http_get($uri, socket => $s);
-}
-
-sub cert {
-	my ($uri, $port) = @_;
-	my $s = get_ssl_socket(undef, port($port),
-		SSL_cert_file => "$d/subject.crt",
-		SSL_key_file => "$d/subject.key") or return;
-	http_get($uri, socket => $s);
-}
-
 sub get_ssl_socket {
-	my ($ctx, $port, %extra) = @_;
+	my ($ctx, $port) = @_;
 	my $s;
 
 	eval {
@@ -264,11 +224,10 @@ sub get_ssl_socket {
 		$s = IO::Socket::SSL->new(
 			Proto => 'tcp',
 			PeerAddr => '127.0.0.1',
-			PeerPort => $port,
+			PeerPort => $port || '8443',
 			SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_NONE(),
 			SSL_reuse_ctx => $ctx,
-			SSL_error_trap => sub { die $_[1] },
-			%extra
+			SSL_error_trap => sub { die $_[1] }
 		);
 		alarm(0);
 	};

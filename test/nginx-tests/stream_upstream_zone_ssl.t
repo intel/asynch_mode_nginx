@@ -2,7 +2,7 @@
 
 # (C) Sergey Kandaurov
 # (C) Nginx, Inc.
-
+# (C) Intel, Inc.
 # Stream tests for upstream zone with ssl backend.
 
 ###############################################################################
@@ -36,6 +36,7 @@ events {
 
 stream {
     proxy_ssl on;
+    proxy_ssl_asynch on;
     proxy_ssl_session_reuse on;
 
     upstream u {
@@ -76,7 +77,7 @@ http {
     %%TEST_GLOBALS_HTTP%%
 
     server {
-        listen 127.0.0.1:8084 ssl;
+        listen 127.0.0.1:8084 ssl asynch;
 
         ssl_certificate_key localhost.key;
         ssl_certificate localhost.crt;

@@ -2,7 +2,7 @@
 
 # (C) Sergey Kandaurov
 # (C) Nginx, Inc.
-
+# (C) Intel, Inc.
 # Tests for upstream hash balancer module distribution consistency
 # with Cache::Memcached and Cache::Memcached::Fast.
 
@@ -108,9 +108,9 @@ if ($memhelp =~ /-U/) {
 	push @memopts, '-U', '0';
 }
 
-$t->run_daemon('memcached', '-l', '127.0.0.1', '-p', port(8081), @memopts);
-$t->run_daemon('memcached', '-l', '127.0.0.1', '-p', port(8082), @memopts);
-$t->run_daemon('memcached', '-l', '127.0.0.1', '-p', port(8083), @memopts);
+$t->run_daemon('memcached', '-u', 'root', '-l', '127.0.0.1', '-p', port(8081), @memopts);
+$t->run_daemon('memcached', '-u', 'root', '-l', '127.0.0.1', '-p', port(8082), @memopts);
+$t->run_daemon('memcached', '-u', 'root', '-l', '127.0.0.1', '-p', port(8083), @memopts);
 $t->run();
 
 $t->waitforsocket('127.0.0.1:' . port(8081)) or die "Can't start memcached";

@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 
 # (C) Nginx, Inc.
-
+# (C) Intel, Inc.
 # Tests for upstream module with max_conns feature.
 
 ###############################################################################

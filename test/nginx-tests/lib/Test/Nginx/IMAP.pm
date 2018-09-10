@@ -1,5 +1,6 @@
 package Test::Nginx::IMAP;
 
+# (C) Intel, Inc.
 # (C) Maxim Dounin
 
 # Module for nginx imap tests.

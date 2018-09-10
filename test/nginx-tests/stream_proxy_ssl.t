@@ -1,5 +1,6 @@
 #!/usr/bin/perl
 
+# (C) Intel, Inc.
 # (C) Sergey Kandaurov
 # (C) Nginx, Inc.
 
@@ -36,6 +37,7 @@ events {
 
 stream {
     proxy_ssl on;
+    proxy_ssl_asynch on;
     proxy_ssl_session_reuse on;
     proxy_connect_timeout 2s;
 
@@ -55,7 +57,7 @@ http {
     %%TEST_GLOBALS_HTTP%%
 
     server {
-        listen       127.0.0.1:8082 ssl;
+        listen       127.0.0.1:8082 ssl asynch;
         server_name  localhost;
 
         ssl_certificate_key localhost.key;

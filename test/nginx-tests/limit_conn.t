@@ -1,5 +1,6 @@
 #!/usr/bin/perl
 
+# (C) Intel, Inc.
 # (C) Sergey Kandaurov
 
 # limit_req based tests for nginx limit_conn module.

@@ -2,7 +2,7 @@
 
 # (C) Sergey Kandaurov
 # (C) Nginx, Inc.
-
+# (C) Intel, Inc.
 # Tests for stream ssl module.
 
 ###############################################################################
@@ -54,6 +54,7 @@ stream {
 
     server {
         listen      127.0.0.1:8080 ssl;
+        ssl_asynch on;
         proxy_pass  127.0.0.1:8081;
 
         ssl_session_cache builtin;
@@ -62,6 +63,7 @@ stream {
 
     server {
         listen      127.0.0.1:8082 ssl;
+        ssl_asynch on;
         proxy_pass  127.0.0.1:8081;
 
         ssl_session_cache off;
@@ -70,6 +72,7 @@ stream {
 
     server {
         listen      127.0.0.1:8083 ssl;
+        ssl_asynch on;
         proxy_pass  127.0.0.1:8081;
 
         ssl_session_cache builtin:1000;
@@ -78,6 +81,7 @@ stream {
 
     server {
         listen      127.0.0.1:8084 ssl;
+        ssl_asynch on;
         proxy_pass  127.0.0.1:8081;
 
         ssl_session_cache shared:SSL:1m;

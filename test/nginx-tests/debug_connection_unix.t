@@ -1,5 +1,6 @@
 #!/usr/bin/perl
 
+# (C) Intel, Inc.
 # (C) Nginx, Inc.
 
 # Tests for debug_connection with unix socket.

@@ -1,5 +1,6 @@
 #!/usr/bin/perl
 
+# (C) Intel, Inc.
 # (C) Maxim Dounin
 
 # Tests for http proxy upgrade support.
@@ -62,6 +63,7 @@ EOF
 
 my $d = $t->testdir();
 
+sleep $ENV{TEST_DELAY_TIME};
 $t->run_daemon(\&upgrade_fake_daemon);
 $t->run();
 
@@ -72,6 +74,7 @@ $t->waitforsocket('127.0.0.1:' . port(8081))
 
 # establish connection
 
+sleep $ENV{TEST_DELAY_TIME};
 my @r;
 my $s = upgrade_connect();
 ok($s, "handshake");

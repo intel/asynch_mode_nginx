@@ -1,5 +1,6 @@
 #!/usr/bin/perl
 
+# (C) Intel, Inc.
 # (C) Maxim Dounin
 
 # Tests for proxy_set_body.
@@ -71,6 +72,7 @@ http {
 
 EOF
 
+sleep $ENV{TEST_DELAY_TIME};
 $t->run();
 
 ###############################################################################

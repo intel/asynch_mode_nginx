@@ -1,5 +1,6 @@
 #!/usr/bin/perl
 
+# (C) Intel, Inc.
 # (C) Sergey Kandaurov
 # (C) Nginx, Inc.
 
@@ -66,7 +67,7 @@ $t->write_file('inc2.conf', '#inc2.conf');
 $t->write_file('map.conf', '#map.conf;');
 
 $t->run();
-
+sleep $ENV{TEST_DELAY_TIME};
 ###############################################################################
 
 my $d = $t->testdir;

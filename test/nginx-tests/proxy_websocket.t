@@ -1,5 +1,6 @@
 #!/usr/bin/perl
 
+# (C) Intel, Inc.
 # (C) Maxim Dounin
 
 # Tests for http proxy websockets support.
@@ -63,6 +64,7 @@ http {
 
 EOF
 
+sleep $ENV{TEST_DELAY_TIME};
 $t->run_daemon(\&websocket_fake_daemon);
 $t->run();
 
@@ -73,6 +75,7 @@ $t->waitforsocket('127.0.0.1:' . port(8081))
 
 # establish websocket connection
 
+sleep $ENV{TEST_DELAY_TIME};
 my $s = websocket_connect();
 ok($s, "websocket handshake");
 

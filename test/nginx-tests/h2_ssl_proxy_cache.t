@@ -1,5 +1,6 @@
 #!/usr/bin/perl
 
+# (C) Intel, Inc.
 # (C) Sergey Kandaurov
 # (C) Nginx, Inc.
 
@@ -39,12 +40,10 @@ events {
 }
 
 http {
-    %%TEST_GLOBALS_HTTP%%
-
     proxy_cache_path   %%TESTDIR%%/cache  keys_zone=NAME:1m;
 
     server {
-        listen       127.0.0.1:8080 http2 ssl sndbuf=32k;
+        listen       127.0.0.1:8080 http2 asynch sndbuf=32k;
         server_name  localhost;
 
         ssl_certificate_key localhost.key;

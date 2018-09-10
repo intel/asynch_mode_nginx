@@ -1,5 +1,6 @@
 #!/usr/bin/perl
 
+# (C) Intel, Inc.
 # (C) Maxim Dounin
 # (C) Nginx, Inc.
 
@@ -57,12 +58,14 @@ http {
 
         location /1 {
             proxy_pass https://127.0.0.1:8081/;
+            proxy_ssl_asynch on;
             proxy_ssl_name 1.example.com;
             proxy_ssl_server_name on;
         }
 
         location /2 {
             proxy_pass https://127.0.0.1:8081/;
+            proxy_ssl_asynch on;
             proxy_ssl_name 2.example.com;
             proxy_ssl_server_name on;
 
@@ -70,27 +73,32 @@ http {
 
         location /off {
             proxy_pass https://backend/;
+            proxy_ssl_asynch on;
             proxy_ssl_server_name off;
         }
 
         location /default {
             proxy_pass https://backend/;
+            proxy_ssl_asynch on;
             proxy_ssl_server_name on;
         }
 
         location /default2 {
             proxy_pass https://backend2/;
+            proxy_ssl_asynch on;
             proxy_ssl_server_name on;
         }
 
         location /port {
             proxy_pass https://backend/;
+            proxy_ssl_asynch on;
             proxy_ssl_server_name on;
             proxy_ssl_name backend:123;
         }
 
         location /ip {
             proxy_pass https://127.0.0.1:8081/;
+            proxy_ssl_asynch on;
             proxy_ssl_server_name on;
         }
 
@@ -101,7 +109,7 @@ http {
     }
 
     server {
-        listen 127.0.0.1:8081 ssl;
+        listen 127.0.0.1:8081 ssl asynch;
         #listen [::1]:%%PORT_8081%% ssl;
         server_name 1.example.com;
 

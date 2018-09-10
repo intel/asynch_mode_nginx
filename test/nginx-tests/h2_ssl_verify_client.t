@@ -1,5 +1,6 @@
 #!/usr/bin/perl
 
+# (C) Intel, Inc.
 # (C) Sergey Kandaurov
 # (C) Nginx, Inc.
 
@@ -53,7 +54,7 @@ http {
     add_header X-Verify $ssl_client_verify;
 
     server {
-        listen       127.0.0.1:8080 ssl http2;
+        listen       127.0.0.1:8080 ssl asynch http2;
         server_name  localhost;
 
         ssl_client_certificate client.crt;
@@ -62,7 +63,7 @@ http {
     }
 
     server {
-        listen       127.0.0.1:8080 ssl http2;
+        listen       127.0.0.1:8080 ssl asynch http2;
         server_name  example.com;
 
         location / { }

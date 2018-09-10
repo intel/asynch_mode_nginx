@@ -1,5 +1,6 @@
 #!/usr/bin/perl
 
+# (C) Intel, Inc.
 # (C) Sergey Kandaurov
 # (C) Nginx, Inc.
 
@@ -66,7 +67,9 @@ EOF
 
 $t->write_file('index.html', '');
 $t->write_file('t.html', 'SEE-THIS');
+sleep 30;
 $t->run();
+sleep 30;
 
 ###############################################################################
 

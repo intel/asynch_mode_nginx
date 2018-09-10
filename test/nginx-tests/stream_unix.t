@@ -2,7 +2,7 @@
 
 # (C) Andrey Zelenkov
 # (C) Nginx, Inc.
-
+# (C) Intel, Inc.
 # Simple tests for stream with unix socket.
 
 ###############################################################################

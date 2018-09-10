@@ -1,5 +1,6 @@
 #!/usr/bin/perl
 
+# (C) Intel, Inc.
 # (C) Maxim Dounin
 # (C) Valentin Bartenev
 
@@ -37,7 +38,7 @@ http {
     %%TEST_GLOBALS_HTTP%%
 
     server {
-        listen       127.0.0.1:8080 ssl;
+        listen       127.0.0.1:8080 ssl asynch;
         server_name  localhost;
 
         ssl_certificate_key localhost.key;

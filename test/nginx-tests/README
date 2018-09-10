@@ -1,3 +1,4 @@
+# (C) Intel, Inc.
 Test suite for nginx.
 
 Use prove to run tests as one usually do for perl tests.  Individual tests

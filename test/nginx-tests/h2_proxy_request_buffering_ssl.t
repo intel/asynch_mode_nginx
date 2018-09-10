@@ -1,5 +1,6 @@
 #!/usr/bin/perl
 
+# (C) Intel, Inc.
 # (C) Sergey Kandaurov
 # (C) Nginx, Inc.
 
@@ -47,20 +48,21 @@ http {
         location / {
             proxy_request_buffering off;
             proxy_pass https://127.0.0.1:8082;
+            proxy_ssl_asynch on;
             client_body_buffer_size 512;
         }
         location /chunked {
             proxy_request_buffering off;
             proxy_http_version 1.1;
             proxy_pass https://127.0.0.1:8082;
+            proxy_ssl_asynch on;
             client_body_buffer_size 512;
         }
     }
 
     server {
-        listen       127.0.0.1:8082 ssl;
+        listen       127.0.0.1:8082 ssl asynch;
         server_name  localhost;
-
         ssl_certificate_key localhost.key;
         ssl_certificate localhost.crt;
 

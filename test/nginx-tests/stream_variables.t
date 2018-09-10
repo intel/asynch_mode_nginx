@@ -2,7 +2,7 @@
 
 # (C) Sergey Kandaurov
 # (C) Nginx, Inc.
-
+# (C) Intel, Inc.
 # Tests for stream variables.
 
 ###############################################################################

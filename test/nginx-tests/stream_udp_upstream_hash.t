@@ -2,7 +2,7 @@
 
 # (C) Sergey Kandaurov
 # (C) Nginx, Inc.
-
+# (C) Intel, Inc.
 # Stream tests for upstream hash balancer module with datagrams.
 
 ###############################################################################

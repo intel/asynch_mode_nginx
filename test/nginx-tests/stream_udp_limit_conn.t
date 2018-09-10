@@ -2,7 +2,7 @@
 
 # (C) Andrey Zelenkov
 # (C) Nginx, Inc.
-
+# (C) Intel, Inc.
 # Tests for stream limit_conn module with datagrams.
 
 ###############################################################################

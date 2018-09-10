@@ -1,5 +1,6 @@
 #!/usr/bin/perl
 
+# (C) Intel, Inc.
 # (C) Maxim Dounin
 
 # Test for memcached with keepalive.
@@ -108,8 +109,8 @@ if ($memhelp =~ /-t/) {
 	push @memopts2, '-t', '1';
 }
 
-$t->run_daemon('memcached', '-l', '127.0.0.1', '-p', port(8081), @memopts1);
-$t->run_daemon('memcached', '-l', '127.0.0.1', '-p', port(8082), @memopts2);
+$t->run_daemon('memcached', '-u', 'root', '-l', '127.0.0.1', '-p', port(8081), @memopts1);
+$t->run_daemon('memcached', '-u', 'root', '-l', '127.0.0.1', '-p', port(8082), @memopts2);
 
 $t->run();
 

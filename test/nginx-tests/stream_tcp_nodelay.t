@@ -3,7 +3,7 @@
 # (C) Andrey Zelenkov
 # (C) Sergey Kandaurov
 # (C) Nginx, Inc.
-
+# (C) Intel, Inc.
 # Stream tests for tcp_nodelay.
 
 ###############################################################################

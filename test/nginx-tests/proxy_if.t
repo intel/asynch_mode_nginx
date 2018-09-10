@@ -1,5 +1,6 @@
 #!/usr/bin/perl
 
+# (C) Intel, Inc.
 # (C) Maxim Dounin
 
 # Tests for http proxy module related to use with the "if" directive.
@@ -131,6 +132,7 @@ http {
 
         location /ssl {
             proxy_pass https://127.0.0.1:8082/outer;
+            proxy_ssl_asynch on;
 
             if ($arg_if) {
                 # inherited from outer
@@ -138,13 +140,14 @@ http {
 
             location /ssl/inner {
                 proxy_pass http://127.0.0.1:8081;
+                proxy_ssl_asynch off;
             }
         }
     }
 
     server {
         listen       127.0.0.1:8081;
-        listen       127.0.0.1:8082 ssl;
+        listen       127.0.0.1:8082 ssl asynch;
         server_name  localhost;
 
         ssl_certificate localhost.crt;

@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 
 # (C) Maxim Dounin
-
+# (C) Intel, Inc.
 # Test for uwsgi backend.
 
 ###############################################################################

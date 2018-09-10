@@ -1,5 +1,6 @@
 #!/usr/bin/perl
 
+# (C) Intel, Inc.
 # (C) Maxim Dounin
 # (C) Nginx, Inc.
 
@@ -42,6 +43,7 @@ http {
 
         location /verify {
             proxy_pass https://127.0.0.1:8081/;
+            proxy_ssl_asynch on;
             proxy_ssl_name example.com;
             proxy_ssl_verify on;
             proxy_ssl_trusted_certificate 1.example.com.crt;
@@ -49,6 +51,7 @@ http {
 
         location /wildcard {
             proxy_pass https://127.0.0.1:8081/;
+            proxy_ssl_asynch on;
             proxy_ssl_name foo.example.com;
             proxy_ssl_verify on;
             proxy_ssl_trusted_certificate 1.example.com.crt;
@@ -56,6 +59,7 @@ http {
 
         location /fail {
             proxy_pass https://127.0.0.1:8081/;
+            proxy_ssl_asynch on;
             proxy_ssl_name no.match.example.com;
             proxy_ssl_verify on;
             proxy_ssl_trusted_certificate 1.example.com.crt;
@@ -63,6 +67,7 @@ http {
 
         location /cn {
             proxy_pass https://127.0.0.1:8082/;
+            proxy_ssl_asynch on;
             proxy_ssl_name 2.example.com;
             proxy_ssl_verify on;
             proxy_ssl_trusted_certificate 2.example.com.crt;
@@ -70,6 +75,7 @@ http {
 
         location /cn/fail {
             proxy_pass https://127.0.0.1:8082/;
+            proxy_ssl_asynch on;
             proxy_ssl_name bad.example.com;
             proxy_ssl_verify on;
             proxy_ssl_trusted_certificate 2.example.com.crt;
@@ -77,6 +83,7 @@ http {
 
         location /untrusted {
             proxy_pass https://127.0.0.1:8082/;
+            proxy_ssl_asynch on;
             proxy_ssl_verify on;
             proxy_ssl_trusted_certificate 1.example.com.crt;
             proxy_ssl_session_reuse off;
@@ -84,7 +91,7 @@ http {
     }
 
     server {
-        listen 127.0.0.1:8081 ssl;
+        listen 127.0.0.1:8081 ssl asynch;
         server_name 1.example.com;
 
         ssl_certificate 1.example.com.crt;
@@ -94,7 +101,7 @@ http {
     }
 
     server {
-        listen 127.0.0.1:8082 ssl;
+        listen 127.0.0.1:8082 ssl asynch;
         server_name 2.example.com;
 
         ssl_certificate 2.example.com.crt;

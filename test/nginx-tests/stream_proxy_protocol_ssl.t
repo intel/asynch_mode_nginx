@@ -1,5 +1,6 @@
 #!/usr/bin/perl
 
+# (C) Intel, Inc.
 # (C) Sergey Kandaurov
 # (C) Nginx, Inc.
 
@@ -41,6 +42,7 @@ events {
 
 stream {
     proxy_ssl       on;
+    proxy_ssl_asynch       on;
     proxy_protocol  on;
 
     server {

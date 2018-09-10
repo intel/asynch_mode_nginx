@@ -2,7 +2,7 @@
 
 # (C) Sergey Kandaurov
 # (C) Nginx, Inc.
-
+# (C) Intel, Inc.
 # Tests for upstream zone with ssl backend.
 
 ###############################################################################
@@ -48,7 +48,7 @@ http {
     }
 
     server {
-        listen 127.0.0.1:8081 ssl;
+        listen 127.0.0.1:8081 ssl asynch;
 
         ssl_certificate_key localhost.key;
         ssl_certificate localhost.crt;
@@ -67,20 +67,24 @@ http {
 
         location /ssl_reuse {
             proxy_pass https://u/;
+            proxy_ssl_asynch on;
             proxy_ssl_session_reuse on;
         }
 
         location /ssl {
             proxy_pass https://u/;
+            proxy_ssl_asynch on;
         }
 
         location /backup_reuse {
             proxy_pass https://u2/;
+            proxy_ssl_asynch on;
             proxy_ssl_session_reuse on;
         }
 
         location /backup {
             proxy_pass https://u2/;
+            proxy_ssl_asynch on;
         }
     }
 }

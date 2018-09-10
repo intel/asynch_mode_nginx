@@ -1,5 +1,6 @@
 #!/usr/bin/perl
 
+# (C) Intel, Inc.
 # (C) Nginx, Inc.
 
 # Tests for the $upstream_cookie_<name> variables.

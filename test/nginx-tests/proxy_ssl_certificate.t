@@ -1,5 +1,6 @@
 #!/usr/bin/perl
 
+# (C) Intel, Inc.
 # (C) Sergey Kandaurov
 # (C) Nginx, Inc.
 
@@ -46,18 +47,21 @@ http {
 
         location /verify {
             proxy_pass https://127.0.0.1:8081/;
+            proxy_ssl_asynch on;
             proxy_ssl_certificate 1.example.com.crt;
             proxy_ssl_certificate_key 1.example.com.key;
         }
 
         location /fail {
             proxy_pass https://127.0.0.1:8081/;
+            proxy_ssl_asynch on;
             proxy_ssl_certificate 2.example.com.crt;
             proxy_ssl_certificate_key 2.example.com.key;
         }
 
         location /encrypted {
             proxy_pass https://127.0.0.1:8082/;
+            proxy_ssl_asynch on;
             proxy_ssl_certificate 3.example.com.crt;
             proxy_ssl_certificate_key 3.example.com.key;
             proxy_ssl_password_file password;
@@ -65,7 +69,7 @@ http {
     }
 
     server {
-        listen       127.0.0.1:8081 ssl;
+        listen       127.0.0.1:8081 ssl asynch;
         server_name  localhost;
 
         ssl_certificate 2.example.com.crt;
@@ -81,7 +85,7 @@ http {
     }
 
     server {
-        listen       127.0.0.1:8082 ssl;
+        listen       127.0.0.1:8082 ssl asynch;
         server_name  localhost;
 
         ssl_certificate 1.example.com.crt;

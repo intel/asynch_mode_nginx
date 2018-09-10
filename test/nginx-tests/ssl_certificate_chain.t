@@ -1,5 +1,6 @@
 #!/usr/bin/perl
 
+# (C) Intel, Inc.
 # (C) Sergey Kandaurov
 # (C) Nginx, Inc.
 
@@ -43,7 +44,7 @@ http {
     %%TEST_GLOBALS_HTTP%%
 
     server {
-        listen       127.0.0.1:8080 ssl;
+        listen       127.0.0.1:8080 ssl asynch;
         server_name  localhost;
 
         ssl_certificate_key end.key;
@@ -51,7 +52,7 @@ http {
     }
 
     server {
-        listen       127.0.0.1:8081 ssl;
+        listen       127.0.0.1:8081 ssl asynch;
         server_name  localhost;
 
         ssl_certificate_key int.key;
@@ -59,7 +60,7 @@ http {
     }
 
     server {
-        listen       127.0.0.1:8082 ssl;
+        listen       127.0.0.1:8082 ssl asynch;
         server_name  localhost;
 
         ssl_certificate_key end.key;

@@ -1,5 +1,6 @@
 package Test::Nginx::HTTP2;
 
+# (C) Intel, Inc.
 # (C) Sergey Kandaurov
 # (C) Nginx, Inc.
 

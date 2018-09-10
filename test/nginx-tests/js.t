@@ -1,5 +1,6 @@
 #!/usr/bin/perl
 
+# (C) Intel, Inc.
 # (C) Roman Arutyunyan
 
 # Tests for http JavaScript module.

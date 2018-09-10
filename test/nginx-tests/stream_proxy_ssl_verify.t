@@ -1,5 +1,6 @@
 #!/usr/bin/perl
 
+# (C) Intel, Inc.
 # (C) Sergey Kandaurov
 # (C) Nginx, Inc.
 
@@ -35,6 +36,7 @@ events {
 
 stream {
     proxy_ssl on;
+    proxy_ssl_asynch on;
     proxy_ssl_verify on;
 
     server {
@@ -87,8 +89,10 @@ stream {
 
     server {
         listen      127.0.0.1:8086 ssl;
+        ssl_asynch on;
         proxy_pass  127.0.0.1:8088;
         proxy_ssl   off;
+        proxy_ssl_asynch   off;
 
         ssl_certificate 1.example.com.crt;
         ssl_certificate_key 1.example.com.key;
@@ -96,8 +100,10 @@ stream {
 
     server {
         listen      127.0.0.1:8087 ssl;
+        ssl_asynch on;
         proxy_pass  127.0.0.1:8088;
         proxy_ssl   off;
+        proxy_ssl_asynch   off;
 
         ssl_certificate 2.example.com.crt;
         ssl_certificate_key 2.example.com.key;

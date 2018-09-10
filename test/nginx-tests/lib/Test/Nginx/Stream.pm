@@ -1,5 +1,6 @@
 package Test::Nginx::Stream;
 
+# (C) Intel, Inc.
 # (C) Andrey Zelenkov
 # (C) Nginx, Inc.
 
