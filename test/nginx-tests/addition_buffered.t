@@ -2,7 +2,7 @@
 
 # (C) Sergey Kandaurov
 # (C) Nginx, Inc.
-# (C) Intel, Inc.
+# Copyright (C) Intel, Inc.
 # Tests for addition module with buffered data from other filters.
 
 # In particular, sub filter may have a partial match buffered.

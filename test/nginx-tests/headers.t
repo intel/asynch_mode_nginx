@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# (C) Intel, Inc.
+# Copyright (C) Intel, Inc.
 # (C) Sergey Kandaurov
 # (C) Maxim Dounin
 # (C) Nginx, Inc.

@@ -2,7 +2,7 @@
 
 # (C) Sergey Kandaurov
 # (C) Nginx, Inc.
-# (C) Intel, Inc.
+# Copyright (C) Intel, Inc.
 # Test for sub_filter inheritance from http context.
 
 ###############################################################################

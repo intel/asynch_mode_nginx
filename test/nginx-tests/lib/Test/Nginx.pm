@@ -1,7 +1,7 @@
 package Test::Nginx;
 
 # (C) Maxim Dounin
-# (C) Intel, Inc.
+# Copyright (C) Intel, Inc
 # Generic module for nginx tests.
 
 ###############################################################################

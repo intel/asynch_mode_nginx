@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 
 # (C) Maxim Dounin
-# (C) Intel, Inc.
+# Copyright (C) Intel, Inc.
 # Tests for sub filter, extended tests using embedded perl.
 
 ###############################################################################

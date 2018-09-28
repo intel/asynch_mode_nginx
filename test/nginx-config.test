@@ -1,6 +1,6 @@
 #!/bin/bash -x
 
-# (C) Intel, Inc.
+# Copyright (C) Intel, Inc
 
 if [ ! -d "$NGINX_INSTALL_DIR" ]; then
    echo "NGINX install directory not been set or does not exist. Run:- export NGINX_INSTALL_DIR=<location you want to install the built nginx server to>\n"

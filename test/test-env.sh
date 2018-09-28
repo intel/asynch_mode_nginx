@@ -1,4 +1,4 @@
-# (C) Intel, Inc.
+# Copyright (C) Intel, Inc
 
 export TEST_NGINX_MODULES=$NGINX_INSTALL_DIR/modules
 export TEST_NGINX_SSL_ENGINE_MODULE="ssl_engine {

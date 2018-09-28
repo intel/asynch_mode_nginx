@@ -2,7 +2,7 @@
 
 # (C) Dmitry Volyntsev
 # (C) Nginx, Inc.
-# (C) Intel, Inc.
+# Copyright (C) Intel, Inc.
 # Tests for multiple patterns in sub filter.
 
 ###############################################################################

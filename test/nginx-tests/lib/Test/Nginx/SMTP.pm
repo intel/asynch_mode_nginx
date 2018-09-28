@@ -1,7 +1,7 @@
 package Test::Nginx::SMTP;
 
-# (C) Intel, Inc.
 # (C) Maxim Dounin
+# Copyright (C) Intel, Inc
 
 # Module for nginx smtp tests.
 

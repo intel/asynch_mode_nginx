@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 
 # (C) Nginx, Inc.
-# (C) Intel, Inc.
+# Copyright (C) Intel, Inc.
 # Tests for syslog.
 # Various log levels emitted with limit_req_log_level.
 

@@ -2,7 +2,7 @@
 
 # (C) Sergey Kandaurov
 # (C) Nginx, Inc.
-# (C) Intel, Inc.
+# Copyright (C) Intel, Inc.
 # Tests for slice filter with sub filter.
 
 # A response is sent using chunked encoding.

@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 
 # (C) Maxim Dounin
-# Copyright (C) Intel, Inc
+# Copyright (C) Intel, Inc.
 # Tests for nginx xslt filter module.
 
 ###############################################################################

@@ -2,7 +2,7 @@
 
 # (C) Sergey Kandaurov
 # (C) Nginx, Inc.
-# (C) Intel, Inc.
+# Copyright (C) Intel, Inc.
 # Tests for upstream hash balancer module distribution consistency
 # with Cache::Memcached and Cache::Memcached::Fast.
 

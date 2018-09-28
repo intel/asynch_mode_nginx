@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# (C) Intel, Inc.
+# Copyright (C) Intel, Inc.
 # (C) Maxim Dounin
 
 # Test for http backend not closing connection properly after sending full

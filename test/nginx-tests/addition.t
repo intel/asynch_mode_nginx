@@ -2,7 +2,7 @@
 
 # (C) Sergey Kandaurov
 # (C) Nginx, Inc.
-# (C) Intel, Inc.
+# Copyright (C) Intel, Inc.
 # Tests for addition module.
 
 ###############################################################################

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# (C) Intel, Inc.
+# Copyright (C) Intel, Inc
 #For the nginx test,the packages installed by yum
 #   cpan hg pcre geoip perl-Geo-IP.x86_64
 #   GeoIP-devel.x86_64 memcached perl-FCGI.x86_64

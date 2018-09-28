@@ -1,6 +1,6 @@
 package Test::Nginx::POP3;
 
-# (C) Intel, Inc.
+# Copyright (C) Intel, Inc
 # (C) Maxim Dounin
 
 # Module for nginx pop3 tests.

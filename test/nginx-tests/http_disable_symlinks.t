@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# (C) Intel, Inc.
+# Copyright (C) Intel, Inc.
 # (C) Andrey Belov
 
 # Tests for disable_symlinks directive.

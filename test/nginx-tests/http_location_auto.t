@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# (C) Intel, Inc.
+# Copyright (C) Intel, Inc.
 # (C) Maxim Dounin
 
 # Tests for location selection, an auto_redirect edge case.

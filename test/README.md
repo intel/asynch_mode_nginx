@@ -1,5 +1,5 @@
 # Intel&reg; QuickAssist Technology (QAT) Async Mode Nginx
-# (C) Intel, Inc.
+# Copyright (C) Intel, Inc
 ## Introduction
   Nginx-test is a tool for testing whether nginx can run normally. The tool supports both qat and dasync modes.
 ##

@@ -1,8 +1,8 @@
 #!/usr/bin/perl
 
 # (C) Sergey Kandaurov
+# (C) Nginx, Inc.
 # Copyright (C) Intel, Inc.
-# (C) Intel, Inc.
 # Tests for upstream zone with ssl backend.
 
 ###############################################################################

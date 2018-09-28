@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# (C) Intel, Inc.
+# Copyright (C) Intel, Inc.
 # (C) Maxim Dounin
 
 # Test for proxy cache with Transfer-Encoding: chunked.

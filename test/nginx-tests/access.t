@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 
 # (C) Sergey Kandaurov
-# (C) Intel, Inc.
+# Copyright (C) Intel, Inc.
 # Tests for nginx access module.
 
 # At the moment only the new "unix:" syntax is tested (cf "all").

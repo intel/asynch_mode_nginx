@@ -1,8 +1,8 @@
 #!/usr/bin/perl
 
 # (C) Andrey Zelenkov
+# (C) Nginx, Inc.
 # Copyright (C) Intel, Inc.
-# (C) Intel, Inc.
 # Tests for userid filter module.
 
 ###############################################################################

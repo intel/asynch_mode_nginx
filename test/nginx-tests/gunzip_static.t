@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# (C) Intel, Inc.
+# Copyright (C) Intel, Inc.
 # (C) Maxim Dounin
 
 # Tests for gunzip filter module with gzip_static always.  It is basically

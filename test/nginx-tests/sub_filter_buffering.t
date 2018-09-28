@@ -2,7 +2,7 @@
 
 # (C) Andrey Zelenkov
 # (C) Nginx, Inc.
-# (C) Intel, Inc.
+# Copyright (C) Intel, Inc.
 # Tests for sub_filter buffering.
 
 ###############################################################################
