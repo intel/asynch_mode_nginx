@@ -93,7 +93,7 @@ ngx_ssl_init(ngx_log_t *log)
 {
 #if OPENSSL_VERSION_NUMBER >= 0x10100003L
 
-    OPENSSL_init_ssl(OPENSSL_INIT_NO_LOAD_CONFIG, NULL);
+    OPENSSL_init_ssl(OPENSSL_INIT_LOAD_CONFIG, NULL);
 
     ENGINE_load_builtin_engines();
     ENGINE_load_dynamic();
