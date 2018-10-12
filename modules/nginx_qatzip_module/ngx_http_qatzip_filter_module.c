@@ -2,6 +2,7 @@
 /*
  * Copyright (C) Igor Sysoev
  * Copyright (C) Nginx, Inc.
+ * Copyright (C) Intel, Inc.
  */
 
 
@@ -128,6 +129,9 @@ static ngx_conf_num_bounds_t  ngx_http_qatzip_chunk_size_bounds = {
 static ngx_conf_num_bounds_t  ngx_http_qatzip_stream_size_bounds = {
     ngx_conf_check_num_bounds, QZ_STRM_BUFF_MIN_SZ, QZ_STRM_BUFF_MAX_SZ
 };
+static ngx_conf_num_bounds_t  ngx_http_qatzip_sw_threshold_size_bounds = {
+    ngx_conf_check_num_bounds, QZ_COMP_THRESHOLD_MINIMUM, QZ_HW_BUFF_MAX_SZ
+};
 
 static ngx_command_t  ngx_http_qatzip_filter_commands[] = {
 
@@ -179,7 +183,7 @@ static ngx_command_t  ngx_http_qatzip_filter_commands[] = {
       ngx_conf_set_size_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_qatzip_conf_t, input_sz_thrshold),
-      NULL },
+      &ngx_http_qatzip_sw_threshold_size_bounds },
 
     { ngx_string("qatzip_wait_cnt_threshold"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
