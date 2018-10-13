@@ -235,7 +235,7 @@ effective for Nginx. Please use the following method to configure Nginx SSL
 engine, such as Intel&reg; QAT.
 
 An SSL Engine Framework is introduced to provide a more powerful and flexible
-mechanism to configure Nginx SSL engine direclty in the Nginx configuration file
+mechanism to configure Nginx SSL engine directly in the Nginx configuration file
 (`nginx.conf`).
 
 ### ssl_engine configuration
@@ -264,7 +264,7 @@ configuration. The name of the sub-block should have a prefix using the
 engine name specified in `use_engine`, such as `[engine_name]_engine`.
 
 ### nginx_qat_module
-Any 3rd party modules can be intergrated into this framwork. By default, a
+Any 3rd party modules can be integrated into this framwork. By default, a
 reference module `dasync_module` is provided in `src/engine/modules`
 and a QAT module `nginx_qat_module` is provided in `modules/nginx_qat_modules`.
 
