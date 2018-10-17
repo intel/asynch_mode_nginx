@@ -1,8 +1,4 @@
-/*
- * Copyright (C) Igor Sysoev
- * Copyright (C) Nginx, Inc.
- * Copyright (C) Intel, Inc
- */
+# Copyright (C) Intel, Inc.
 
 ngx_addon_name=ngx_http_qatzip_filter_module
 
