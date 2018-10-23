@@ -43,7 +43,9 @@ http {
         server_name  localhost;
 
         location / {
-            gzip on;
+            #gzip on;
+            qatzip on;
+            qatzip_min_length 0;
             scgi_pass 127.0.0.1:8081;
             scgi_param SCGI 1;
             scgi_param REQUEST_URI $request_uri;

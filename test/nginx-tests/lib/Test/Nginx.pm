@@ -591,8 +591,9 @@ sub test_globals_modules() {
 
 	$s .= "load_module $modules/ngx_stream_geoip_module.so;\n"
 		if $self->has_module('stream_geoip\S+=dynamic');
-        
-        $s .= $ENV{TEST_LOAD_MODULE};
+
+        $s .= $ENV{TEST_LOAD_NGINX_MODULE};
+        $s .= $ENV{TEST_LOAD_QATZIP_MODULE};
 
 	return $s;
 }

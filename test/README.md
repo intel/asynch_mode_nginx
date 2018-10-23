@@ -10,6 +10,7 @@
 
 `NGINX_SRC_DIR` is the Nginx source code directory.
 `NGINX_INSTALL_DIR` is the Nginx install directory.
+`QATZIP_SRC_DIR` is the Qatzip source code directory.
 `OPENSSL_SRC_DIR` is the openssl source code directory.
 `OPENSSL_LIB` is the openssl install directory.
 

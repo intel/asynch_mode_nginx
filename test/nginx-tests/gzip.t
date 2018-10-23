@@ -40,10 +40,14 @@ http {
         listen       127.0.0.1:8080;
         server_name  localhost;
         location / {
-            gzip on;
+            #gzip on;
+            qatzip on;
+            qatzip_min_length 0;
         }
         location /proxy/ {
-            gzip on;
+            #gzip on;
+            qatzip on;
+            qatzip_min_length 0;
             proxy_pass http://127.0.0.1:8080/local/;
         }
         location /local/ {

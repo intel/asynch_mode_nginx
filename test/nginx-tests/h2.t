@@ -55,8 +55,10 @@ http {
         location /t {
         }
         location /gzip.html {
-            gzip on;
-            gzip_min_length 0;
+            #gzip on;
+            #gzip_min_length 0;
+            qatzip on;
+            qatzip_min_length 0;
             gzip_vary on;
             alias %%TESTDIR%%/t2.html;
         }
