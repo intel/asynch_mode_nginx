@@ -64,6 +64,7 @@ This release was validated on the following:
 
 ## Additional Information
 
+* Async Mode Nginx is developed based on Nginx-1.10.3.
 * Async Mode Nginx SSL engine framework provides new directives:
 
 **Directives**
