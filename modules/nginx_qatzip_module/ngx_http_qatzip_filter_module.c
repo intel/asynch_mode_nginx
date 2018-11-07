@@ -85,6 +85,7 @@ struct gztrailer {
 #endif
 
 QzSession_T * g_last_session = NULL;
+static int ngx_http_atexit_qzclose_pending = 0;
 inline static void ngx_http_qatzip_call_qzclose(void)
 {
     qzClose(g_last_session);
@@ -487,7 +488,11 @@ done:
     if (ctx->inited) {
         qzTeardownSession(&ctx->qzsession);
         g_last_session = &ctx->qzsession;
-        atexit(ngx_http_qatzip_call_qzclose);
+        if (0 == ngx_http_atexit_qzclose_pending)
+        {
+                atexit(ngx_http_qatzip_call_qzclose);
+                ngx_http_atexit_qzclose_pending = 1;
+        }
         ctx->inited = 0;
     }
 
