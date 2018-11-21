@@ -1,20 +1,19 @@
 # Intel&reg; QuickAssist Technology (QAT) Async Mode Nginx
 # Copyright (C) Intel, Inc
 ## Introduction
-  Nginx-test is a tool for testing whether nginx can run normally. The tool supports both qat and dasync modes.
-##
+  Nginx-test is a tool for testing whether Nginx can run normally. The tool supports both qat and dasync modes.
 
 ## Run Nginx Basic Tests
 
 **Set the following environmental variables:**
 
-`NGINX_SRC_DIR` is the Nginx source code directory.
-`NGINX_INSTALL_DIR` is the Nginx install directory.
-`QATZIP_SRC_DIR` is the Qatzip source code directory.
-`OPENSSL_SRC_DIR` is the openssl source code directory.
-`OPENSSL_LIB` is the openssl install directory.
+`NGINX_SRC_DIR` is the Nginx source code directory.<br/>
+`NGINX_INSTALL_DIR` is the Nginx install directory.<br/>
+`QATZIP_SRC_DIR` is the QATzip source code directory.<br/>
+`OPENSSL_SRC_DIR` is the openssl source code directory.<br/>
+`OPENSSL_LIB` is the openssl install directory.<br/>
 
-**Execute the nginx test:**
+**Execute the Nginx test:**
 
 Choose one of the following commands to execute.
 Passing the 'qat' parameter means testing with the QAT engine (https://github.com/intel/QAT_Engine) loaded and the QAT accelerator employed.
@@ -36,10 +35,9 @@ otherwise the test fails.
 ```bash
     vim nginx-test.log
 ```
-##
 
 ## nginx_qat_module
-Any 3rd party OpenSSL engine modules can be intergrated into this framwork. By default, a
+Any 3rd party OpenSSL engine modules can be integrated into this framework. By default, a
 reference module `dasync_module` is provided in `src/engine/modules`
 and a QAT module `nginx_qat_module` is provided in `modules/nginx_qat_modules`.
 
@@ -73,4 +71,3 @@ Passing the 'dasync' parameter:
 ```
 For more details directives of `nginx_qat_module`, please refer to
 `modules/nginx_qat_modules/README`.
-##

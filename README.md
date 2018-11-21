@@ -12,10 +12,13 @@
 - [Installation Instructions](#installation-instructions)
     - [Install Async Mode Nginx](#install-async-mode-nginx)
     - [Build OpenSSL\* and QAT engine](#build-openssl-and-qat-engine)
+    - [Build QATzip](#build-qatzip)
+    - [Run Nginx official test](#run-nginx-official-test)
 - [SSL Engine Framework for Configuration](#ssl-engine-framework-for-configuration)
-- [Support for Nginx level Polling](#support-for-nginx-side-polling)
+- [Support for Nginx Side Polling](#support-for-nginx-side-polling)
     - [External Polling Mode](#external-polling-mode)
     - [Heuristic Polling Mode](#heuristic-polling-mode)
+- [QATzip Module Configuration](#qatzip-module-configuration)
 - [Known Issues](#known-issues)
 - [Intended Audience](#intended-audience)
 - [Legal](#legal)
@@ -25,7 +28,7 @@
 Nginx\* [engine x] is an HTTP and reverse proxy server, a mail proxy server,
 and a generic TCP/UDP proxy server, originally written by Igor Sysoev.
 This project provides an extended Nginx working with asynchronous mode OpenSSL\*.
-With Intel&reg; QuickAssist Technology(QAT) acceleration, the asynchronous mode Nginx
+With Intel&reg; QuickAssist Technology (QAT) acceleration, the asynchronous mode Nginx
 can provide significant performance improvement.
 
 ## Licensing
@@ -44,10 +47,11 @@ be found in the file headers of the relevant files.
 * Release hardware resource during worker is shutting down (For more details
   information, please read modules/nginx_qat_module/README)
 * Support OpenSSL Cipher PIPELINE feature
+* Support QATzip module to accelerate deflate compression with Intel&reg; Quickassist Technology
 
 ## Hardware Requirements
 
-Async Mode Nginx supports Crypto offload to the following acceleration devices:
+Async Mode Nginx supports Crypto and Compression offload to the following acceleration devices:
 
 * [Intel&reg; C62X Series Chipset][1]
 * [Intel&reg; Communications Chipset 8925 to 8955 Series][2]
@@ -61,6 +65,7 @@ This release was validated on the following:
 
 * OpenSSL-1.1.0h
 * QAT engine v0.5.37
+* QATzip v0.2.6
 
 ## Additional Information
 
@@ -167,7 +172,7 @@ Set max number of sending fragment
 ## Limitations
 
 * Nginx supports `reload` operation, when QAT hardware is involved for crypto
-  offload, user should enure that there are enough number of qat instances.
+  offload, user should ensure that there are enough number of QAT instances.
   For example, the available qat instance number should be 2x equal or more than
   Nginx worker process number.
 
@@ -194,9 +199,11 @@ is configured as
 
 **Set the following environmental variables:**
 
-`NGINX_INSTALL_DIR` is the directory where nginx will be installed to
+`NGINX_INSTALL_DIR` is the directory where Nginx will be installed to
 
-`OPENSSL_LIB` is the directory where the openssl has been installed to
+`OPENSSL_LIB` is the directory where the OpenSSL has been installed to
+
+`QZ_ROOT` is the directory where the QATzip has been compiled to
 
 **Configure nginx for compilation:**
 
@@ -204,9 +211,10 @@ is configured as
     ./configure \
         --prefix=$NGINX_INSTALL_DIR \
         --with-http_ssl_module \
+        --add-dynamic-module=modules/nginx_qatzip_module \
         --add-dynamic-module=modules/nginx_qat_module/ \
-        --with-cc-opt="-DNGX_SECURE_MEM -I$OPENSSL_LIB/include -Wno-error=deprecated-declarations" \
-        --with-ld-opt="-Wl,-rpath=$OPENSSL_LIB/lib -L$OPENSSL_LIB/lib"
+        --with-cc-opt="-DNGX_SECURE_MEM -I$OPENSSL_LIB/include -I$QZ_ROOT/include -Wno-error=deprecated-declarations" \
+        --with-ld-opt="-Wl,-rpath=$OPENSSL_LIB/lib -L$OPENSSL_LIB/lib -L$QZ_ROOT/src -lqatzip -lz"
 ```
 
 **Compile and Install:**
@@ -222,13 +230,25 @@ These instructions can be found on [QAT engine][4]
 
 [4]: https://github.com/intel/QAT_Engine#installation-instructions
 
+### Build QATzip
+
+These instructions can be found on [QATzip][5]
+
+[5]: https://github.com/intel/QATzip#installation-instructions
+
+### Run Nginx official test
+
+These instructions can be found on [Official test][6]
+
+[6]: test/Readme.md
+
 ## SSL Engine Framework for Configuration
 
 As QAT engine is implemented as a standard OpenSSL\* engine, its behavior can be
 controlled from the OpenSSL\* configuration file (`openssl.conf`), which can be
-found on [QAT engine][5].
+found on [QAT engine][7].
 
-[5]: https://github.com/intel/QAT_Engine#using-the-openssl-configuration-file-to-loadinitialize-engines
+[7]: https://github.com/intel/QAT_Engine#using-the-openssl-configuration-file-to-loadinitialize-engines
 
 **Note**:
 From v0.3.2 and later, this kind of configuration in `openssl.conf` will not be
@@ -236,7 +256,7 @@ effective for Nginx. Please use the following method to configure Nginx SSL
 engine, such as Intel&reg; QAT.
 
 An SSL Engine Framework is introduced to provide a more powerful and flexible
-mechanism to configure Nginx SSL engine direclty in the Nginx configuration file
+mechanism to configure Nginx SSL engine directly in the Nginx configuration file
 (`nginx.conf`).
 
 ### ssl_engine configuration
@@ -265,7 +285,7 @@ configuration. The name of the sub-block should have a prefix using the
 engine name specified in `use_engine`, such as `[engine_name]_engine`.
 
 ### nginx_qat_module
-Any 3rd party modules can be intergrated into this framwork. By default, a
+Any 3rd party modules can be integrated into this framework. By default, a
 reference module `dasync_module` is provided in `src/engine/modules`
 and a QAT module `nginx_qat_module` is provided in `modules/nginx_qat_modules`.
 
@@ -288,7 +308,7 @@ For more details directives of `nginx_qat_module`, please refer to
 `modules/nginx_qat_modules/README`.
 
 ## Support for Nginx Side Polling
-The qat_module provides two kinds of nginx side polling for QAT engine,
+The qat_module provides two kinds of Nginx side polling for QAT engine,
 
 * external polling mode
 * heuristic polling mode
@@ -305,7 +325,7 @@ module up to current release.
 A timer-based polling is employed in each Nginx worker process to collect
 accelerator's response.
 
-**Directives in the qat_module **
+**Directives in the qat_module**
 ```bash
 Syntax:     qat_external_poll_interval time;
 Default:    1
@@ -347,15 +367,15 @@ types of network traffics.
 **Note:**
 
 * This mode is only available when using QAT engine v0.5.35 or later.
-* External polling timer is enabled by default when heruistic polling mode is enabled.
+* External polling timer is enabled by default when heuristic polling mode is enabled.
 
-In the heuristic polling mode, a polling operation is only trigerred at a proper moment:
+In the heuristic polling mode, a polling operation is only triggered at a proper moment:
 
 * Number of in-flight offload requests reaches a pre-defined threshold (in consideration of efficiency)
-* All the active SSL connections have submitted their cryptographic requests and been waitting for
+* All the active SSL connections have submitted their cryptographic requests and been waiting for
 the corresponding responses (in consideration of timeliness).
 
-**Directives in the qat_module **
+**Directives in the qat_module**
 ```bash
 Syntax:     qat_heuristic_poll_asym_threshold num;
 Default:    48
@@ -396,13 +416,66 @@ file: `conf/nginx.conf`
     }
 ```
 
+## QATzip Module Configuration
 
-## Known issue
-** 'Orphan ring' errors in `dmesg` output when Nginx exit **
-   Working with current QAT driver (version 1.0.3 in 01.org), Nginx workers exit
-   with 'Orphan ring' errors. This issue has been fixed in next QAT driver release
+This module is developed to accelerate GZIP compression with QAT accelerators
+through QATzip stream API released in v0.2.6.
 
-** Cache manager/loader process will allocate QAT instance via QAT engine **
+**Note:**
+
+* This mode is only available when using QATzip v0.2.6 or later.
+
+**Directives in the qatzip_module**
+```bash
+    Syntax:     qatzip on | off;
+    Default:    qatzip off;
+    Context:    http, server, location, if in location
+    Description:
+                Enables or disables qatzipping of responses.
+
+    Syntax:     qatzip_chunk_size size;
+    Default:    qatzip_chunk_size 64k;
+    Context:    http, server, location
+    Description:
+                Sets the chunk buffer size in which data will be compressed into
+                one deflate block. By default, the buffer size is equal to 64K.
+
+    Syntax:     qatzip_stream_size size;
+    Default:    qatzip_stream_size 256k;
+    Context:    http, server, location
+    Description:
+                Sets the size of stream buffers in which data will be compressed into
+                multiple deflate blocks and only the last block has FINAL bit being set.
+                By default, the stream buffer size is 256K.
+```
+
+**Example**
+file: `conf/nginx.conf`
+
+```bash
+    load_module modules/ngx_http_qatzip_filter_module.so;
+    ...
+
+    gzip_http_version   1.0;
+    gzip_proxied any;
+    qatzip on;
+    qatzip_min_length 128;
+    qatzip_comp_level 1;
+    qatzip_buffers 16 8k;
+    qatzip_types text/css text/javascript text/xml text/plain text/x-component application/javascript application/json application/xml application/rss+xml font/truetype font/opentype application/vnd.ms-fontobject image/svg+xml application/octet-stream image/jpeg;
+    qatzip_chunk_size   64k;
+    qatzip_stream_size  256k;
+    qatzip_sw_threshold 256;
+```
+For more details directives of `nginx_qatzip_module`, please refer to
+`modules/nginx_qatzip_modules/README`.
+
+## Known Issues
+**'Orphan ring' errors in `dmesg` output when Nginx exit**<br/>
+   Working with current QAT driver (version 4.3.0 in 01.org), Nginx workers exit
+   with 'Orphan ring' errors. This issue has been fixed in future QAT driver release
+
+**Cache manager/loader process will allocate QAT instance via QAT engine**<br/>
    According to current QAT engine design, child process forked by master
    process will initialize QAT engine automatically in QAT engine `atfork`
    hook function. If cache manager/loader processes are employed, QAT instances
@@ -410,6 +483,9 @@ file: `conf/nginx.conf`
    processes do not perform modules' `exit process` method in Nginx native design
    which will introduce "Orphan ring" error message in `dmesg` output.
 
+**QATzip module does not support dictionary compression**<br/>
+   QATzip module supports GZIP compression acceleration now, does not support
+   user define dictionary compression yet.
 
 ## Intended Audience
 
