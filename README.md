@@ -47,7 +47,7 @@ be found in the file headers of the relevant files.
 * Release hardware resource during worker is shutting down (For more details
   information, please read modules/nginx_qat_module/README)
 * Support OpenSSL Cipher PIPELINE feature
-* Support QATzip module to accelerate deflate compression with Intel&reg; Quickassist Technology
+* Support QATzip module to accelerate GZIP compression with Intel&reg; Quickassist Technology
 
 ## Hardware Requirements
 
@@ -64,7 +64,7 @@ Async Mode Nginx supports Crypto and Compression offload to the following accele
 This release was validated on the following:
 
 * OpenSSL-1.1.0h
-* QAT engine v0.5.37
+* QAT engine v0.5.39
 * QATzip v0.2.6
 
 ## Additional Information
