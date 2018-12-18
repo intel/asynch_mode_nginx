@@ -240,7 +240,7 @@ These instructions can be found on [QATzip][5]
 
 These instructions can be found on [Official test][6]
 
-[6]: test/Readme.md
+[6]: https://github.com/intel/asynch_mode_nginx/blob/master/test/README.md
 
 ## SSL Engine Framework for Configuration
 
