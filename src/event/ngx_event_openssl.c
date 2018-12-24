@@ -1719,6 +1719,10 @@ ngx_ssl_read_async_handler(ngx_event_t *aev)
 
     c = aev->data;
 
+    if (c->destroyed) {
+        return;
+    }
+
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "SSL read async handler");
 
@@ -2023,6 +2027,10 @@ ngx_ssl_write_async_handler(ngx_event_t *aev)
     ngx_connection_t  *c;
 
     c = aev->data;
+
+    if (c->destroyed) {
+        return;
+    }
 
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "SSL write async handler");
