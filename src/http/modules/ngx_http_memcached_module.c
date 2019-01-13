@@ -62,7 +62,7 @@ static ngx_command_t  ngx_http_memcached_commands[] = {
       NULL },
 
     { ngx_string("memcached_bind"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE12,
       ngx_http_upstream_bind_set_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_memcached_loc_conf_t, upstream.local),
@@ -593,8 +593,6 @@ ngx_http_memcached_create_loc_conf(ngx_conf_t *cf)
      *     conf->upstream.bufs.num = 0;
      *     conf->upstream.next_upstream = 0;
      *     conf->upstream.temp_path = NULL;
-     *     conf->upstream.uri = { 0, NULL };
-     *     conf->upstream.location = NULL;
      */
 
     conf->upstream.local = NGX_CONF_UNSET_PTR;

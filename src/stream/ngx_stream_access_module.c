@@ -88,6 +88,7 @@ static ngx_command_t  ngx_stream_access_commands[] = {
 
 
 static ngx_stream_module_t  ngx_stream_access_module_ctx = {
+    NULL,                                  /* preconfiguration */
     ngx_stream_access_init,                /* postconfiguration */
 
     NULL,                                  /* create main configuration */
@@ -274,7 +275,7 @@ ngx_stream_access_found(ngx_stream_session_t *s, ngx_uint_t deny)
     if (deny) {
         ngx_log_error(NGX_LOG_ERR, s->connection->log, 0,
                       "access forbidden by rule");
-        return NGX_ABORT;
+        return NGX_STREAM_FORBIDDEN;
     }
 
     return NGX_OK;
@@ -298,27 +299,21 @@ ngx_stream_access_rule(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_stream_access_rule_un_t  *rule_un;
 #endif
 
+    all = 0;
     ngx_memzero(&cidr, sizeof(ngx_cidr_t));
 
     value = cf->args->elts;
 
-    all = (value[1].len == 3 && ngx_strcmp(value[1].data, "all") == 0);
-
-    if (!all) {
+    if (value[1].len == 3 && ngx_strcmp(value[1].data, "all") == 0) {
+        all = 1;
 
 #if (NGX_HAVE_UNIX_DOMAIN)
-
-        if (value[1].len == 5 && ngx_strcmp(value[1].data, "unix:") == 0) {
-            cidr.family = AF_UNIX;
-            rc = NGX_OK;
-
-        } else {
-            rc = ngx_ptocidr(&value[1], &cidr);
-        }
-
-#else
-        rc = ngx_ptocidr(&value[1], &cidr);
+    } else if (value[1].len == 5 && ngx_strcmp(value[1].data, "unix:") == 0) {
+        cidr.family = AF_UNIX;
 #endif
+
+    } else {
+        rc = ngx_ptocidr(&value[1], &cidr);
 
         if (rc == NGX_ERROR) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
@@ -442,10 +437,17 @@ ngx_stream_access_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 static ngx_int_t
 ngx_stream_access_init(ngx_conf_t *cf)
 {
+    ngx_stream_handler_pt        *h;
     ngx_stream_core_main_conf_t  *cmcf;
 
     cmcf = ngx_stream_conf_get_module_main_conf(cf, ngx_stream_core_module);
-    cmcf->access_handler = ngx_stream_access_handler;
+
+    h = ngx_array_push(&cmcf->phases[NGX_STREAM_ACCESS_PHASE].handlers);
+    if (h == NULL) {
+        return NGX_ERROR;
+    }
+
+    *h = ngx_stream_access_handler;
 
     return NGX_OK;
 }

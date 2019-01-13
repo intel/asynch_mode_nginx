@@ -30,10 +30,10 @@ ngx_event_accept(ngx_event_t *ev)
     ngx_uint_t         level;
     ngx_socket_t       s;
     ngx_event_t       *rev, *wev;
+    ngx_sockaddr_t     sa;
     ngx_listening_t   *ls;
     ngx_connection_t  *c, *lc;
     ngx_event_conf_t  *ecf;
-    u_char             sa[NGX_SOCKADDRLEN];
 #if (NGX_HAVE_ACCEPT4)
     static ngx_uint_t  use_accept4 = 1;
 #endif
@@ -60,17 +60,16 @@ ngx_event_accept(ngx_event_t *ev)
                    "accept on %V, ready: %d", &ls->addr_text, ev->available);
 
     do {
-        socklen = NGX_SOCKADDRLEN;
+        socklen = sizeof(ngx_sockaddr_t);
 
 #if (NGX_HAVE_ACCEPT4)
         if (use_accept4) {
-            s = accept4(lc->fd, (struct sockaddr *) sa, &socklen,
-                        SOCK_NONBLOCK);
+            s = accept4(lc->fd, &sa.sockaddr, &socklen, SOCK_NONBLOCK);
         } else {
-            s = accept(lc->fd, (struct sockaddr *) sa, &socklen);
+            s = accept(lc->fd, &sa.sockaddr, &socklen);
         }
 #else
-        s = accept(lc->fd, (struct sockaddr *) sa, &socklen);
+        s = accept(lc->fd, &sa.sockaddr, &socklen);
 #endif
 
         if (s == (ngx_socket_t) -1) {
@@ -167,13 +166,17 @@ ngx_event_accept(ngx_event_t *ev)
             return;
         }
 
+        if (socklen > (socklen_t) sizeof(ngx_sockaddr_t)) {
+            socklen = sizeof(ngx_sockaddr_t);
+        }
+
         c->sockaddr = ngx_palloc(c->pool, socklen);
         if (c->sockaddr == NULL) {
             ngx_close_accepted_connection(c);
             return;
         }
 
-        ngx_memcpy(c->sockaddr, sa, socklen);
+        ngx_memcpy(c->sockaddr, &sa, socklen);
 
         log = ngx_palloc(c->pool, sizeof(ngx_log_t));
         if (log == NULL) {
@@ -219,8 +222,6 @@ ngx_event_accept(ngx_event_t *ev)
         c->local_sockaddr = ls->sockaddr;
         c->local_socklen = ls->socklen;
 
-        c->unexpected_eof = 1;
-
 #if (NGX_HAVE_UNIX_DOMAIN)
         if (c->sockaddr->sa_family == AF_UNIX) {
             c->tcp_nopush = NGX_TCP_NOPUSH_DISABLED;
@@ -243,7 +244,7 @@ ngx_event_accept(ngx_event_t *ev)
 
         if (ev->deferred_accept) {
             rev->ready = 1;
-#if (NGX_HAVE_KQUEUE)
+#if (NGX_HAVE_KQUEUE || NGX_HAVE_EPOLLRDHUP)
             rev->available = 1;
 #endif
         }
@@ -335,10 +336,10 @@ ngx_event_recvmsg(ngx_event_t *ev)
     ngx_event_t       *rev, *wev;
     struct iovec       iov[1];
     struct msghdr      msg;
+    ngx_sockaddr_t     sa;
     ngx_listening_t   *ls;
     ngx_event_conf_t  *ecf;
     ngx_connection_t  *c, *lc;
-    u_char             sa[NGX_SOCKADDRLEN];
     static u_char      buffer[65535];
 
 #if (NGX_HAVE_MSGHDR_MSG_CONTROL)
@@ -383,7 +384,7 @@ ngx_event_recvmsg(ngx_event_t *ev)
         iov[0].iov_len = sizeof(buffer);
 
         msg.msg_name = &sa;
-        msg.msg_namelen = sizeof(sa);
+        msg.msg_namelen = sizeof(ngx_sockaddr_t);
         msg.msg_iov = iov;
         msg.msg_iovlen = 1;
 
@@ -448,6 +449,22 @@ ngx_event_recvmsg(ngx_event_t *ev)
         c->type = SOCK_DGRAM;
         c->socklen = msg.msg_namelen;
 
+        if (c->socklen > (socklen_t) sizeof(ngx_sockaddr_t)) {
+            c->socklen = sizeof(ngx_sockaddr_t);
+        }
+
+        if (c->socklen == 0) {
+
+            /*
+             * on Linux recvmsg() returns zero msg_namelen
+             * when receiving packets from unbound AF_UNIX sockets
+             */
+
+            c->socklen = sizeof(struct sockaddr);
+            ngx_memzero(&sa, sizeof(struct sockaddr));
+            sa.sockaddr.sa_family = ls->sockaddr->sa_family;
+        }
+
 #if (NGX_STAT_STUB)
         (void) ngx_atomic_fetch_add(ngx_stat_active, 1);
 #endif
@@ -475,6 +492,7 @@ ngx_event_recvmsg(ngx_event_t *ev)
         *log = ls->log;
 
         c->send = ngx_udp_send;
+        c->send_chain = ngx_udp_send_chain;
 
         c->log = log;
         c->pool->log = log;

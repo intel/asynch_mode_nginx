@@ -45,9 +45,13 @@ static char *ngx_http_realip_merge_loc_conf(ngx_conf_t *cf,
     void *parent, void *child);
 static ngx_int_t ngx_http_realip_add_variables(ngx_conf_t *cf);
 static ngx_int_t ngx_http_realip_init(ngx_conf_t *cf);
+static ngx_http_realip_ctx_t *ngx_http_realip_get_module_ctx(
+    ngx_http_request_t *r);
 
 
 static ngx_int_t ngx_http_realip_remote_addr_variable(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_http_realip_remote_port_variable(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 
 
@@ -115,7 +119,10 @@ static ngx_http_variable_t  ngx_http_realip_vars[] = {
     { ngx_string("realip_remote_addr"), NULL,
       ngx_http_realip_remote_addr_variable, 0, 0, 0 },
 
-    { ngx_null_string, NULL, NULL, 0, 0, 0 }
+    { ngx_string("realip_remote_port"), NULL,
+      ngx_http_realip_remote_port_variable, 0, 0, 0 },
+
+      ngx_http_null_variable
 };
 
 
@@ -134,15 +141,15 @@ ngx_http_realip_handler(ngx_http_request_t *r)
     ngx_http_realip_ctx_t       *ctx;
     ngx_http_realip_loc_conf_t  *rlcf;
 
-    ctx = ngx_http_get_module_ctx(r, ngx_http_realip_module);
-
-    if (ctx) {
-        return NGX_DECLINED;
-    }
-
     rlcf = ngx_http_get_module_loc_conf(r, ngx_http_realip_module);
 
     if (rlcf->from == NULL) {
+        return NGX_DECLINED;
+    }
+
+    ctx = ngx_http_realip_get_module_ctx(r);
+
+    if (ctx) {
         return NGX_DECLINED;
     }
 
@@ -230,6 +237,10 @@ found:
                                     rlcf->recursive)
         != NGX_DECLINED)
     {
+        if (rlcf->type == NGX_HTTP_REALIP_PROXY) {
+            ngx_inet_set_port(addr.sockaddr, c->proxy_protocol_port);
+        }
+
         return ngx_http_realip_set_addr(r, &addr);
     }
 
@@ -253,7 +264,6 @@ ngx_http_realip_set_addr(ngx_http_request_t *r, ngx_addr_t *addr)
     }
 
     ctx = cln->data;
-    ngx_http_set_ctx(r, ctx, ngx_http_realip_module);
 
     c = r->connection;
 
@@ -271,6 +281,7 @@ ngx_http_realip_set_addr(ngx_http_request_t *r, ngx_addr_t *addr)
     ngx_memcpy(p, text, len);
 
     cln->handler = ngx_http_realip_cleanup;
+    ngx_http_set_ctx(r, ctx, ngx_http_realip_module);
 
     ctx->connection = c;
     ctx->sockaddr = c->sockaddr;
@@ -306,9 +317,15 @@ ngx_http_realip_from(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_realip_loc_conf_t *rlcf = conf;
 
-    ngx_int_t                rc;
-    ngx_str_t               *value;
-    ngx_cidr_t              *cidr;
+    ngx_int_t             rc;
+    ngx_str_t            *value;
+    ngx_url_t             u;
+    ngx_cidr_t            c, *cidr;
+    ngx_uint_t            i;
+    struct sockaddr_in   *sin;
+#if (NGX_HAVE_INET6)
+    struct sockaddr_in6  *sin6;
+#endif
 
     value = cf->args->elts;
 
@@ -320,31 +337,78 @@ ngx_http_realip_from(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
     }
 
-    cidr = ngx_array_push(rlcf->from);
-    if (cidr == NULL) {
-        return NGX_CONF_ERROR;
-    }
-
 #if (NGX_HAVE_UNIX_DOMAIN)
 
     if (ngx_strcmp(value[1].data, "unix:") == 0) {
+        cidr = ngx_array_push(rlcf->from);
+        if (cidr == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
         cidr->family = AF_UNIX;
         return NGX_CONF_OK;
     }
 
 #endif
 
-    rc = ngx_ptocidr(&value[1], cidr);
+    rc = ngx_ptocidr(&value[1], &c);
 
-    if (rc == NGX_ERROR) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\"",
-                           &value[1]);
+    if (rc != NGX_ERROR) {
+        if (rc == NGX_DONE) {
+            ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+                               "low address bits of %V are meaningless",
+                               &value[1]);
+        }
+
+        cidr = ngx_array_push(rlcf->from);
+        if (cidr == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        *cidr = c;
+
+        return NGX_CONF_OK;
+    }
+
+    ngx_memzero(&u, sizeof(ngx_url_t));
+    u.host = value[1];
+
+    if (ngx_inet_resolve_host(cf->pool, &u) != NGX_OK) {
+        if (u.err) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "%s in set_real_ip_from \"%V\"",
+                               u.err, &u.host);
+        }
+
         return NGX_CONF_ERROR;
     }
 
-    if (rc == NGX_DONE) {
-        ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
-                           "low address bits of %V are meaningless", &value[1]);
+    cidr = ngx_array_push_n(rlcf->from, u.naddrs);
+    if (cidr == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    ngx_memzero(cidr, u.naddrs * sizeof(ngx_cidr_t));
+
+    for (i = 0; i < u.naddrs; i++) {
+        cidr[i].family = u.addrs[i].sockaddr->sa_family;
+
+        switch (cidr[i].family) {
+
+#if (NGX_HAVE_INET6)
+        case AF_INET6:
+            sin6 = (struct sockaddr_in6 *) u.addrs[i].sockaddr;
+            cidr[i].u.in6.addr = sin6->sin6_addr;
+            ngx_memset(cidr[i].u.in6.mask.s6_addr, 0xff, 16);
+            break;
+#endif
+
+        default: /* AF_INET */
+            sin = (struct sockaddr_in *) u.addrs[i].sockaddr;
+            cidr[i].u.in.addr = sin->sin_addr.s_addr;
+            cidr[i].u.in.mask = 0xffffffff;
+            break;
+        }
     }
 
     return NGX_CONF_OK;
@@ -357,6 +421,10 @@ ngx_http_realip(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_http_realip_loc_conf_t *rlcf = conf;
 
     ngx_str_t  *value;
+
+    if (rlcf->type != NGX_CONF_UNSET_UINT) {
+        return "is duplicate";
+    }
 
     value = cf->args->elts;
 
@@ -475,11 +543,9 @@ ngx_http_realip_init(ngx_conf_t *cf)
 }
 
 
-static ngx_int_t
-ngx_http_realip_remote_addr_variable(ngx_http_request_t *r,
-    ngx_http_variable_value_t *v, uintptr_t data)
+static ngx_http_realip_ctx_t *
+ngx_http_realip_get_module_ctx(ngx_http_request_t *r)
 {
-    ngx_str_t              *addr_text;
     ngx_pool_cleanup_t     *cln;
     ngx_http_realip_ctx_t  *ctx;
 
@@ -500,6 +566,19 @@ ngx_http_realip_remote_addr_variable(ngx_http_request_t *r,
         }
     }
 
+    return ctx;
+}
+
+
+static ngx_int_t
+ngx_http_realip_remote_addr_variable(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data)
+{
+    ngx_str_t              *addr_text;
+    ngx_http_realip_ctx_t  *ctx;
+
+    ctx = ngx_http_realip_get_module_ctx(r);
+
     addr_text = ctx ? &ctx->addr_text : &r->connection->addr_text;
 
     v->len = addr_text->len;
@@ -507,6 +586,38 @@ ngx_http_realip_remote_addr_variable(ngx_http_request_t *r,
     v->no_cacheable = 0;
     v->not_found = 0;
     v->data = addr_text->data;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_realip_remote_port_variable(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data)
+{
+    ngx_uint_t              port;
+    struct sockaddr        *sa;
+    ngx_http_realip_ctx_t  *ctx;
+
+    ctx = ngx_http_realip_get_module_ctx(r);
+
+    sa = ctx ? ctx->sockaddr : r->connection->sockaddr;
+
+    v->len = 0;
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+
+    v->data = ngx_pnalloc(r->pool, sizeof("65535") - 1);
+    if (v->data == NULL) {
+        return NGX_ERROR;
+    }
+
+    port = ngx_inet_get_port(sa);
+
+    if (port > 0 && port < 65536) {
+        v->len = ngx_sprintf(v->data, "%ui", port) - v->data;
+    }
 
     return NGX_OK;
 }

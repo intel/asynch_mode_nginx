@@ -5,7 +5,7 @@
 # clang
 
 
-NGX_CLANG_VER=`$CC -v 2>&1 | grep '\(clang\|LLVM\) version' 2>&1 \
+NGX_CLANG_VER=`$CC -v 2>&1 | grep 'version' 2>&1 \
                            | sed -e 's/^.* version \(.*\)/\1/'`
 
 echo " + clang version: $NGX_CLANG_VER"
@@ -64,12 +64,6 @@ if [ ".$PCRE_OPT" = "." ]; then
     PCRE_OPT="-O2 -pipe $CPU_OPT"
 else
     PCRE_OPT="$PCRE_OPT -pipe"
-fi
-
-if [ ".$MD5_OPT" = "." ]; then
-    MD5_OPT="-O2 -pipe $CPU_OPT"
-else
-    MD5_OPT="$MD5_OPT -pipe"
 fi
 
 if [ ".$ZLIB_OPT" = "." ]; then

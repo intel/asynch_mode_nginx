@@ -226,7 +226,7 @@ ngx_mail_ssl_init_connection(ngx_ssl_t *ssl, ngx_connection_t *c)
     ngx_mail_session_t        *s;
     ngx_mail_core_srv_conf_t  *cscf;
 
-    if (ngx_ssl_create_connection(ssl, c, 0) == NGX_ERROR) {
+    if (ngx_ssl_create_connection(ssl, c, 0) != NGX_OK) {
         ngx_mail_close_connection(c);
         return;
     }
@@ -306,7 +306,7 @@ ngx_mail_verify_cert(ngx_mail_session_t *s, ngx_connection_t *c)
                       "client SSL certificate verify error: (%l:%s)",
                       rc, X509_verify_cert_error_string(rc));
 
-        ngx_ssl_remove_cached_session(sslcf->ssl.ctx,
+        ngx_ssl_remove_cached_session(c->ssl->session_ctx,
                                       (SSL_get0_session(c->ssl->connection)));
 
         cscf = ngx_mail_get_module_srv_conf(s, ngx_mail_core_module);
@@ -327,7 +327,7 @@ ngx_mail_verify_cert(ngx_mail_session_t *s, ngx_connection_t *c)
             ngx_log_error(NGX_LOG_INFO, c->log, 0,
                           "client sent no required SSL certificate");
 
-            ngx_ssl_remove_cached_session(sslcf->ssl.ctx,
+            ngx_ssl_remove_cached_session(c->ssl->session_ctx,
                                        (SSL_get0_session(c->ssl->connection)));
 
             cscf = ngx_mail_get_module_srv_conf(s, ngx_mail_core_module);
@@ -611,6 +611,40 @@ ngx_mail_auth_cram_md5(ngx_mail_session_t *s, ngx_connection_t *c)
                    "mail auth cram-md5: \"%V\" \"%V\"", &s->login, &s->passwd);
 
     s->auth_method = NGX_MAIL_AUTH_CRAM_MD5;
+
+    return NGX_DONE;
+}
+
+
+ngx_int_t
+ngx_mail_auth_external(ngx_mail_session_t *s, ngx_connection_t *c,
+    ngx_uint_t n)
+{
+    ngx_str_t  *arg, external;
+
+    arg = s->args.elts;
+
+    ngx_log_debug1(NGX_LOG_DEBUG_MAIL, c->log, 0,
+                   "mail auth external: \"%V\"", &arg[n]);
+
+    external.data = ngx_pnalloc(c->pool, ngx_base64_decoded_length(arg[n].len));
+    if (external.data == NULL) {
+        return NGX_ERROR;
+    }
+
+    if (ngx_decode_base64(&external, &arg[n]) != NGX_OK) {
+        ngx_log_error(NGX_LOG_INFO, c->log, 0,
+            "client sent invalid base64 encoding in AUTH EXTERNAL command");
+        return NGX_MAIL_PARSE_INVALID_COMMAND;
+    }
+
+    s->login.len = external.len;
+    s->login.data = external.data;
+
+    ngx_log_debug1(NGX_LOG_DEBUG_MAIL, c->log, 0,
+                   "mail auth external: \"%V\"", &s->login);
+
+    s->auth_method = NGX_MAIL_AUTH_EXTERNAL;
 
     return NGX_DONE;
 }

@@ -23,6 +23,7 @@
 #include <openssl/engine.h>
 #endif
 #include <openssl/evp.h>
+#include <openssl/hmac.h>
 #ifndef OPENSSL_NO_OCSP
 #include <openssl/ocsp.h>
 #endif
@@ -36,7 +37,11 @@
 
 #if (defined LIBRESSL_VERSION_NUMBER && OPENSSL_VERSION_NUMBER == 0x20000000L)
 #undef OPENSSL_VERSION_NUMBER
+#if (LIBRESSL_VERSION_NUMBER >= 0x2080000fL)
+#define OPENSSL_VERSION_NUMBER  0x1010000fL
+#else
 #define OPENSSL_VERSION_NUMBER  0x1000107fL
+#endif
 #endif
 
 
@@ -54,8 +59,11 @@
 #define ngx_ssl_session_t       SSL_SESSION
 #define ngx_ssl_conn_t          SSL
 
+#if (OPENSSL_VERSION_NUMBER < 0x10002000L)
+#define SSL_is_server(s)        (s)->server
+#endif
 
-typedef struct {
+struct ngx_ssl_s {
     SSL_CTX                    *ctx;
     ngx_log_t                  *log;
     size_t                      buffer_size;
@@ -63,10 +71,10 @@ typedef struct {
     size_t                      max_pipelines;
     size_t                      split_send_fragment;
     size_t                      max_send_fragment;
-} ngx_ssl_t;
+};
 
 
-typedef struct {
+struct ngx_ssl_connection_s {
     ngx_ssl_conn_t             *connection;
     SSL_CTX                    *session_ctx;
 
@@ -85,7 +93,7 @@ typedef struct {
     unsigned                    no_wait_shutdown:1;
     unsigned                    no_send_shutdown:1;
     unsigned                    handshake_buffer_set:1;
-} ngx_ssl_connection_t;
+};
 
 
 #define NGX_SSL_NO_SCACHE            -2
@@ -122,9 +130,10 @@ typedef struct {
 #ifdef SSL_CTRL_SET_TLSEXT_TICKET_KEY_CB
 
 typedef struct {
+    size_t                      size;
     u_char                      name[16];
-    u_char                      aes_key[16];
-    u_char                      hmac_key[16];
+    u_char                      hmac_key[32];
+    u_char                      aes_key[32];
 } ngx_ssl_session_ticket_key_t;
 
 #endif
@@ -135,6 +144,7 @@ typedef struct {
 #define NGX_SSL_TLSv1    0x0008
 #define NGX_SSL_TLSv1_1  0x0010
 #define NGX_SSL_TLSv1_2  0x0020
+#define NGX_SSL_TLSv1_3  0x0040
 
 
 #define NGX_SSL_BUFFER   1
@@ -145,8 +155,12 @@ typedef struct {
 
 ngx_int_t ngx_ssl_init(ngx_log_t *log);
 ngx_int_t ngx_ssl_create(ngx_ssl_t *ssl, ngx_uint_t protocols, void *data);
+ngx_int_t ngx_ssl_certificates(ngx_conf_t *cf, ngx_ssl_t *ssl,
+    ngx_array_t *certs, ngx_array_t *keys, ngx_array_t *passwords);
 ngx_int_t ngx_ssl_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl,
     ngx_str_t *cert, ngx_str_t *key, ngx_array_t *passwords);
+ngx_int_t ngx_ssl_ciphers(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *ciphers,
+    ngx_uint_t prefer_server_ciphers);
 ngx_int_t ngx_ssl_client_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl,
     ngx_str_t *cert, ngx_int_t depth);
 ngx_int_t ngx_ssl_trusted_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl,
@@ -193,6 +207,10 @@ ngx_int_t ngx_ssl_get_protocol(ngx_connection_t *c, ngx_pool_t *pool,
     ngx_str_t *s);
 ngx_int_t ngx_ssl_get_cipher_name(ngx_connection_t *c, ngx_pool_t *pool,
     ngx_str_t *s);
+ngx_int_t ngx_ssl_get_ciphers(ngx_connection_t *c, ngx_pool_t *pool,
+    ngx_str_t *s);
+ngx_int_t ngx_ssl_get_curves(ngx_connection_t *c, ngx_pool_t *pool,
+    ngx_str_t *s);
 ngx_int_t ngx_ssl_get_session_id(ngx_connection_t *c, ngx_pool_t *pool,
     ngx_str_t *s);
 ngx_int_t ngx_ssl_get_session_reused(ngx_connection_t *c, ngx_pool_t *pool,
@@ -203,15 +221,27 @@ ngx_int_t ngx_ssl_get_raw_certificate(ngx_connection_t *c, ngx_pool_t *pool,
     ngx_str_t *s);
 ngx_int_t ngx_ssl_get_certificate(ngx_connection_t *c, ngx_pool_t *pool,
     ngx_str_t *s);
+ngx_int_t ngx_ssl_get_escaped_certificate(ngx_connection_t *c, ngx_pool_t *pool,
+    ngx_str_t *s);
 ngx_int_t ngx_ssl_get_subject_dn(ngx_connection_t *c, ngx_pool_t *pool,
     ngx_str_t *s);
 ngx_int_t ngx_ssl_get_issuer_dn(ngx_connection_t *c, ngx_pool_t *pool,
+    ngx_str_t *s);
+ngx_int_t ngx_ssl_get_subject_dn_legacy(ngx_connection_t *c, ngx_pool_t *pool,
+    ngx_str_t *s);
+ngx_int_t ngx_ssl_get_issuer_dn_legacy(ngx_connection_t *c, ngx_pool_t *pool,
     ngx_str_t *s);
 ngx_int_t ngx_ssl_get_serial_number(ngx_connection_t *c, ngx_pool_t *pool,
     ngx_str_t *s);
 ngx_int_t ngx_ssl_get_fingerprint(ngx_connection_t *c, ngx_pool_t *pool,
     ngx_str_t *s);
 ngx_int_t ngx_ssl_get_client_verify(ngx_connection_t *c, ngx_pool_t *pool,
+    ngx_str_t *s);
+ngx_int_t ngx_ssl_get_client_v_start(ngx_connection_t *c, ngx_pool_t *pool,
+    ngx_str_t *s);
+ngx_int_t ngx_ssl_get_client_v_end(ngx_connection_t *c, ngx_pool_t *pool,
+    ngx_str_t *s);
+ngx_int_t ngx_ssl_get_client_v_remain(ngx_connection_t *c, ngx_pool_t *pool,
     ngx_str_t *s);
 
 
@@ -233,6 +263,8 @@ extern int  ngx_ssl_server_conf_index;
 extern int  ngx_ssl_session_cache_index;
 extern int  ngx_ssl_session_ticket_keys_index;
 extern int  ngx_ssl_certificate_index;
+extern int  ngx_ssl_next_certificate_index;
+extern int  ngx_ssl_certificate_name_index;
 extern int  ngx_ssl_stapling_index;
 
 

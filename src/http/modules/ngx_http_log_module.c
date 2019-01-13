@@ -90,6 +90,11 @@ typedef struct {
 } ngx_http_log_var_t;
 
 
+#define NGX_HTTP_LOG_ESCAPE_DEFAULT  0
+#define NGX_HTTP_LOG_ESCAPE_JSON     1
+#define NGX_HTTP_LOG_ESCAPE_NONE     2
+
+
 static void ngx_http_log_write(ngx_http_request_t *r, ngx_http_log_t *log,
     u_char *buf, size_t len);
 static ssize_t ngx_http_log_script_write(ngx_http_request_t *r,
@@ -126,12 +131,20 @@ static u_char *ngx_http_log_request_length(ngx_http_request_t *r, u_char *buf,
     ngx_http_log_op_t *op);
 
 static ngx_int_t ngx_http_log_variable_compile(ngx_conf_t *cf,
-    ngx_http_log_op_t *op, ngx_str_t *value);
+    ngx_http_log_op_t *op, ngx_str_t *value, ngx_uint_t escape);
 static size_t ngx_http_log_variable_getlen(ngx_http_request_t *r,
     uintptr_t data);
 static u_char *ngx_http_log_variable(ngx_http_request_t *r, u_char *buf,
     ngx_http_log_op_t *op);
 static uintptr_t ngx_http_log_escape(u_char *dst, u_char *src, size_t size);
+static size_t ngx_http_log_json_variable_getlen(ngx_http_request_t *r,
+    uintptr_t data);
+static u_char *ngx_http_log_json_variable(ngx_http_request_t *r, u_char *buf,
+    ngx_http_log_op_t *op);
+static size_t ngx_http_log_unescaped_variable_getlen(ngx_http_request_t *r,
+    uintptr_t data);
+static u_char *ngx_http_log_unescaped_variable(ngx_http_request_t *r,
+    u_char *buf, ngx_http_log_op_t *op);
 
 
 static void *ngx_http_log_create_main_conf(ngx_conf_t *cf);
@@ -548,6 +561,11 @@ ngx_http_log_script_write(ngx_http_request_t *r, ngx_http_log_script_t *script,
     if (ngx_open_cached_file(llcf->open_file_cache, &log, &of, r->pool)
         != NGX_OK)
     {
+        if (of.err == 0) {
+            /* simulate successful logging */
+            return len;
+        }
+
         ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
                       "%s \"%s\" failed", of.failed, log.data);
         /* simulate successful logging */
@@ -744,23 +762,10 @@ ngx_http_log_flush(ngx_open_file_t *file, ngx_log_t *log)
 static void
 ngx_http_log_flush_handler(ngx_event_t *ev)
 {
-    ngx_open_file_t     *file;
-    ngx_http_log_buf_t  *buffer;
-
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, ev->log, 0,
                    "http log buffer flush handler");
 
-    if (ev->timedout) {
-        ngx_http_log_flush(ev->data, ev->log);
-        return;
-    }
-
-    /* cancel the flush timer for graceful shutdown */
-
-    file = ev->data;
-    buffer = file->data;
-
-    buffer->event = NULL;
+    ngx_http_log_flush(ev->data, ev->log);
 }
 
 
@@ -909,7 +914,7 @@ ngx_http_log_request_length(ngx_http_request_t *r, u_char *buf,
 
 static ngx_int_t
 ngx_http_log_variable_compile(ngx_conf_t *cf, ngx_http_log_op_t *op,
-    ngx_str_t *value)
+    ngx_str_t *value, ngx_uint_t escape)
 {
     ngx_int_t  index;
 
@@ -919,8 +924,23 @@ ngx_http_log_variable_compile(ngx_conf_t *cf, ngx_http_log_op_t *op,
     }
 
     op->len = 0;
-    op->getlen = ngx_http_log_variable_getlen;
-    op->run = ngx_http_log_variable;
+
+    switch (escape) {
+    case NGX_HTTP_LOG_ESCAPE_JSON:
+        op->getlen = ngx_http_log_json_variable_getlen;
+        op->run = ngx_http_log_json_variable;
+        break;
+
+    case NGX_HTTP_LOG_ESCAPE_NONE:
+        op->getlen = ngx_http_log_unescaped_variable_getlen;
+        op->run = ngx_http_log_unescaped_variable;
+        break;
+
+    default: /* NGX_HTTP_LOG_ESCAPE_DEFAULT */
+        op->getlen = ngx_http_log_variable_getlen;
+        op->run = ngx_http_log_variable;
+    }
+
     op->data = index;
 
     return NGX_OK;
@@ -1000,7 +1020,7 @@ ngx_http_log_escape(u_char *dst, u_char *src, size_t size)
         n = 0;
 
         while (size) {
-            if (escape[*src >> 5] & (1 << (*src & 0x1f))) {
+            if (escape[*src >> 5] & (1U << (*src & 0x1f))) {
                 n++;
             }
             src++;
@@ -1011,7 +1031,7 @@ ngx_http_log_escape(u_char *dst, u_char *src, size_t size)
     }
 
     while (size) {
-        if (escape[*src >> 5] & (1 << (*src & 0x1f))) {
+        if (escape[*src >> 5] & (1U << (*src & 0x1f))) {
             *dst++ = '\\';
             *dst++ = 'x';
             *dst++ = hex[*src >> 4];
@@ -1025,6 +1045,80 @@ ngx_http_log_escape(u_char *dst, u_char *src, size_t size)
     }
 
     return (uintptr_t) dst;
+}
+
+
+static size_t
+ngx_http_log_json_variable_getlen(ngx_http_request_t *r, uintptr_t data)
+{
+    uintptr_t                   len;
+    ngx_http_variable_value_t  *value;
+
+    value = ngx_http_get_indexed_variable(r, data);
+
+    if (value == NULL || value->not_found) {
+        return 0;
+    }
+
+    len = ngx_escape_json(NULL, value->data, value->len);
+
+    value->escape = len ? 1 : 0;
+
+    return value->len + len;
+}
+
+
+static u_char *
+ngx_http_log_json_variable(ngx_http_request_t *r, u_char *buf,
+    ngx_http_log_op_t *op)
+{
+    ngx_http_variable_value_t  *value;
+
+    value = ngx_http_get_indexed_variable(r, op->data);
+
+    if (value == NULL || value->not_found) {
+        return buf;
+    }
+
+    if (value->escape == 0) {
+        return ngx_cpymem(buf, value->data, value->len);
+
+    } else {
+        return (u_char *) ngx_escape_json(buf, value->data, value->len);
+    }
+}
+
+
+static size_t
+ngx_http_log_unescaped_variable_getlen(ngx_http_request_t *r, uintptr_t data)
+{
+    ngx_http_variable_value_t  *value;
+
+    value = ngx_http_get_indexed_variable(r, data);
+
+    if (value == NULL || value->not_found) {
+        return 0;
+    }
+
+    value->escape = 0;
+
+    return value->len;
+}
+
+
+static u_char *
+ngx_http_log_unescaped_variable(ngx_http_request_t *r, u_char *buf,
+    ngx_http_log_op_t *op)
+{
+    ngx_http_variable_value_t  *value;
+
+    value = ngx_http_get_indexed_variable(r, op->data);
+
+    if (value == NULL || value->not_found) {
+        return buf;
+    }
+
+    return ngx_cpymem(buf, value->data, value->len);
 }
 
 
@@ -1491,11 +1585,30 @@ ngx_http_log_compile_format(ngx_conf_t *cf, ngx_array_t *flushes,
     size_t               i, len;
     ngx_str_t           *value, var;
     ngx_int_t           *flush;
-    ngx_uint_t           bracket;
+    ngx_uint_t           bracket, escape;
     ngx_http_log_op_t   *op;
     ngx_http_log_var_t  *v;
 
+    escape = NGX_HTTP_LOG_ESCAPE_DEFAULT;
     value = args->elts;
+
+    if (s < args->nelts && ngx_strncmp(value[s].data, "escape=", 7) == 0) {
+        data = value[s].data + 7;
+
+        if (ngx_strcmp(data, "json") == 0) {
+            escape = NGX_HTTP_LOG_ESCAPE_JSON;
+
+        } else if (ngx_strcmp(data, "none") == 0) {
+            escape = NGX_HTTP_LOG_ESCAPE_NONE;
+
+        } else if (ngx_strcmp(data, "default") != 0) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "unknown log format escaping \"%s\"", data);
+            return NGX_CONF_ERROR;
+        }
+
+        s++;
+    }
 
     for ( /* void */ ; s < args->nelts; s++) {
 
@@ -1575,7 +1688,9 @@ ngx_http_log_compile_format(ngx_conf_t *cf, ngx_array_t *flushes,
                     }
                 }
 
-                if (ngx_http_log_variable_compile(cf, op, &var) != NGX_OK) {
+                if (ngx_http_log_variable_compile(cf, op, &var, escape)
+                    != NGX_OK)
+                {
                     return NGX_CONF_ERROR;
                 }
 

@@ -29,7 +29,7 @@ typedef struct {
     ngx_connection_t                  *connection;
 
     socklen_t                          socklen;
-    u_char                             sockaddr[NGX_SOCKADDRLEN];
+    ngx_sockaddr_t                     sockaddr;
 
 } ngx_http_upstream_keepalive_cache_t;
 
@@ -340,6 +340,7 @@ ngx_http_upstream_free_keepalive_peer(ngx_peer_connection_t *pc, void *data,
     pc->connection = NULL;
 
     if (c->read->timer_set) {
+        c->read->delayed = 0;
         ngx_del_timer(c->read);
     }
     if (c->write->timer_set) {
