@@ -1389,7 +1389,7 @@ ngx_ssl_handshake_async_handler(ngx_event_t *aev)
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "SSL handshake async handler");
 
-    if (aev->timedout) {
+    if (!aev->ready && aev->timedout) {
         c->ssl->handler(c);
         return;
     }
@@ -2255,7 +2255,7 @@ ngx_ssl_shutdown_async_handler(ngx_event_t *aev)
     c = aev->data;
     handler = c->ssl->handler;
 
-    if (aev->timedout) {
+    if (!aev->ready && aev->timedout) {
         c->timedout = 1;
     }
 
