@@ -2223,7 +2223,9 @@ ngx_ssl_shutdown(ngx_connection_t *c)
                     c->num_async_fds--;
                 }
             }
-            ngx_del_conn(c, NGX_DISABLE_EVENT);
+            if(ngx_del_conn && c->read->active && c->read->active) {
+                ngx_del_conn(c, NGX_DISABLE_EVENT);
+            }
         }
 
         SSL_free(c->ssl->connection);
@@ -2291,7 +2293,9 @@ ngx_ssl_shutdown(ngx_connection_t *c)
                     c->num_async_fds--;
                 }
             }
-            ngx_del_conn(c, NGX_DISABLE_EVENT);
+            if(ngx_del_conn && c->read->active && c->read->active) {
+                ngx_del_conn(c, NGX_DISABLE_EVENT);
+            }
         }
         SSL_free(c->ssl->connection);
         c->ssl = NULL;
@@ -2358,7 +2362,9 @@ ngx_ssl_shutdown(ngx_connection_t *c)
                 c->num_async_fds--;
             }
         }
-        ngx_del_conn(c, NGX_DISABLE_EVENT);
+        if(ngx_del_conn && c->read->active && c->read->active) {
+            ngx_del_conn(c, NGX_DISABLE_EVENT);
+        }
     }
     err = (sslerr == SSL_ERROR_SYSCALL) ? ngx_errno : 0;
 
