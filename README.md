@@ -64,12 +64,12 @@ Async Mode Nginx supports Crypto and Compression offload to the following accele
 This release was validated on the following:
 
 * OpenSSL-1.1.0h
-* QAT engine v0.5.39
-* QATzip v0.2.6
+* QAT engine v0.5.40
+* QATzip v0.2.7
 
 ## Additional Information
 
-* Async Mode Nginx is developed based on Nginx-1.10.3.
+* Async Mode Nginx is developed based on Nginx-1.14.2.
 * Async Mode Nginx SSL engine framework provides new directives:
 
 **Directives**
@@ -472,7 +472,7 @@ For more details directives of `nginx_qatzip_module`, please refer to
 
 ## Known Issues
 **'Orphan ring' errors in `dmesg` output when Nginx exit**<br/>
-   Working with current QAT driver (version 4.3.0 in 01.org), Nginx workers exit
+   Working with current QAT driver (version 4.4.0 in 01.org), Nginx workers exit
    with 'Orphan ring' errors. This issue has been fixed in future QAT driver release
 
 **Cache manager/loader process will allocate QAT instance via QAT engine**<br/>
