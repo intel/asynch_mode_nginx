@@ -45,6 +45,8 @@
 typedef struct {
     /* if this engine can be released during worker is shutting down */
     ngx_flag_t      releasable;
+
+    ngx_flag_t      enable_sw_fallback;
     /* sync or async (default) */
     ngx_str_t       offload_mode;
 
@@ -156,6 +158,13 @@ static ngx_command_t  ngx_ssl_engine_qat_commands[] = {
       ngx_ssl_engine_qat_releasable,
       0,
       offsetof(ngx_ssl_engine_qat_conf_t, releasable),
+      NULL },
+
+    { ngx_string("qat_sw_fallback"),
+      NGX_SSL_ENGINE_SUB_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_flag_slot,
+      0,
+      offsetof(ngx_ssl_engine_qat_conf_t, enable_sw_fallback),
       NULL },
 
     { ngx_string("qat_offload_mode"),
@@ -411,6 +420,15 @@ ngx_ssl_engine_qat_send_ctrl(ngx_cycle_t *cycle)
         if (!ENGINE_ctrl_cmd(e, "ENABLE_INLINE_POLLING", 0, NULL, NULL, 0)) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                           "QAT Engine failed: ENABLE_INLINE_POLLING");
+            ENGINE_free(e);
+            return NGX_ERROR;
+        }
+    }
+
+    if (seqcf->enable_sw_fallback) {
+        if (!ENGINE_ctrl_cmd(e, "ENABLE_SW_FALLBACK", 0, NULL, NULL, 0)) {
+            ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                          "QAT Engine failed: ENABLE_SW_FALLBACK");
             ENGINE_free(e);
             return NGX_ERROR;
         }
@@ -700,6 +718,7 @@ ngx_ssl_engine_qat_create_conf(ngx_cycle_t *cycle)
     qat_engine_enable_heuristic_polling = 0;
 
     seqcf->releasable = NGX_CONF_UNSET;
+    seqcf->enable_sw_fallback = NGX_CONF_UNSET;
     seqcf->external_poll_interval = NGX_CONF_UNSET;
     seqcf->internal_poll_interval = NGX_CONF_UNSET;
 
