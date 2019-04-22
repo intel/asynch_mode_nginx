@@ -105,16 +105,21 @@ static void ngx_ssl_engine_qat_process_exit(ngx_cycle_t *cycle);
 #define EXTERNAL_POLL   3
 #define HEURISTIC_POLL  4
 
+#define HEARTBEAT_POLL_TIMEOUT  1000
+
 static ENGINE          *qat_engine;
 
 static ngx_uint_t       qat_engine_enable_inline_polling;
 
 static ngx_uint_t       qat_engine_enable_internal_polling;
 
+static ngx_uint_t       qat_engine_enable_heartbeat_polling = 0;
+
 
 static ngx_uint_t       qat_engine_enable_external_polling;
 static ngx_int_t        qat_engine_external_poll_interval;
 static ngx_event_t      qat_engine_external_poll_event;
+static ngx_event_t      qat_engine_heartbeat_poll_event;
 static ngx_connection_t dumb;
 
 static ngx_uint_t   qat_engine_enable_heuristic_polling;
@@ -464,6 +469,13 @@ ngx_ssl_engine_qat_send_ctrl(ngx_cycle_t *cycle)
         }
     }
 
+    if (qat_engine_enable_external_polling || qat_engine_enable_heuristic_polling) {
+        if(seqcf->enable_sw_fallback
+            && seqcf->enable_sw_fallback != NGX_CONF_UNSET) {
+            qat_engine_enable_heartbeat_polling = 1;
+        }
+    }
+
     if (seqcf->small_pkt_offload_threshold != NGX_CONF_UNSET_PTR) {
         value = seqcf->small_pkt_offload_threshold->elts;
         for (i = 0; i < seqcf->small_pkt_offload_threshold->nelts; i++) {
@@ -503,6 +515,25 @@ ngx_ssl_engine_qat_send_ctrl(ngx_cycle_t *cycle)
     return NGX_OK;
 }
 
+static inline void
+qat_engine_heartbeat_poll(ngx_log_t *log) {
+    int poll_status = 0;
+
+    if (!ENGINE_ctrl_cmd(qat_engine, "HEARTBEAT_POLL",  0, &poll_status, NULL, 0)) {
+        ngx_log_error(NGX_LOG_ALERT, log, 0, "QAT Engine failed: HEARTBEAT_POLL");
+    }
+}
+
+static void
+qat_engine_heartbeat_poll_handler(ngx_event_t *ev)
+{
+    qat_engine_heartbeat_poll(ev->log);
+
+    if (ngx_event_timer_rbtree.root != ngx_event_timer_rbtree.sentinel ||
+        !ngx_exiting) {
+        ngx_add_timer(ev, HEARTBEAT_POLL_TIMEOUT);
+    }
+}
 
 static inline void
 qat_engine_poll(ngx_log_t *log) {
@@ -587,6 +618,20 @@ qat_engine_heuristic_poll_init(ngx_log_t* log)
     qat_engine_heuristic_poll_event.cancelable = 0;
 }
 
+static void
+qat_engine_heartbeat_poll_init(ngx_log_t* log)
+{
+    memset(&qat_engine_heartbeat_poll_event, 0, sizeof(ngx_event_t));
+    dumb.fd = (ngx_socket_t) -1;
+    qat_engine_heartbeat_poll_event.data = &dumb;
+    qat_engine_heartbeat_poll_event.handler = qat_engine_heartbeat_poll_handler;
+    qat_engine_heartbeat_poll_event.log = log;
+    qat_engine_heartbeat_poll_event.cancelable = 0;
+    ngx_add_timer(&qat_engine_heartbeat_poll_event, HEARTBEAT_POLL_TIMEOUT);
+    qat_engine_heartbeat_poll_event.timer_set = 1;
+}
+
+
 static ngx_int_t
 ngx_ssl_engine_qat_register_handler(ngx_cycle_t *cycle)
 {
@@ -596,6 +641,10 @@ ngx_ssl_engine_qat_register_handler(ngx_cycle_t *cycle)
 
     if (qat_engine_enable_heuristic_polling) {
         qat_engine_heuristic_poll_init(cycle->log);
+    }
+
+    if (qat_engine_enable_heartbeat_polling) {
+        qat_engine_heartbeat_poll_init(cycle->log);
     }
 
     return NGX_OK;
