@@ -135,7 +135,7 @@ file: conf/nginx.conf
 ```
 
 * Support OpenSSL Cipher PIPELINE feature (Deitals information about the pipeline
-  settings, please refer to [OpenSSL Docs][6])
+  settings, please refer to [OpenSSL Docs][8])
 
 **Directives**
 ```bash
@@ -167,7 +167,7 @@ Set max number of sending fragment
 * [White Paper: Intel&reg; Quickassist Technology and OpenSSL-1.1.0:Performance][3]
 
 [3]: https://01.org/sites/default/files/downloads/intelr-quickassist-technology/intelquickassisttechnologyopensslperformance.pdf
-[6]: https://www.openssl.org/docs/man1.1.0/ssl/SSL_CTX_set_split_send_fragment.html
+[8]: https://www.openssl.org/docs/man1.1.0/ssl/SSL_CTX_set_split_send_fragment.html
 
 ## Limitations
 
