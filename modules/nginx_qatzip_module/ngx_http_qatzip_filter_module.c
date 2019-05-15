@@ -16,6 +16,7 @@
 
 typedef struct {
     ngx_flag_t           enable;
+    ngx_flag_t           sw_fallback_enable;
     ngx_flag_t           no_buffer;
 
     ngx_hash_t           types;
@@ -141,6 +142,13 @@ static ngx_command_t  ngx_http_qatzip_filter_commands[] = {
       ngx_conf_set_flag_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_qatzip_conf_t, enable),
+      NULL },
+
+    { ngx_string("qatzip_sw_fallback"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_qatzip_conf_t, sw_fallback_enable),
       NULL },
 
     { ngx_string("qatzip_buffers"),
@@ -569,7 +577,6 @@ ngx_http_qatzip_filter_stream_init(ngx_http_request_t *r,
     int                     rc;
     QzSessionParams_T       params;
     ngx_http_qatzip_conf_t  *conf;
-    unsigned char           sw_backup = 1;
 
     if (ctx->inited) {
         return NGX_OK;
@@ -587,8 +594,9 @@ ngx_http_qatzip_filter_stream_init(ngx_http_request_t *r,
     params.input_sz_thrshold = conf->input_sz_thrshold;
     params.wait_cnt_thrshold = conf->wait_cnt_thrshold;
     params.data_fmt = QZ_DEFLATE_RAW;
+    params.sw_backup = conf->sw_fallback_enable;
 
-    rc = qzInit(&ctx->qzsession, sw_backup);
+    rc = qzInit(&ctx->qzsession, params.sw_backup);
     if (rc != QZ_OK &&
         rc != QZ_DUPLICATE &&
         rc != QZ_NO_HW) {
@@ -1003,6 +1011,7 @@ ngx_http_qatzip_create_conf(ngx_conf_t *cf)
      */
 
     conf->enable = NGX_CONF_UNSET;
+    conf->sw_fallback_enable = NGX_CONF_UNSET;
     conf->no_buffer = NGX_CONF_UNSET;
 
     conf->postpone_qatzipping = NGX_CONF_UNSET_SIZE;
@@ -1024,6 +1033,7 @@ ngx_http_qatzip_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_http_qatzip_conf_t *conf = child;
 
     ngx_conf_merge_value(conf->enable, prev->enable, 0);
+    ngx_conf_merge_value(conf->sw_fallback_enable, prev->sw_fallback_enable, 1);
     ngx_conf_merge_value(conf->no_buffer, prev->no_buffer, 0);
 
     ngx_conf_merge_bufs_value(conf->bufs, prev->bufs,
