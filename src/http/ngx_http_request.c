@@ -3084,6 +3084,7 @@ ngx_http_set_keepalive(ngx_http_request_t *r)
             }
 
             hc->busy = NULL;
+            hc->nbusy = 0;
         }
 #if (NGX_HTTP_SSL)
     }
