@@ -425,7 +425,8 @@ ngx_ssl_engine_qat_send_ctrl(ngx_cycle_t *cycle)
         }
     }
 
-    if (seqcf->enable_sw_fallback) {
+    if (seqcf->enable_sw_fallback
+        && seqcf->enable_sw_fallback != NGX_CONF_UNSET) {
         if (!ENGINE_ctrl_cmd(e, "ENABLE_SW_FALLBACK", 0, NULL, NULL, 0)) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                           "QAT Engine failed: ENABLE_SW_FALLBACK");
