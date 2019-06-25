@@ -84,6 +84,10 @@ struct gztrailer {
 
 #endif
 
+static ngx_flag_t gzip_enable = 0;
+ngx_flag_t ngx_http_gzip_get_enabled () {
+    return gzip_enable;
+}
 
 static void ngx_http_gzip_filter_memory(ngx_http_request_t *r,
     ngx_http_gzip_ctx_t *ctx);
@@ -1207,7 +1211,7 @@ ngx_http_gzip_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     {
         return NGX_CONF_ERROR;
     }
-
+    gzip_enable = conf->enable;
     return NGX_CONF_OK;
 }
 

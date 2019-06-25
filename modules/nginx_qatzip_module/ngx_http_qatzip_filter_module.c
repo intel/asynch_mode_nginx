@@ -14,9 +14,12 @@
 
 #define DEFAULT_STRM_BUFF_SZ     (256 * 1024)
 
+extern ngx_flag_t ngx_http_gzip_get_enabled();
+
 typedef struct {
     ngx_flag_t           enable;
     ngx_flag_t           sw_fallback_enable;
+    ngx_str_t            qatzip_sw;
     ngx_flag_t           no_buffer;
 
     ngx_hash_t           types;
@@ -125,7 +128,7 @@ static ngx_conf_num_bounds_t  ngx_http_qatzip_comp_level_bounds = {
     ngx_conf_check_num_bounds, 1, 9
 };
 static ngx_conf_num_bounds_t  ngx_http_qatzip_chunk_size_bounds = {
-    ngx_conf_check_num_bounds, QZ_HW_BUFF_MIN_SZ, QZ_HW_BUFF_MAX_SZ
+    ngx_conf_check_num_bounds, 16*1024, 128*1024
 };
 static ngx_conf_num_bounds_t  ngx_http_qatzip_stream_size_bounds = {
     ngx_conf_check_num_bounds, QZ_STRM_BUFF_MIN_SZ, QZ_STRM_BUFF_MAX_SZ
@@ -136,19 +139,12 @@ static ngx_conf_num_bounds_t  ngx_http_qatzip_sw_threshold_size_bounds = {
 
 static ngx_command_t  ngx_http_qatzip_filter_commands[] = {
 
-    { ngx_string("qatzip"),
+    { ngx_string("qatzip_sw"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF
-                        |NGX_CONF_FLAG,
-      ngx_conf_set_flag_slot,
+                        |NGX_CONF_TAKE1,
+      ngx_conf_set_str_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
-      offsetof(ngx_http_qatzip_conf_t, enable),
-      NULL },
-
-    { ngx_string("qatzip_sw_fallback"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
-      ngx_conf_set_flag_slot,
-      NGX_HTTP_LOC_CONF_OFFSET,
-      offsetof(ngx_http_qatzip_conf_t, sw_fallback_enable),
+      offsetof(ngx_http_qatzip_conf_t, qatzip_sw),
       NULL },
 
     { ngx_string("qatzip_buffers"),
@@ -1051,12 +1047,32 @@ ngx_http_qatzip_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_size_value(conf->wait_cnt_thrshold, prev->wait_cnt_thrshold,
                                 QZ_COMP_THRESHOLD_DEFAULT);
     ngx_conf_merge_value(conf->min_length, prev->min_length, 20);
+    ngx_conf_merge_str_value(conf->qatzip_sw, prev->qatzip_sw, "failover");
 
     if (ngx_http_merge_types(cf, &conf->types_keys, &conf->types,
                              &prev->types_keys, &prev->types,
                              ngx_http_html_default_types)
         != NGX_OK)
     {
+        return NGX_CONF_ERROR;
+    }
+
+    if (0 == ngx_strcmp(conf->qatzip_sw.data, "only")) {
+        if (ngx_http_gzip_get_enabled()) {
+            conf->enable = 0;
+            conf->sw_fallback_enable = 0;
+        } else {
+            ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                "Must enable GZIP module to support QATzip software only mode.");
+            return NGX_CONF_ERROR;
+        }
+    } else if (0 == ngx_strcmp(conf->qatzip_sw.data, "failover")) {
+        conf->enable = 1;
+        conf->sw_fallback_enable = 1;
+    } else if (0 == ngx_strcmp(conf->qatzip_sw.data, "no")) {
+        conf->enable = 1;
+        conf->sw_fallback_enable = 0;
+    } else {
         return NGX_CONF_ERROR;
     }
 

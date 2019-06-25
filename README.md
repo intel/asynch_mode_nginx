@@ -420,18 +420,22 @@ file: `conf/nginx.conf`
 
 This module is developed to accelerate GZIP compression with QAT accelerators
 through QATzip stream API released in v0.2.6.
+Software fallback feature of QATzip is released in v1.0.0.
 
 **Note:**
 
-* This mode is only available when using QATzip v0.2.6 or later.
+* This mode is only available when using QATzip v1.0.0 or later.
+* This mode relys on gzip module for SW fallback feature.
 
 **Directives in the qatzip_module**
 ```bash
-    Syntax:     qatzip on | off;
-    Default:    qatzip off;
+    Syntax:     qatzip_sw only/failover/no;
+    Default:    qatzip failover;
     Context:    http, server, location, if in location
     Description:
-                Enables or disables qatzipping of responses.
+                only: qatzip is disable, using gzip;
+                failover: qatzip is enable, qatzip sfotware fallback feature enable.
+                no: qatzip is enable, qatzip sfotware fallback feature disable.
 
     Syntax:     qatzip_chunk_size size;
     Default:    qatzip_chunk_size 64k;
@@ -458,7 +462,7 @@ file: `conf/nginx.conf`
 
     gzip_http_version   1.0;
     gzip_proxied any;
-    qatzip on;
+    qatzip_sw failover;
     qatzip_min_length 128;
     qatzip_comp_level 1;
     qatzip_buffers 16 8k;
