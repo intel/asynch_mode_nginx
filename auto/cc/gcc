@@ -49,7 +49,7 @@ esac
 
 # optimizations
 
-NGX_GCC_OPT="-O2 -D_FORTIFY_SOURCE=2"
+NGX_GCC_OPT="-O2 -D_FORTIFY_SOURCE=2 -fno-strict-overflow -fno-delete-null-pointer-checks -fwrapv"
 #NGX_GCC_OPT="-Os"
 #NGX_GCC_OPT="-O"
 
