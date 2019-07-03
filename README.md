@@ -48,6 +48,7 @@ be found in the file headers of the relevant files.
   information, please read modules/nginx_qat_module/README)
 * Support OpenSSL Cipher PIPELINE feature
 * Support QATzip module to accelerate GZIP compression with Intel&reg; Quickassist Technology
+* Support software fallback for asymmetric cryptography algorithms.
 
 ## Hardware Requirements
 
@@ -55,17 +56,21 @@ Async Mode Nginx supports Crypto and Compression offload to the following accele
 
 * [Intel&reg; C62X Series Chipset][1]
 * [Intel&reg; Communications Chipset 8925 to 8955 Series][2]
+* [Intel&reg; Communications Chipset 8960 to 8970 Series][9]
 
 [1]:https://www.intel.com/content/www/us/en/design/products-and-solutions/processors-and-chipsets/purley/intel-xeon-scalable-processors.html
 [2]:https://www.intel.com/content/www/us/en/ethernet-products/gigabit-server-adapters/quickassist-adapter-8950-brief.html
+[9]:https://www.intel.com/content/www/us/en/ethernet-products/gigabit-server-adapters/quickassist-adapter-8960-8970-brief.html
 
 ## Software Requirements
 
 This release was validated on the following:
 
-* OpenSSL-1.1.0h
-* QAT engine v0.5.40
-* QATzip v0.2.7
+* Async Mode Nginx has been tested with the latest Intel&reg; QuickAssist Acceleration Driver.
+Please download the QAT driver from the link https://01.org/intel-quickassist-technology
+* OpenSSL-1.1.1c
+* QAT engine v0.5.42
+* QATzip v1.0.0
 
 ## Additional Information
 
@@ -167,7 +172,7 @@ Set max number of sending fragment
 * [White Paper: Intel&reg; Quickassist Technology and OpenSSL-1.1.0:Performance][3]
 
 [3]: https://01.org/sites/default/files/downloads/intelr-quickassist-technology/intelquickassisttechnologyopensslperformance.pdf
-[6]: https://www.openssl.org/docs/man1.1.0/ssl/SSL_CTX_set_split_send_fragment.html
+[6]: https://www.openssl.org/docs/man1.1.1/man3/SSL_CTX_set_split_send_fragment.html
 
 ## Limitations
 
@@ -238,9 +243,9 @@ These instructions can be found on [QATzip][5]
 
 ### Run Nginx official test
 
-These instructions can be found on [Official test][6]
+These instructions can be found on [Official test][8]
 
-[6]: https://github.com/intel/asynch_mode_nginx/blob/master/test/README.md
+[8]: https://github.com/intel/asynch_mode_nginx/blob/master/test/README.md
 
 ## SSL Engine Framework for Configuration
 
@@ -297,6 +302,7 @@ An example configuration in the `nginx.conf`:
         use_engine qat;
         default_algorithms RSA,EC,DH,PKEY_CRYPTO;
         qat_engine {
+            qat_sw_fallback on;
             qat_offload_mode async;
             qat_notify_mode poll;
             qat_poll_mode heuristic;
@@ -476,7 +482,7 @@ For more details directives of `nginx_qatzip_module`, please refer to
 
 ## Known Issues
 **'Orphan ring' errors in `dmesg` output when Nginx exit**<br/>
-   Working with current QAT driver (version 4.4.0 in 01.org), Nginx workers exit
+   Working with current QAT driver (version 4.6.0 in 01.org), Nginx workers exit
    with 'Orphan ring' errors. This issue has been fixed in future QAT driver release
 
 **Cache manager/loader process will allocate QAT instance via QAT engine**<br/>
@@ -490,6 +496,13 @@ For more details directives of `nginx_qatzip_module`, please refer to
 **QATzip module does not support dictionary compression**<br/>
    QATzip module supports GZIP compression acceleration now, does not support
    user define dictionary compression yet.
+
+**Worker segfault happens when proxy_ssl_asynch on and keepalive set**<br/>
+   If the async event handler is ngx_ssl_handshake_async_handler and the
+   timer expires while the connection is in keepalive saving state,
+   the connection->log will cause segfault bacause it was changed to
+   ngx_cycle->log. This issue will be fixed after the release that removes async timer
+   in keepalive free handler and sets the async log in keepalive module.
 
 ## Intended Audience
 

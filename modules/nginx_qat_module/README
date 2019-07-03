@@ -38,6 +38,15 @@ Configuration
 
 Directives
 
+    Syntax:     qat_sw_fallback on | off;
+    Default:    off
+    Dependency: This feature only supports AES128-SHA, DHE-DSS-AES256-SHA256,
+                ECDHE-ECDSA-AES128-SHA256, ECDHE-RSA-AES128-SHA for TLS1.2.
+    Description:
+                If QAT enabled software fallback mode, the qat engine would
+                switch to software mode instead of stays in hardware while
+                malfunction.
+
     Syntax:     qat_offload_mode async | sync;
     Default:    async
     Dependency: Consistent with the use of "ssl_asynch" directive
