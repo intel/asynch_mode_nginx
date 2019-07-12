@@ -432,11 +432,13 @@ Software fallback feature of QATzip is released in v1.0.0.
 
 * This mode is only available when using QATzip v1.0.0 or later.
 * This mode relys on gzip module for SW fallback feature.
+* The qatzip_sw is set to failover by default, do not load QATzip module if you
+do not want to enable qatzip. Or else it would be enabled and set to failover.
 
 **Directives in the qatzip_module**
 ```bash
     Syntax:     qatzip_sw only/failover/no;
-    Default:    qatzip failover;
+    Default:    qatzip_sw failover;
     Context:    http, server, location, if in location
     Description:
                 only: qatzip is disable, using gzip;
