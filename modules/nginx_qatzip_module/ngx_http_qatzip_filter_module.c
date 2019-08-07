@@ -14,8 +14,6 @@
 
 #define DEFAULT_STRM_BUFF_SZ     (256 * 1024)
 
-extern ngx_flag_t ngx_http_gzip_get_enabled();
-
 typedef struct {
     ngx_flag_t           enable;
     ngx_flag_t           sw_fallback_enable;
@@ -1058,14 +1056,8 @@ ngx_http_qatzip_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     }
 
     if (0 == ngx_strcmp(conf->qatzip_sw.data, "only")) {
-        if (ngx_http_gzip_get_enabled()) {
-            conf->enable = 0;
-            conf->sw_fallback_enable = 0;
-        } else {
-            ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                "Must enable GZIP module to support QATzip software only mode.");
-            return NGX_CONF_ERROR;
-        }
+        conf->enable = 0;
+        conf->sw_fallback_enable = 0;
     } else if (0 == ngx_strcmp(conf->qatzip_sw.data, "failover")) {
         conf->enable = 1;
         conf->sw_fallback_enable = 1;
