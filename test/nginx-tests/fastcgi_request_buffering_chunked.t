@@ -84,23 +84,23 @@ $t->run()->waitforsocket('127.0.0.1:' . port(8081));
 like(http_get('/'), qr/X-Body: \x0d\x0a?/ms, 'no body');
 
 like(http_get_body('/', '0123456789'),
-	qr/X-Body: 0123456789\x0d?$/ms, 'body');
+    qr/X-Body: 0123456789\x0d?$/ms, 'body');
 
 like(http_get_body('/', '0123456789' x 128),
-	qr/X-Body: (0123456789){128}\x0d?$/ms, 'body in two buffers');
+    qr/X-Body: (0123456789){128}\x0d?$/ms, 'body in two buffers');
 
 like(http_get_body('/single', '0123456789' x 128),
-	qr/X-Body: (0123456789){128}\x0d?$/ms, 'body in single buffer');
+    qr/X-Body: (0123456789){128}\x0d?$/ms, 'body in single buffer');
 
 like(http_get_body('/error_page', '0123456789'),
-	qr/^0123456789$/m, 'body in error page');
+    qr/^0123456789$/m, 'body in error page');
 
 # pipelined requests
 
 like(http_get_body('/', '0123456789', '0123456789' x 128, '0123456789' x 512,
-	'foobar'), qr/X-Body: foobar\x0d?$/ms, 'body pipelined');
+    'foobar'), qr/X-Body: foobar\x0d?$/ms, 'body pipelined');
 like(http_get_body('/', '0123456789' x 128, '0123456789' x 512, '0123456789',
-	'foobar'), qr/X-Body: foobar\x0d?$/ms, 'body pipelined 2');
+    'foobar'), qr/X-Body: foobar\x0d?$/ms, 'body pipelined 2');
 
 # interactive tests
 
@@ -146,25 +146,25 @@ like($s->{http_end}(), qr/200 OK/, 'chunks - response');
 ###############################################################################
 
 sub http_get_body {
-	my $uri = shift;
-	my $last = pop;
-	return http( join '', (map {
-		my $body = $_;
-		"GET $uri HTTP/1.1" . CRLF
-		. "Host: localhost" . CRLF
-		. "Transfer-Encoding: chunked" . CRLF . CRLF
-		. sprintf("%x", length $body) . CRLF
-		. $body . CRLF
-		. "0" . CRLF . CRLF
-	} @_),
-		"GET $uri HTTP/1.1" . CRLF
-		. "Host: localhost" . CRLF
-		. "Connection: close" . CRLF
-		. "Transfer-Encoding: chunked" . CRLF . CRLF
-		. sprintf("%x", length $last) . CRLF
-		. $last . CRLF
-		. "0" . CRLF . CRLF
-	);
+    my $uri = shift;
+    my $last = pop;
+    return http( join '', (map {
+        my $body = $_;
+        "GET $uri HTTP/1.1" . CRLF
+        . "Host: localhost" . CRLF
+        . "Transfer-Encoding: chunked" . CRLF . CRLF
+        . sprintf("%x", length $body) . CRLF
+        . $body . CRLF
+        . "0" . CRLF . CRLF
+    } @_),
+        "GET $uri HTTP/1.1" . CRLF
+        . "Host: localhost" . CRLF
+        . "Connection: close" . CRLF
+        . "Transfer-Encoding: chunked" . CRLF . CRLF
+        . sprintf("%x", length $last) . CRLF
+        . $last . CRLF
+        . "0" . CRLF . CRLF
+    );
 }
 
 # Simple FastCGI responder implementation.
@@ -172,76 +172,76 @@ sub http_get_body {
 # http://www.fastcgi.com/devkit/doc/fcgi-spec.html
 
 sub fastcgi_read_record($) {
-	my ($buf) = @_;
-	my $h;
+    my ($buf) = @_;
+    my $h;
 
-	return undef unless length $$buf;
+    return undef unless length $$buf;
 
-	@{$h}{qw/ version type id clen plen /} = unpack("CCnnC", $$buf);
+    @{$h}{qw/ version type id clen plen /} = unpack("CCnnC", $$buf);
 
-	$h->{content} = substr $$buf, 8, $h->{clen};
-	$h->{padding} = substr $$buf, 8 + $h->{clen}, $h->{plen};
+    $h->{content} = substr $$buf, 8, $h->{clen};
+    $h->{padding} = substr $$buf, 8 + $h->{clen}, $h->{plen};
 
-	$$buf = substr $$buf, 8 + $h->{clen} + $h->{plen};
+    $$buf = substr $$buf, 8 + $h->{clen} + $h->{plen};
 
-	return $h;
+    return $h;
 }
 
 sub fastcgi_respond($$$$) {
-	my ($socket, $version, $id, $body) = @_;
+    my ($socket, $version, $id, $body) = @_;
 
-	# stdout
-	$socket->write(pack("CCnnCx", $version, 6, $id, length($body), 8));
-	$socket->write($body);
-	select(undef, undef, undef, 0.1);
-	$socket->write(pack("xxxxxxxx"));
-	select(undef, undef, undef, 0.1);
+    # stdout
+    $socket->write(pack("CCnnCx", $version, 6, $id, length($body), 8));
+    $socket->write($body);
+    select(undef, undef, undef, 0.1);
+    $socket->write(pack("xxxxxxxx"));
+    select(undef, undef, undef, 0.1);
 
-	# write some text to stdout and stderr split over multiple network
-	# packets to test if we correctly set pipe length in various places
+    # write some text to stdout and stderr split over multiple network
+    # packets to test if we correctly set pipe length in various places
 
-	my $tt = "test text, just for test";
+    my $tt = "test text, just for test";
 
-	$socket->write(pack("CCnnCx", $version, 6, $id,
-		length($tt . $tt), 0) . $tt);
-	select(undef, undef, undef, 0.1);
-	$socket->write($tt . pack("CC", $version, 7));
-	select(undef, undef, undef, 0.1);
-	$socket->write(pack("nnCx", $id, length($tt), 0));
-	select(undef, undef, undef, 0.1);
-	$socket->write($tt);
-	select(undef, undef, undef, 0.1);
+    $socket->write(pack("CCnnCx", $version, 6, $id,
+        length($tt . $tt), 0) . $tt);
+    select(undef, undef, undef, 0.1);
+    $socket->write($tt . pack("CC", $version, 7));
+    select(undef, undef, undef, 0.1);
+    $socket->write(pack("nnCx", $id, length($tt), 0));
+    select(undef, undef, undef, 0.1);
+    $socket->write($tt);
+    select(undef, undef, undef, 0.1);
 
-	# close stdout
-	$socket->write(pack("CCnnCx", $version, 6, $id, 0, 0));
+    # close stdout
+    $socket->write(pack("CCnnCx", $version, 6, $id, 0, 0));
 
-	select(undef, undef, undef, 0.1);
+    select(undef, undef, undef, 0.1);
 
-	# end request
-	$socket->write(pack("CCnnCx", $version, 3, $id, 8, 0));
-	select(undef, undef, undef, 0.1);
-	$socket->write(pack("NCxxx", 0, 0));
+    # end request
+    $socket->write(pack("CCnnCx", $version, 3, $id, 8, 0));
+    select(undef, undef, undef, 0.1);
+    $socket->write(pack("NCxxx", 0, 0));
 }
 
 sub get_body {
-	my ($url, $port, $body, %extra) = @_;
-	my ($server, $client, $s);
-	my ($last, $many) = (0, 0);
-	my ($version, $id);
+    my ($url, $port, $body, %extra) = @_;
+    my ($server, $client, $s);
+    my ($last, $many) = (0, 0);
+    my ($version, $id);
 
-	$last = $extra{last} if defined $extra{last};
-	$many = $extra{many} if defined $extra{many};
+    $last = $extra{last} if defined $extra{last};
+    $many = $extra{many} if defined $extra{many};
 
-	$server = IO::Socket::INET->new(
-		Proto => 'tcp',
-		LocalHost => '127.0.0.1',
-		LocalPort => $port,
-		Listen => 5,
-		Reuse => 1
-	)
-		or die "Can't create listening socket: $!\n";
+    $server = IO::Socket::INET->new(
+        Proto => 'tcp',
+        LocalHost => '127.0.0.1',
+        LocalPort => $port,
+        Listen => 5,
+        Reuse => 1
+    )
+        or die "Can't create listening socket: $!\n";
 
-	my $r = <<EOF;
+    my $r = <<EOF;
 GET $url HTTP/1.1
 Host: localhost
 Connection: close
@@ -249,105 +249,110 @@ Transfer-Encoding: chunked
 
 EOF
 
-	if (defined $body) {
-		$r .= sprintf("%x", length $body) . CRLF;
-		$r .= $body . CRLF;
-	}
-	if (defined $body && $many) {
-		$r .= sprintf("%x", length 'many') . CRLF;
-		$r .= 'many' . CRLF;
-	}
-	if ($last) {
-		$r .= "0" . CRLF . CRLF;
-	}
+    if (defined $body) {
+        $r .= sprintf("%x", length $body) . CRLF;
+        $r .= $body . CRLF;
+    }
+    if (defined $body && $many) {
+        $r .= sprintf("%x", length 'many') . CRLF;
+        $r .= 'many' . CRLF;
+    }
+    if ($last) {
+        $r .= "0" . CRLF . CRLF;
+    }
 
-	$s = http($r, start => 1);
+    $s = http($r, start => 1);
 
-	eval {
-		local $SIG{ALRM} = sub { die "timeout\n" };
-		local $SIG{PIPE} = sub { die "sigpipe\n" };
-		alarm(5);
+    eval {
+        local $SIG{ALRM} = sub { die "timeout\n" };
+        local $SIG{PIPE} = sub { die "sigpipe\n" };
+        alarm(5);
 
-		$client = $server->accept();
+        $client = $server->accept();
 
-		log2c("(new connection $client)");
+        log2c("(new connection $client)");
 
-		alarm(0);
-	};
-	alarm(0);
-	if ($@) {
-		log_in("died: $@");
-		return undef;
-	}
+        alarm(0);
+    };
+    alarm(0);
+    if ($@) {
+        log_in("died: $@");
+        return undef;
+    }
 
-	$client->sysread(my $buf, 1024);
-	log2i($buf);
+    $client->sysread(my $buf, 1024);
+    log2i($buf);
 
-	$body = '';
+    $body = '';
 
-	while (my $h = fastcgi_read_record(\$buf)) {
-		$version = $h->{version};
-		$id = $h->{id};
+    while (my $h = fastcgi_read_record(\$buf)) {
+        $version = $h->{version};
+        $id = $h->{id};
 
-		# skip everything unless stdin
-		next if $h->{type} != 5;
+        # skip everything unless stdin
+        next if $h->{type} != 5;
 
-		$body .= $h->{content};
-	}
+        $body .= $h->{content};
+    }
 
-	my $f = { preread => $body };
-	$f->{upload} = sub {
-		my ($body, %extra) = @_;
-		my ($last, $many) = (0, 0);
+    my $f = { preread => $body };
+    $f->{upload} = sub {
+        my ($body, %extra) = @_;
+        my ($last, $many) = (0, 0);
 
-		$last = $extra{last} if defined $extra{last};
-		$many = $extra{many} if defined $extra{many};
+        $last = $extra{last} if defined $extra{last};
+        $many = $extra{many} if defined $extra{many};
 
-		my $buf = sprintf("%x", length $body) . CRLF;
-		$buf .= $body . CRLF;
-		if ($many) {
-			$buf .= sprintf("%x", length 'many') . CRLF;
-			$buf .= 'many' . CRLF;
-		}
-		if ($last) {
-			$buf .= "0" . CRLF . CRLF;
-		}
+        my $buf = sprintf("%x", length $body) . CRLF;
+        $buf .= $body . CRLF;
+        if ($many) {
+            $buf .= sprintf("%x", length 'many') . CRLF;
+            $buf .= 'many' . CRLF;
+        }
+        if ($last) {
+            $buf .= "0" . CRLF . CRLF;
+        }
 
-		eval {
-			local $SIG{ALRM} = sub { die "timeout\n" };
-			local $SIG{PIPE} = sub { die "sigpipe\n" };
-			alarm(5);
+        eval {
+            local $SIG{ALRM} = sub { die "timeout\n" };
+            local $SIG{PIPE} = sub { die "sigpipe\n" };
+            alarm(5);
 
-			log_out($buf);
-			$s->write($buf);
+            log_out($buf);
+            $s->write($buf);
 
-			$client->sysread($buf, 1024);
-			log2i($buf);
+            $client->sysread($buf, 1024);
+            log2i($buf);
 
-			$body = '';
+            $body = '';
 
-			while (my $h = fastcgi_read_record(\$buf)) {
+            while (my $h = fastcgi_read_record(\$buf)) {
 
-				# skip everything unless stdin
-				next if $h->{type} != 5;
+                # skip everything unless stdin
+                next if $h->{type} != 5;
 
-				$body .= $h->{content};
-			}
+                $body .= $h->{content};
+            }
 
-			alarm(0);
-		};
-		alarm(0);
-		if ($@) {
-			log_in("died: $@");
-			return undef;
-		}
+            alarm(0);
+        };
+        alarm(0);
+        if ($@) {
+            log_in("died: $@");
+            return undef;
+        }
 
-		return $body;
-	};
-	$f->{http_end} = sub {
-		my $buf = '';
+        return $body;
+    };
+    $f->{http_end} = sub {
+        my $buf = '';
 
-		fastcgi_respond($client, $version, $id, <<EOF);
+        eval {
+            local $SIG{ALRM} = sub { die "timeout\n" };
+            local $SIG{PIPE} = sub { die "sigpipe\n" };
+            alarm(5);
+
+            fastcgi_respond($client, $version, $id, <<EOF);
 Status: 200 OK
 Connection: close
 X-Port: $port
@@ -355,29 +360,24 @@ X-Port: $port
 OK
 EOF
 
-		$client->close;
+            $client->close;
 
-		eval {
-			local $SIG{ALRM} = sub { die "timeout\n" };
-			local $SIG{PIPE} = sub { die "sigpipe\n" };
-			alarm(5);
+            $s->sysread($buf, 1024);
+            log_in($buf);
 
-			$s->sysread($buf, 1024);
-			log_in($buf);
+            $s->close();
 
-			$s->close();
+            alarm(0);
+        };
+        alarm(0);
+        if ($@) {
+            log_in("died: $@");
+            return undef;
+        }
 
-			alarm(0);
-		};
-		alarm(0);
-		if ($@) {
-			log_in("died: $@");
-			return undef;
-		}
-
-		return $buf;
-	};
-	return $f;
+        return $buf;
+    };
+    return $f;
 }
 
 sub log2i { Test::Nginx::log_core('|| <<', @_); }
@@ -387,28 +387,28 @@ sub log2c { Test::Nginx::log_core('||', @_); }
 ###############################################################################
 
 sub fastcgi_daemon {
-	my $socket = FCGI::OpenSocket('127.0.0.1:' . port(8081), 5);
-	my $request = FCGI::Request(\*STDIN, \*STDOUT, \*STDERR, \%ENV,
-		$socket);
+    my $socket = FCGI::OpenSocket('127.0.0.1:' . port(8081), 5);
+    my $request = FCGI::Request(\*STDIN, \*STDOUT, \*STDERR, \%ENV,
+        $socket);
 
-	my $count;
-	my ($body, $buf);
+    my $count;
+    my ($body, $buf);
 
-	while( $request->Accept() >= 0 ) {
-		$count++;
-		$body = '';
+    while( $request->Accept() >= 0 ) {
+        $count++;
+        $body = '';
 
-		do {
-			read(STDIN, $buf, 1024);
-			$body .= $buf;
-		} while (length $buf);
+        do {
+            read(STDIN, $buf, 1024);
+            $body .= $buf;
+        } while (length $buf);
 
-		if ($ENV{REQUEST_URI} eq '/error_page') {
-			print "Status: 404 Not Found" . CRLF . CRLF;
-			next;
-		}
+        if ($ENV{REQUEST_URI} eq '/error_page') {
+            print "Status: 404 Not Found" . CRLF . CRLF;
+            next;
+        }
 
-		print <<EOF;
+        print <<EOF;
 Location: http://localhost/redirect
 Content-Type: text/html
 X-Body: $body
@@ -416,9 +416,9 @@ X-Body: $body
 SEE-THIS
 $count
 EOF
-	}
+    }
 
-	FCGI::CloseSocket($socket);
+    FCGI::CloseSocket($socket);
 }
 
 ###############################################################################

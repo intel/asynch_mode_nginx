@@ -119,7 +119,7 @@ $t->run();
 ok(valid('/simple', 'http://www.example.org'), 'simple');
 ok(valid('/simple', 'http://www.example.org/uri'), 'simple uri');
 ok(valid('/simple', 'http://www.example.org:' . port(8080) . '/uri'),
-	'simple port uri');
+    'simple port uri');
 ok(!valid('/simple', 'localhost'), 'simple invalid');
 ok(valid('/simple', 'https://www.example.org'), 'https');
 ok(!valid('/simple', 'example.com'), 'no scheme');
@@ -187,25 +187,25 @@ ok(valid('/', 'http://below', 'below'), 'server below');
 ###############################################################################
 
 sub valid {
-	my ($uri, $referer, $host) = @_;
-	my $text;
+    my ($uri, $referer, $host) = @_;
+    my $text;
 
-	$host = 'localhost' unless defined $host;
+    $host = 'localhost' unless defined $host;
 
-	unless (defined $referer) {
-		$text = http_get($uri);
-	} else {
-		$text = http(<<EOF);
+    unless (defined $referer) {
+        $text = http_get($uri);
+    } else {
+        $text = http(<<EOF);
 GET $uri HTTP/1.0
 Host: $host
 Referer: $referer
 
 EOF
-	}
+    }
 
-	$text =~ /value 1/ && return 0;
-	$text =~ /value/ && return 1;
-	fail("no valid_referers in $uri");
+    $text =~ /value 1/ && return 0;
+    $text =~ /value/ && return 1;
+    fail("no valid_referers in $uri");
 }
 
 ###############################################################################

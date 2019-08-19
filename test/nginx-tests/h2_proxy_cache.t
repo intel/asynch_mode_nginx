@@ -24,8 +24,8 @@ use Test::Nginx::HTTP2;
 select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
-my $t = Test::Nginx->new()->has(qw/http http_v2 proxy cache rewrite/)->plan(12)
-	->write_file_expand('nginx.conf', <<'EOF');
+my $t = Test::Nginx->new()->has(qw/http http_v2 proxy cache/)->plan(12)
+    ->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -53,16 +53,18 @@ http {
             proxy_cache NAME;
             proxy_cache_valid 1m;
         }
+
         location /proxy_buffering_off {
             proxy_pass http://127.0.0.1:8081/;
             proxy_cache NAME;
             proxy_cache_valid 1m;
             proxy_buffering off;
         }
-        location / {
-            if ($arg_slow) {
-                set $limit_rate 200;
-            }
+
+        location / { }
+
+        location /slow {
+            limit_rate 200;
         }
     }
 }
@@ -70,6 +72,7 @@ http {
 EOF
 
 $t->write_file('t.html', 'SEE-THIS');
+$t->write_file('slow.html', 'SEE-THIS');
 $t->run();
 
 ###############################################################################
@@ -92,11 +95,11 @@ is($frame->{data}, 'SEE-THIS', 'proxy cache - DATA payload');
 $t->write_file('t.html', 'NOOP');
 
 $sid = $s->new_stream({ headers => [
-	{ name => ':method', value => 'GET', mode => 0 },
-	{ name => ':scheme', value => 'http', mode => 0 },
-	{ name => ':path', value => '/cache/t.html' },
-	{ name => ':authority', value => 'localhost', mode => 1 },
-	{ name => 'if-none-match', value => $etag }]});
+    { name => ':method', value => 'GET', mode => 0 },
+    { name => ':scheme', value => 'http', mode => 0 },
+    { name => ':path', value => '/cache/t.html' },
+    { name => ':authority', value => 'localhost', mode => 1 },
+    { name => 'if-none-match', value => $etag }]});
 $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
@@ -148,23 +151,28 @@ is(join(' ', map { $_->{flags} } @data), '1', 'proxy cache write - flags');
 
 $s = Test::Nginx::HTTP2->new();
 $sid = $s->new_stream(
-	{ path => '/proxy_buffering_off/t.html?1', method => 'HEAD' });
+    { path => '/proxy_buffering_off/t.html?1', method => 'HEAD' });
 
 $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 push @$frames, $_ for @{$s->read(all => [{ sid => $sid }], wait => 0.2)};
 ok(!grep ({ $_->{type} eq "DATA" } @$frames),
-	'proxy cache HEAD buffering off - no body');
+    'proxy cache HEAD buffering off - no body');
+
+SKIP: {
+skip 'win32', 1 if $^O eq 'MSWin32';
 
 # client cancels stream with a cacheable request that was sent to upstream
 # HEADERS should not be produced for the canceled stream
 
 $s = Test::Nginx::HTTP2->new();
-$sid = $s->new_stream({ path => '/cache/t.html?slow=1' });
+$sid = $s->new_stream({ path => '/cache/slow.html' });
 
 $s->h2_rst($sid, 8);
 
 $frames = $s->read(all => [{ sid => $sid, fin => 0x4 }], wait => 1.2);
 ok(!(grep { $_->{type} eq "HEADERS" } @$frames), 'no headers');
+
+}
 
 # client closes connection after sending a cacheable request producing alert
 

@@ -23,7 +23,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http gzip perl/)->plan(2)
-	->write_file_expand('nginx.conf', <<'EOF');
+    ->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -39,10 +39,9 @@ http {
         listen       127.0.0.1:8080;
         server_name  localhost;
 
-        #gzip on;
-        #gzip_min_length 0;
-        qatzip on;
-        qatzip_min_length 0;
+        %%GZIP_ENABLE%%
+        %%GZIP_MIN_LENGTH_0%%
+        %%QATZIP_ENABLE%%
 
         location / {
             perl 'sub {

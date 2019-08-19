@@ -27,8 +27,8 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http mp4/)->has_daemon('ffprobe')
-	->has_daemon('ffmpeg')
-	->write_file_expand('nginx.conf', <<'EOF');
+    ->has_daemon('ffmpeg')
+    ->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -53,20 +53,20 @@ http {
 EOF
 
 plan(skip_all => 'no lavfi')
-	unless grep /lavfi/, `ffmpeg -loglevel quiet -formats`;
-system('ffmpeg -loglevel quiet -y '
-	. '-f lavfi -i testsrc=duration=10:size=320x200:rate=15 '
-	. '-f lavfi -i testsrc=duration=20:size=320x200:rate=15 '
-	. '-map 0:0 -map 1:0 -pix_fmt yuv420p -g 15 -c:v libx264 '
-	. "${\($t->testdir())}/test.mp4") == 0
-	or die "Can't create mp4 file: $!";
-system('ffmpeg -loglevel quiet -y '
-	. '-f lavfi -i testsrc=duration=10:size=320x200:rate=15 '
-	. '-f lavfi -i testsrc=duration=20:size=320x200:rate=15 '
-	. '-map 0:0 -map 1:0 -pix_fmt yuv420p -g 15 -c:v libx264 '
-	. '-movflags +faststart '
-	. "${\($t->testdir())}/no_mdat.mp4") == 0
-	or die "Can't create mp4 file: $!";
+    unless grep /lavfi/, `ffmpeg -loglevel quiet -formats`;
+system('ffmpeg -nostdin -loglevel quiet -y '
+    . '-f lavfi -i testsrc=duration=10:size=320x200:rate=15 '
+    . '-f lavfi -i testsrc=duration=20:size=320x200:rate=15 '
+    . '-map 0:0 -map 1:0 -pix_fmt yuv420p -g 15 -c:v libx264 '
+    . "${\($t->testdir())}/test.mp4") == 0
+    or die "Can't create mp4 file: $!";
+system('ffmpeg -nostdin -loglevel quiet -y '
+    . '-f lavfi -i testsrc=duration=10:size=320x200:rate=15 '
+    . '-f lavfi -i testsrc=duration=20:size=320x200:rate=15 '
+    . '-map 0:0 -map 1:0 -pix_fmt yuv420p -g 15 -c:v libx264 '
+    . '-movflags +faststart '
+    . "${\($t->testdir())}/no_mdat.mp4") == 0
+    or die "Can't create mp4 file: $!";
 
 $t->run()->plan(26);
 
@@ -84,14 +84,7 @@ is(durations($t, 6, 9), '3.0 3.0', 'start end integer');
 is(durations($t, 2.7, 5.6), '2.9 2.9', 'start end float');
 
 is(durations($t, undef, 9), '9.0 9.0', 'end integer');
-
-TODO: {
-local $TODO = 'not yet'
-	if $Config{myarchname} =~ /i.86/ && $t->has_module('built by gcc 5');
-
 is(durations($t, undef, 5.6), '5.6 5.6', 'end float');
-
-}
 
 # invalid range results in ignoring end argument
 
@@ -101,10 +94,10 @@ like(http_head("$test_uri?start=1&end=0"), qr/200 OK/, 'negative range');
 # start/end values exceeding track/file duration
 
 unlike(http_head("$test_uri?end=11"), qr!HTTP/1.1 500!,
-	'end beyond short track');
+    'end beyond short track');
 unlike(http_head("$test_uri?end=21"), qr!HTTP/1.1 500!, 'end beyond EOF');
 unlike(http_head("$test_uri?start=11"), qr!HTTP/1.1 500!,
-	'start beyond short track');
+    'start beyond short track');
 like(http_head("$test_uri?start=21"), qr!HTTP/1.1 500!, 'start beyond EOF');
 
 $test_uri = '/no_mdat.mp4', goto again unless $test_uri eq '/no_mdat.mp4';
@@ -112,25 +105,25 @@ $test_uri = '/no_mdat.mp4', goto again unless $test_uri eq '/no_mdat.mp4';
 ###############################################################################
 
 sub durations {
-	my ($t, $start, $end) = @_;
-	my $path = $t->{_testdir} . '/frag.mp4';
+    my ($t, $start, $end) = @_;
+    my $path = $t->{_testdir} . '/frag.mp4';
 
-	my $uri = $test_uri;
-	if (defined $start) {
-		$uri .= "?start=$start";
-		if (defined $end) {
-			$uri .= "&end=$end";
-		}
+    my $uri = $test_uri;
+    if (defined $start) {
+        $uri .= "?start=$start";
+        if (defined $end) {
+            $uri .= "&end=$end";
+        }
 
-	} elsif (defined $end) {
-		$uri .= "?end=$end";
-	}
+    } elsif (defined $end) {
+        $uri .= "?end=$end";
+    }
 
-	$t->write_file('frag.mp4', Test::Nginx::http_content(http_get($uri)));
+    $t->write_file('frag.mp4', Test::Nginx::http_content(http_get($uri)));
 
-	my $r = `ffprobe -show_streams $path 2>/dev/null`;
-	Test::Nginx::log_core('||', $r);
-	sprintf "%.1f %.1f", $r =~ /duration=(\d+\.\d+)/g;
+    my $r = `ffprobe -show_streams $path 2>/dev/null`;
+    Test::Nginx::log_core('||', $r);
+    sprintf "%.1f %.1f", $r =~ /duration=(\d+\.\d+)/g;
 }
 
 ###############################################################################

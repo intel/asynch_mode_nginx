@@ -1,7 +1,8 @@
 #!/usr/bin/perl
 
-# (C) Maxim Dounin
 # Copyright (C) Intel, Inc.
+# (C) Maxim Dounin
+
 # Tests for nginx xslt filter module.
 
 ###############################################################################
@@ -86,15 +87,21 @@ $t->write_file('x1', '<root>data</root>');
 $t->write_file('x2', '<root>data</root>');
 $t->write_file('x3', '<root>data</root>');
 
-$t->run()->plan(3);
+$t->run()->plan(4);
 
 ###############################################################################
 
 like(http_get("/x1"), qr!200 OK.*param1=value1.*param2=data.*param3=value3!ms,
-	'params from xslt_stylesheet');
+    'params from xslt_stylesheet');
+
+# before 1.13.7, nginx used to overwrite xslt_stylesheet configuration data
+
+like(http_get("/x1"), qr!200 OK.*param1=value1.*param2=data.*param3=value3!ms,
+    'params from xslt_stylesheet again');
+
 like(http_get("/x2"), qr!200 OK.*param1=value1.*param2=data.*param3=value3!ms,
-	'params from xslt_param/xslt_string_param');
+    'params from xslt_param/xslt_string_param');
 like(http_get("/x3"), qr!200 OK.*param1=value1.*param2=data.*param3=value3!ms,
-	'mixed');
+    'mixed');
 
 ###############################################################################

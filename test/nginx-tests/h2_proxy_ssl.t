@@ -25,11 +25,12 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http http_ssl http_v2 proxy/)
-	->has_daemon('openssl')->plan(1);
+    ->has_daemon('openssl')->plan(1);
 
 $t->write_file_expand('nginx.conf', <<'EOF');
 
 
+user root;
 
 %%TEST_GLOBALS%%
 
@@ -39,21 +40,26 @@ events {
 }
 
 http {
-    %%TEST_GLOBALS_HTTP%%
 
     server {
         listen       127.0.0.1:8080 http2;
-        listen       127.0.0.1:8081 ssl asynch;
-        server_name  localhost;
 
-        ssl_certificate_key localhost.key;
-        ssl_certificate localhost.crt;
-
-        location / { }
         location /proxy_ssl/ {
             proxy_pass https://127.0.0.1:8081/;
             proxy_ssl_asynch on;
+            proxy_connect_timeout 10s;
         }
+    }
+
+    server {
+        listen       127.0.0.1:8081 ssl;
+        server_name  localhost;
+
+        ssl_asynch on;
+        ssl_certificate_key localhost.key;
+        ssl_certificate localhost.crt;
+
+        location / { return 200; }
     }
 }
 
@@ -61,7 +67,7 @@ EOF
 
 $t->write_file('openssl.conf', <<EOF);
 [ req ]
-default_bits = 2048
+default_bits = 1024
 encrypt_key = no
 distinguished_name = req_distinguished_name
 [ req_distinguished_name ]
@@ -70,16 +76,14 @@ EOF
 my $d = $t->testdir();
 
 foreach my $name ('localhost') {
-	system('openssl req -x509 -new '
-		. "-config '$d/openssl.conf' -subj '/CN=$name/' "
-		. "-out '$d/$name.crt' -keyout '$d/$name.key' "
-		. ">>$d/openssl.out 2>&1") == 0
-		or die "Can't create certificate for $name: $!\n";
+    system('openssl req -x509 -new '
+        . "-config $d/openssl.conf -subj /CN=$name/ "
+        . "-out $d/$name.crt -keyout $d/$name.key "
+        . ">>$d/openssl.out 2>&1") == 0
+        or die "Can't create certificate for $name: $!\n";
 }
-
 $t->write_file('index.html', '');
 $t->run();
-
 ###############################################################################
 
 # request body with an empty DATA frame proxied to ssl backend

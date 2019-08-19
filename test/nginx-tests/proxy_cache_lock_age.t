@@ -26,7 +26,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http proxy cache/)->plan(4)
-	->write_file_expand('nginx.conf', <<'EOF');
+    ->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -75,64 +75,64 @@ like(http_get('/'), qr/request 1/, 'request aged cached');
 ###############################################################################
 
 sub http_daemon {
-	my (@ports) = @_;
-	my @socks;
+    my (@ports) = @_;
+    my @socks;
 
-	for my $port (@ports) {
-		my $server = IO::Socket::INET->new(
-			Proto => 'tcp',
-			LocalHost => "127.0.0.1:$port",
-			Listen => 5,
-			Reuse => 1
-		)
-			or die "Can't create listening socket: $!\n";
-		push @socks, $server;
-	}
+    for my $port (@ports) {
+        my $server = IO::Socket::INET->new(
+            Proto => 'tcp',
+            LocalHost => "127.0.0.1:$port",
+            Listen => 5,
+            Reuse => 1
+        )
+            or die "Can't create listening socket: $!\n";
+        push @socks, $server;
+    }
 
-	my $sel = IO::Select->new(@socks);
-	my $num = 0;
-	my $s;
+    my $sel = IO::Select->new(@socks);
+    my $num = 0;
+    my $s;
 
-	local $SIG{PIPE} = 'IGNORE';
+    local $SIG{PIPE} = 'IGNORE';
 
-	while (my @ready = $sel->can_read) {
-		foreach my $fh (@ready) {
-			if (grep $_ == $fh, @socks) {
-				my $new = $fh->accept;
-				$new->autoflush(1);
-				$sel->add($new);
+    while (my @ready = $sel->can_read) {
+        foreach my $fh (@ready) {
+            if (grep $_ == $fh, @socks) {
+                my $new = $fh->accept;
+                $new->autoflush(1);
+                $sel->add($new);
 
-			} elsif (process_socket($fh, \$num, \$s)) {
-				$sel->remove($fh);
-				$fh->close;
-			}
-		}
-	}
+            } elsif (process_socket($fh, \$num, \$s)) {
+                $sel->remove($fh);
+                $fh->close;
+            }
+        }
+    }
 }
 
 # Returns true to close connection
 
 sub process_socket {
-	my ($client, $num, $s) = @_;
+    my ($client, $num, $s) = @_;
 
-	my $headers = '';
-	my $uri = '';
+    my $headers = '';
+    my $uri = '';
 
-	while (<$client>) {
-		$headers .= $_;
-		last if (/^\x0d?\x0a?$/);
-	}
-	return 1 if $headers eq '';
+    while (<$client>) {
+        $headers .= $_;
+        last if (/^\x0d?\x0a?$/);
+    }
+    return 1 if $headers eq '';
 
-	$uri = $1 if $headers =~ /^\S+\s+([^ ]+)\s+HTTP/i;
-	return 1 if $uri eq '';
+    $uri = $1 if $headers =~ /^\S+\s+([^ ]+)\s+HTTP/i;
+    return 1 if $uri eq '';
 
-	# finish a previously saved socket
-	close $$s if $uri eq '/close';
+    # finish a previously saved socket
+    close $$s if $uri eq '/close';
 
-	$$num++;
+    $$num++;
 
-	print $client <<EOF;
+    print $client <<EOF;
 HTTP/1.1 200 OK
 Cache-Control: max-age=300
 Connection: close
@@ -140,13 +140,13 @@ Connection: close
 request $$num
 EOF
 
-	# save socket and wait
-	if ($$num == 1) {
-		$$s = $client;
-		return 0;
-	}
+    # save socket and wait
+    if ($$num == 1) {
+        $$s = $client;
+        return 0;
+    }
 
-	return 1;
+    return 1;
 }
 
 ###############################################################################

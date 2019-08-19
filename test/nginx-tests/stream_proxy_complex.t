@@ -25,7 +25,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/stream stream_return/)
-	->write_file_expand('nginx.conf', <<'EOF');
+    ->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -65,7 +65,7 @@ stream {
 
 EOF
 
-$t->try_run('no stream proxy_pass with complex value')->plan(5);
+$t->run()->plan(5);
 
 ###############################################################################
 

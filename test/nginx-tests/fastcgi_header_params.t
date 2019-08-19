@@ -27,7 +27,7 @@ plan(skip_all => 'FCGI not installed') if $@;
 plan(skip_all => 'win32') if $^O eq 'MSWin32';
 
 my $t = Test::Nginx->new()->has(qw/http fastcgi/)->plan(1)
-	->write_file_expand('nginx.conf', <<'EOF');
+    ->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -58,13 +58,13 @@ $t->run()->waitforsocket('127.0.0.1:' . port(8081));
 ###############################################################################
 
 like(http_get_headers('/'), qr/SEE-THIS/,
-	'fastcgi request with many ignored headers');
+    'fastcgi request with many ignored headers');
 
 ###############################################################################
 
 sub http_get_headers {
-	my ($url, %extra) = @_;
-	return http(<<EOF, %extra);
+    my ($url, %extra) = @_;
+    return http(<<EOF, %extra);
 GET $url HTTP/1.0
 Host: localhost
 X-Blah: ignored header
@@ -93,24 +93,24 @@ EOF
 ###############################################################################
 
 sub fastcgi_daemon {
-	my $socket = FCGI::OpenSocket('127.0.0.1:' . port(8081), 5);
-	my $request = FCGI::Request(\*STDIN, \*STDOUT, \*STDERR, \%ENV,
-		$socket);
+    my $socket = FCGI::OpenSocket('127.0.0.1:' . port(8081), 5);
+    my $request = FCGI::Request(\*STDIN, \*STDOUT, \*STDERR, \%ENV,
+        $socket);
 
-	my $count;
-	while( $request->Accept() >= 0 ) {
-		$count++;
+    my $count;
+    while( $request->Accept() >= 0 ) {
+        $count++;
 
-		print <<EOF;
+        print <<EOF;
 Location: http://localhost/redirect
 Content-Type: text/html
 
 SEE-THIS
 $count
 EOF
-	}
+    }
 
-	FCGI::CloseSocket($socket);
+    FCGI::CloseSocket($socket);
 }
 
 ###############################################################################

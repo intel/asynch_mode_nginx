@@ -24,8 +24,8 @@ use Test::Nginx;
 select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
-my $t = Test::Nginx->new()->has(qw/http proxy cache/)->plan(4)
-	->write_file_expand('nginx.conf', <<'EOF');
+my $t = Test::Nginx->new()->has(qw/http proxy cache/)->plan(6)
+    ->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -48,6 +48,11 @@ http {
             proxy_pass    http://127.0.0.1:8081;
         }
 
+        location /proxy/ {
+            proxy_pass    http://127.0.0.1:8081/;
+            proxy_force_ranges on;
+        }
+
         location /cache/ {
             proxy_pass    http://127.0.0.1:8081/;
             proxy_cache   NAME;
@@ -63,6 +68,8 @@ http {
 
         location / {
             max_ranges 0;
+            add_header Last-Modified "Mon, 28 Sep 1970 06:00:00 GMT";
+            add_header ETag '"59a5401c-8"';
         }
     }
 }
@@ -77,20 +84,32 @@ $t->run();
 # serving range requests requires Accept-Ranges by default
 
 unlike(http_get_range('/t.html', 'Range: bytes=4-'), qr/^THIS/m,
-	'range without Accept-Ranges');
+    'range without Accept-Ranges');
 
 like(http_get_range('/cache/t.html', 'Range: bytes=4-'), qr/^THIS/m,
-	'uncached range');
+    'uncached range');
 like(http_get_range('/cache/t.html', 'Range: bytes=4-'), qr/^THIS/m,
-	'cached range');
+    'cached range');
 like(http_get_range('/cache/t.html', 'Range: bytes=0-2,4-'), qr/^SEE.*^THIS/ms,
-	'cached multipart range');
+    'cached multipart range');
+
+# If-Range HTTP-date request
+
+like(http_get_range('/proxy/t.html',
+    "Range: bytes=4-\nIf-Range: Mon, 28 Sep 1970 06:00:00 GMT"),
+    qr/^THIS/m, 'if-range last-modified proxy');
+
+# If-Range entity-tag request
+
+like(http_get_range('/proxy/t.html',
+    "Range: bytes=4-\nIf-Range: \"59a5401c-8\""),
+    qr/^THIS/m, 'if-range etag proxy');
 
 ###############################################################################
 
 sub http_get_range {
-	my ($url, $extra) = @_;
-	return http(<<EOF);
+    my ($url, $extra) = @_;
+    return http(<<EOF);
 GET $url HTTP/1.1
 Host: localhost
 Connection: close

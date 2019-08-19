@@ -1,8 +1,9 @@
 #!/usr/bin/perl
 
+# Copyright (C) Intel, Inc.
 # (C) Sergey Kandaurov
 # (C) Nginx, Inc.
-# Copyright (C) Intel, Inc.
+
 # Tests for stream realip module, server side proxy protocol with ssl.
 
 ###############################################################################
@@ -30,9 +31,9 @@ plan(skip_all => 'IO::Socket::SSL not installed') if $@;
 eval { IO::Socket::SSL::SSL_VERIFY_NONE(); };
 plan(skip_all => 'IO::Socket::SSL too old') if $@;
 
-my $t = Test::Nginx->new()->has(qw/stream stream_return stream_realip ipv6/)
-	->has(qw/stream_ssl/)->has_daemon('openssl')
-	->write_file_expand('nginx.conf', <<'EOF');
+my $t = Test::Nginx->new()->has(qw/stream stream_return stream_realip/)
+    ->has(qw/stream_ssl/)->has_daemon('openssl')
+    ->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -85,7 +86,7 @@ EOF
 
 $t->write_file('openssl.conf', <<EOF);
 [ req ]
-default_bits = 2048
+default_bits = 1024
 encrypt_key = no
 distinguished_name = req_distinguished_name
 [ req_distinguished_name ]
@@ -94,49 +95,61 @@ EOF
 my $d = $t->testdir();
 
 foreach my $name ('localhost') {
-	system('openssl req -x509 -new '
-		. "-config '$d/openssl.conf' -subj '/CN=$name/' "
-		. "-out '$d/$name.crt' -keyout '$d/$name.key' "
-		. ">>$d/openssl.out 2>&1") == 0
-		or die "Can't create certificate for $name: $!\n";
+    system('openssl req -x509 -new '
+        . "-config $d/openssl.conf -subj /CN=$name/ "
+        . "-out $d/$name.crt -keyout $d/$name.key "
+        . ">>$d/openssl.out 2>&1") == 0
+        or die "Can't create certificate for $name: $!\n";
 }
 
-$t->try_run('no stream proxy_protocol and/or inet6 support')->plan(6);
+$t->try_run('no inet6 support')->plan(6);
 
 ###############################################################################
 
 is(pp_get(8083, "PROXY TCP4 192.0.2.1 192.0.2.2 1234 5678${CRLF}"),
-	'192.0.2.1:1234', 'server');
+    '192.0.2.1:1234', 'server');
 
 like(pp_get(8086, "PROXY TCP4 192.0.2.1 192.0.2.2 1234 5678${CRLF}"),
-	qr/^(\Q127.0.0.1:\E\d+):\s+\1$/, 'server ipv6 realip - no match');
+    qr/^(\Q127.0.0.1:\E\d+):\s+\1$/, 'server ipv6 realip - no match');
 
 like(pp_get(8087, "PROXY TCP4 192.0.2.1 192.0.2.2 1234 5678${CRLF}"),
-	qr/\Q192.0.2.1:1234:\E\s+\Q::1:\E\d+/, 'server ipv6 realip');
+    qr/\Q192.0.2.1:1234:\E\s+\Q::1:\E\d+/, 'server ipv6 realip');
 
 like(pp_get(8088, "PROXY TCP4 192.0.2.1 192.0.2.2 1234 5678${CRLF}"),
-	qr/\Q192.0.2.1:1234:\E\s+\Q127.0.0.1:\E\d+/, 'server ipv4 realip');
+    qr/\Q192.0.2.1:1234:\E\s+\Q127.0.0.1:\E\d+/, 'server ipv4 realip');
 
 like(pp_get(8089, "PROXY TCP4 192.0.2.1 192.0.2.2 1234 5678${CRLF}"),
-	qr/^(::1:\d+):\s+\1$/, 'server ipv4 realip - no match');
+    qr/^(::1:\d+):\s+\1$/, 'server ipv4 realip - no match');
 
 like(pp_get(8088, "PROXY UNKNOWN TCP4 192.0.2.1 192.0.2.2 1234 5678${CRLF}"),
-	qr/^(\Q127.0.0.1:\E\d+):\s+\1$/, 'server unknown');
+    qr/^(\Q127.0.0.1:\E\d+):\s+\1$/, 'server unknown');
 
 ###############################################################################
 
 sub pp_get {
-	my ($port, $proxy) = @_;
+    my ($port, $proxy) = @_;
 
-	my $s = stream(PeerPort => port($port));
-	$s->write($proxy);
+    my $s = stream(PeerPort => port($port));
+    $s->write($proxy);
 
-	IO::Socket::SSL->start_SSL($s->{_socket},
-		SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_NONE(),
-		SSL_error_trap => sub { die $_[1] }
-	);
+    eval {
+        local $SIG{ALRM} = sub { die "timeout\n" };
+        local $SIG{PIPE} = sub { die "sigpipe\n" };
+        alarm(5);
+        IO::Socket::SSL->start_SSL($s->{_socket},
+            SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_NONE(),
+            SSL_error_trap => sub { die $_[1] }
+        );
+        alarm(0);
+    };
+    alarm(0);
 
-	return $s->read();
+    if ($@) {
+        log_in("died: $@");
+        return undef;
+    }
+
+    return $s->read();
 }
 
 ###############################################################################

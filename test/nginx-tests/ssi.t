@@ -23,7 +23,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http ssi cache proxy rewrite/)
-	->plan(27);
+    ->plan(27);
 
 $t->write_file_expand('nginx.conf', <<'EOF');
 
@@ -88,37 +88,37 @@ EOF
 
 $t->write_file('test1.html', 'X<!--#echo var="arg_test" -->X');
 $t->write_file('test2.html',
-	'X<!--#include virtual="/test1.html?test=test" -->X');
+    'X<!--#include virtual="/test1.html?test=test" -->X');
 $t->write_file('test3.html',
-	'X<!--#set var="blah" value="test" --><!--#echo var="blah" -->X');
+    'X<!--#set var="blah" value="test" --><!--#echo var="blah" -->X');
 $t->write_file('test-args-rewrite.html',
-	'X<!--#include virtual="/check?found" -->X');
+    'X<!--#include virtual="/check?found" -->X');
 $t->write_file('test-empty1.html', 'X<!--#include virtual="/empty.html" -->X');
 $t->write_file('test-empty2.html',
-	'X<!--#include virtual="/local/empty.html" -->X');
+    'X<!--#include virtual="/local/empty.html" -->X');
 $t->write_file('test-empty3.html',
-	'X<!--#include virtual="/cache/empty.html" -->X');
+    'X<!--#include virtual="/cache/empty.html" -->X');
 $t->write_file('test-empty-postpone.html',
-	'X<!--#include virtual="/proxy/empty.html" -->X');
+    'X<!--#include virtual="/proxy/empty.html" -->X');
 $t->write_file('empty.html', '');
 
 $t->write_file('unescape.html?', 'SEE-THIS') unless $^O eq 'MSWin32';
 $t->write_file('unescape1.html',
-	'X<!--#include virtual="/tes%741.html?test=test" -->X');
+    'X<!--#include virtual="/tes%741.html?test=test" -->X');
 $t->write_file('unescape2.html',
-	'X<!--#include virtual="/unescape.html%3f" -->X');
+    'X<!--#include virtual="/unescape.html%3f" -->X');
 $t->write_file('unescape3.html',
-	'X<!--#include virtual="/test1.html%3ftest=test" -->X');
+    'X<!--#include virtual="/test1.html%3ftest=test" -->X');
 
 $t->write_file('var_format.html',
-	'x<!--#if expr="$arg_custom" -->'
-		. '<!--#config timefmt="%A, %H:%M:%S" -->'
-		. '<!--#set var="v" value="$date_gmt" -->'
-		. '<!--#echo var="v" -->'
-	. '<!--#else -->'
-		. '<!--#set var="v" value="$date_gmt" -->'
-		. '<!--#echo var="v" -->'
-	. '<!--#endif -->x');
+    'x<!--#if expr="$arg_custom" -->'
+        . '<!--#config timefmt="%A, %H:%M:%S" -->'
+        . '<!--#set var="v" value="$date_gmt" -->'
+        . '<!--#echo var="v" -->'
+    . '<!--#else -->'
+        . '<!--#set var="v" value="$date_gmt" -->'
+        . '<!--#echo var="v" -->'
+    . '<!--#endif -->x');
 
 $t->run();
 
@@ -131,7 +131,7 @@ like(http_get('/test1.html?test=test&a=b'), qr/^XtestX$/m, 'argument 2');
 like(http_get('/test1.html?a=b&test=test'), qr/^XtestX$/m, 'argument 3');
 like(http_get('/test1.html?a=b&test=test&d=c'), qr/^XtestX$/m, 'argument 4');
 like(http_get('/test1.html?atest=a&testb=b&ctestc=c&test=test'), qr/^XtestX$/m,
-	'argument 5');
+    'argument 5');
 
 like(http_get('/test2.html'), qr/^XXtestXX$/m, 'argument via include');
 
@@ -143,14 +143,14 @@ like(http_get('/test3.html'), qr/^XtestX$/m, 'set');
 like(http_get('/test-args-rewrite.html'), qr/^XX$/m, 'args only subrequest');
 
 like(http_get('/test-args-rewrite.html?wasargs'), qr/^XX$/m,
-	'args was in main request');
+    'args was in main request');
 
 # Last-Modified and Accept-Ranges headers should be cleared
 
 unlike(http_get('/test1.html'), qr/Last-Modified|Accept-Ranges/im,
-	'cleared headers');
+    'cleared headers');
 unlike(http_get('/proxy/test1.html'), qr/Last-Modified|Accept-Ranges/im,
-	'cleared headers from proxy');
+    'cleared headers from proxy');
 
 # empty subrequests
 
@@ -160,7 +160,7 @@ like(http_get('/test-empty3.html'), qr/HTTP/, 'empty with proxy');
 like(http_get('/test-empty3.html'), qr/HTTP/, 'empty with proxy cached');
 
 like(http_get('/test-empty-postpone.html'), qr/HTTP.*XX/ms,
-	'empty with postpone_output 0');
+    'empty with postpone_output 0');
 
 # handling of escaped URIs
 
@@ -170,9 +170,9 @@ SKIP: {
 skip 'incorrect filename on win32', 2 if $^O eq 'MSWin32';
 
 like(http_get('/unescape2.html'), qr/^XSEE-THISX$/m,
-	'escaped question in path');
+    'escaped question in path');
 like(http_get('/unescape3.html'), qr/404 Not Found/,
-	'escaped query separator');
+    'escaped query separator');
 
 }
 
@@ -187,8 +187,8 @@ like(http_get('/var_format.html?custom=1'), $re_date_gmt, 'custom header');
 like(http_get('/var_format.html'), $re_date_gmt, 'default header');
 
 like(http_get('/var_format.html?custom=1'),
-	qr/x.+, \d\d:\d\d:\d\dx/, 'custom ssi');
+    qr/x.+, \d\d:\d\d:\d\dx/, 'custom ssi');
 like(http_get('/var_format.html'),
-	qr/x.+, \d\d-.+-\d{4} \d\d:\d\d:\d\d .+x/, 'default ssi');
+    qr/x.+, \d\d-.+-\d{4} \d\d:\d\d:\d\d .+x/, 'default ssi');
 
 ###############################################################################

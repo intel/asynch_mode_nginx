@@ -4,7 +4,7 @@
 # (C) Sergey Kandaurov
 # (C) Nginx, Inc.
 
-# Test for msie_refresh in subrequests.
+# Tests for nginx limit_req module, delay parameter.
 
 ###############################################################################
 
@@ -16,15 +16,16 @@ use Test::More;
 BEGIN { use FindBin; chdir($FindBin::Bin); }
 
 use lib 'lib';
-use Test::Nginx;
+use Test::Nginx qw/ :DEFAULT http_end /;
 
 ###############################################################################
 
 select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
-my $t = Test::Nginx->new()->has(qw/http rewrite ssi/)->plan(1)
-	->write_file_expand('nginx.conf', <<'EOF');
+my $t = Test::Nginx->new()->has(qw/http limit_req/);
+
+$t->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -36,46 +37,30 @@ events {
 http {
     %%TEST_GLOBALS_HTTP%%
 
+    limit_req_zone $binary_remote_addr zone=one:1m rate=1r/s;
+
     server {
         listen       127.0.0.1:8080;
         server_name  localhost;
 
         location / {
-            ssi on;
-        }
-        location /ssi {
-            msie_refresh on;
-            return 301;
+            limit_req zone=one delay=1 burst=2;
+            add_header X-Time $request_time;
         }
     }
 }
 
 EOF
 
-$t->write_file('index.html', 'X<!--#include virtual="/ssi.html" -->X');
-$t->run();
+$t->write_file('delay.html', 'XtestX');
+$t->try_run('no limit_req delay')->plan(4);
 
 ###############################################################################
 
-TODO: {
-local $TODO = 'not yet' unless $t->has_version('1.11.5');
-
-my $r = get('/', 'User-Agent: MSIE foo');
-unlike($r, qr/\x0d\x0a?0\x0d\x0a?\x0d\x0a?\w/, 'only final chunk');
-
-}
-
-###############################################################################
-
-sub get {
-	my ($url, $extra) = @_;
-	return http(<<EOF);
-GET $url HTTP/1.1
-Host: localhost
-Connection: close
-$extra
-
-EOF
-}
+like(http_get('/delay.html'), qr/^HTTP\/1.. 200 /m, 'request');
+like(http_get('/delay.html'), qr/X-Time: 0.000/, 'not yet delayed');
+my $s = http_get('/delay.html', start => 1, sleep => 0.2);
+like(http_get('/delay.html'), qr/^HTTP\/1.. 503 /m, 'rejected');
+like(http_end($s), qr/^HTTP\/1.. 200 .*X-Time: (?!0.000)/ms, 'delayed');
 
 ###############################################################################

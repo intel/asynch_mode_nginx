@@ -23,7 +23,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http proxy rewrite/)->plan(2)
-	->write_file_expand('nginx.conf', <<'EOF');
+    ->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -72,7 +72,7 @@ http {
 
 EOF
 
-sleep $ENV{TEST_DELAY_TIME};
+sleep 30;
 $t->run();
 
 ###############################################################################

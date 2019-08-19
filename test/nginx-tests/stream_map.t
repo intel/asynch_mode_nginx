@@ -25,7 +25,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/stream stream_return stream_map/)
-	->has(qw/http rewrite/);
+    ->has(qw/http rewrite/);
 
 $t->write_file_expand('nginx.conf', <<'EOF');
 
@@ -60,7 +60,7 @@ stream {
 
 EOF
 
-$t->try_run('no stream map')->plan(5);
+$t->run()->plan(5);
 
 ###############################################################################
 

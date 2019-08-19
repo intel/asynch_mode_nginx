@@ -58,7 +58,7 @@ like(http_100_request('/', '1.1'), qr/ 100 /, 'expect 100 continue');
 # Comparison of expectation values is case-insensitive for unquoted tokens.
 
 like(http_100_request('/', '1.1', '100-Continue'), qr/ 100 /,
-	'expect 100 continue case-insensitive');
+    'expect 100 continue case-insensitive');
 
 # From RFC 2616, 8.2.3 Use of the 100 (Continue) Status:
 #
@@ -86,16 +86,16 @@ local $TODO = 'not yet';
 
 like(http_100_request('/', '1.1', 'unknown'), qr/ 417 /, 'unknown expectation');
 like(http_100_request('/', '1.1', 'token=param'), qr/ 417 /,
-	'unsupported expectation extension');
+    'unsupported expectation extension');
 
 }
 
 ###############################################################################
 
 sub http_100_request {
-	my ($url, $version, $value) = @_;
-	$value = '100-continue' unless defined $value;
-	http(<<EOF);
+    my ($url, $version, $value) = @_;
+    $value = '100-continue' unless defined $value;
+    http(<<EOF);
 POST $url HTTP/$version
 Host: localhost
 Expect: $value

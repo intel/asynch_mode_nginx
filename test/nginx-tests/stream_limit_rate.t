@@ -27,7 +27,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/stream/)->plan(8)
-	->write_file_expand('nginx.conf', <<'EOF');
+    ->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -134,74 +134,74 @@ is($r{'data'}, $str . 'close', 'upload - data');
 ###############################################################################
 
 sub response {
-	my ($data, %extra) = @_;
+    my ($data, %extra) = @_;
 
-	my $s = stream($extra{peer});
-	$s->write($data);
+    my $s = stream($extra{peer});
+    $s->write($data);
 
-	$data = '';
-	while (1) {
-		my $buf = $s->read();
-		last unless length($buf);
+    $data = '';
+    while (1) {
+        my $buf = $s->read();
+        last unless length($buf);
 
-		$data .= $buf;
+        $data .= $buf;
 
-		last if $extra{'readonce'};
-	}
-	$data =~ /([\S]*)\s?(\d+)?/;
+        last if $extra{'readonce'};
+    }
+    $data =~ /([\S]*)\s?(\d+)?/;
 
-	return ('data' => $1, 'time' => $2)
+    return ('data' => $1, 'time' => $2)
 }
 
 ###############################################################################
 
 sub stream_daemon {
-	my $port = shift;
+    my $port = shift;
 
-	my $server = IO::Socket::INET->new(
-		Proto => 'tcp',
-		LocalAddr => '127.0.0.1',
-		LocalPort => $port,
-		Listen => 5,
-		Reuse => 1
-	)
-		or die "Can't create listening socket: $!\n";
+    my $server = IO::Socket::INET->new(
+        Proto => 'tcp',
+        LocalAddr => '127.0.0.1',
+        LocalPort => $port,
+        Listen => 5,
+        Reuse => 1
+    )
+        or die "Can't create listening socket: $!\n";
 
-	my $sel = IO::Select->new($server);
+    my $sel = IO::Select->new($server);
 
-	local $SIG{PIPE} = 'IGNORE';
+    local $SIG{PIPE} = 'IGNORE';
 
-	while (my @ready = $sel->can_read) {
-		foreach my $fh (@ready) {
-			if ($server == $fh) {
-				my $new = $fh->accept;
-				$new->autoflush(1);
-				$sel->add($new);
+    while (my @ready = $sel->can_read) {
+        foreach my $fh (@ready) {
+            if ($server == $fh) {
+                my $new = $fh->accept;
+                $new->autoflush(1);
+                $sel->add($new);
 
-			} elsif (stream_handle_client($fh)) {
-				$sel->remove($fh);
-				$fh->close;
-			}
-		}
-	}
+            } elsif (stream_handle_client($fh)) {
+                $sel->remove($fh);
+                $fh->close;
+            }
+        }
+    }
 }
 
 sub stream_handle_client {
-	my ($client) = @_;
+    my ($client) = @_;
 
-	log2c("(new connection $client)");
+    log2c("(new connection $client)");
 
-	$client->sysread(my $buffer, 65536) or return 1;
+    $client->sysread(my $buffer, 65536) or return 1;
 
-	log2i("$client $buffer");
+    log2i("$client $buffer");
 
-	$buffer .= " " . time() if $client->sockport() eq port(8080);
+    $buffer .= " " . time() if $client->sockport() eq port(8080);
 
-	log2o("$client $buffer");
+    log2o("$client $buffer");
 
-	$client->syswrite($buffer);
+    $client->syswrite($buffer);
 
-	return $client->sockport() eq port(8080) ? 1 : $buffer =~ /close/;
+    return $client->sockport() eq port(8080) ? 1 : $buffer =~ /close/;
 }
 
 sub log2i { Test::Nginx::log_core('|| <<', @_); }

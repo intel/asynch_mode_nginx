@@ -24,7 +24,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http proxy charset gzip_static/)->plan(13)
-	->write_file_expand('nginx.conf', <<'EOF')->run();
+    ->write_file_expand('nginx.conf', <<'EOF')->run();
 
 %%TEST_GLOBALS%%
 
@@ -94,8 +94,8 @@ my $in = 'X' x 99;
 my $out = '';
 
 eval {
-	require IO::Compress::Gzip;
-	IO::Compress::Gzip::gzip(\$in => \$out);
+    require IO::Compress::Gzip;
+    IO::Compress::Gzip::gzip(\$in => \$out);
 };
 
 $t->write_file('t2.html', $in);
@@ -130,16 +130,16 @@ like(http_gzip_request('/t.html'), qr!text/html\x0d.*gzip!ms, 'nocharset gzip');
 
 like(http_get('/p/t.html'), qr!text/html; charset=!, 'proxy plain');
 like(http_gzip_request('/p/t.html'), qr!text/html; charset=.*gzip!ms,
-	'proxy gzip');
+    'proxy gzip');
 
 like(http_get('/p.ab/t.html'), qr!text/html; charset=A!ms,
-	'proxy recode plain');
+    'proxy recode plain');
 like(http_gzip_request('/p.ab/t.html'), qr!text/html\x0d.*gzip!ms,
-	'proxy recode gzip');
+    'proxy recode gzip');
 
 like(http_get('/p.aa/t.html'), qr!text/html; charset=A!ms,
-	'proxy nullrecode plain');
+    'proxy nullrecode plain');
 like(http_gzip_request('/p.aa/t.html'), qr!text/html; charset=A.*gzip!ms,
-	'proxy nullrecode gzip');
+    'proxy nullrecode gzip');
 
 ###############################################################################

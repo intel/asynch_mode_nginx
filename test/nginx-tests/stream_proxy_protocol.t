@@ -28,7 +28,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/stream/)->plan(2)
-	->write_file_expand('nginx.conf', <<'EOF');
+    ->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -71,47 +71,47 @@ is(stream('127.0.0.1:' . port(8082))->io('close'), 'close', 'protocol off');
 ###############################################################################
 
 sub stream_daemon {
-	my $server = IO::Socket::INET->new(
-		Proto => 'tcp',
-		LocalAddr => '127.0.0.1:' . port(8081),
-		Listen => 5,
-		Reuse => 1
-	)
-		or die "Can't create listening socket: $!\n";
+    my $server = IO::Socket::INET->new(
+        Proto => 'tcp',
+        LocalAddr => '127.0.0.1:' . port(8081),
+        Listen => 5,
+        Reuse => 1
+    )
+        or die "Can't create listening socket: $!\n";
 
-	my $sel = IO::Select->new($server);
+    my $sel = IO::Select->new($server);
 
-	local $SIG{PIPE} = 'IGNORE';
+    local $SIG{PIPE} = 'IGNORE';
 
-	while (my @ready = $sel->can_read) {
-		foreach my $fh (@ready) {
-			if ($server == $fh) {
-				my $new = $fh->accept;
-				$new->autoflush(1);
-				$sel->add($new);
+    while (my @ready = $sel->can_read) {
+        foreach my $fh (@ready) {
+            if ($server == $fh) {
+                my $new = $fh->accept;
+                $new->autoflush(1);
+                $sel->add($new);
 
-			} elsif (stream_handle_client($fh)) {
-				$sel->remove($fh);
-				$fh->close;
-			}
-		}
-	}
+            } elsif (stream_handle_client($fh)) {
+                $sel->remove($fh);
+                $fh->close;
+            }
+        }
+    }
 }
 
 sub stream_handle_client {
-	my ($client) = @_;
+    my ($client) = @_;
 
-	log2c("(new connection $client)");
+    log2c("(new connection $client)");
 
-	$client->sysread(my $buffer, 65536) or return 1;
+    $client->sysread(my $buffer, 65536) or return 1;
 
-	log2i("$client $buffer");
+    log2i("$client $buffer");
 
-	log2o("$client $buffer");
+    log2o("$client $buffer");
 
-	$client->syswrite($buffer);
+    $client->syswrite($buffer);
 
-	return $buffer =~ /close/;
+    return $buffer =~ /close/;
 }
 
 sub log2i { Test::Nginx::log_core('|| <<', @_); }

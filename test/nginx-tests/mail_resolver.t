@@ -27,7 +27,7 @@ select STDOUT; $| = 1;
 local $SIG{PIPE} = 'IGNORE';
 
 my $t = Test::Nginx->new()->has(qw/mail smtp http rewrite/)->plan(8)
-	->write_file_expand('nginx.conf', <<'EOF');
+    ->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -47,46 +47,47 @@ mail {
     server {
         listen    127.0.0.1:8025;
         protocol  smtp;
-        resolver  127.0.0.1:%%PORT_8081_UDP%%
-                  127.0.0.1:%%PORT_8082_UDP%%
-                  127.0.0.1:%%PORT_8083_UDP%%;
+        resolver  127.0.0.1:%%PORT_8981_UDP%%
+                  127.0.0.1:%%PORT_8982_UDP%%
+                  127.0.0.1:%%PORT_8983_UDP%%;
     }
 
     server {
         listen    127.0.0.1:8027;
         protocol  smtp;
-        resolver  127.0.0.1:%%PORT_8082_UDP%%;
+        resolver  127.0.0.1:%%PORT_8982_UDP%%;
     }
 
     server {
         listen    127.0.0.1:8028;
         protocol  smtp;
-        resolver  127.0.0.1:%%PORT_8083_UDP%%;
-
+        resolver  127.0.0.1:%%PORT_8983_UDP%%;
+        resolver_timeout 1s;
     }
 
     server {
         listen    127.0.0.1:8029;
         protocol  smtp;
-        resolver  127.0.0.1:%%PORT_8084_UDP%%;
+        resolver  127.0.0.1:%%PORT_8984_UDP%%;
     }
 
     server {
         listen    127.0.0.1:8030;
         protocol  smtp;
-        resolver  127.0.0.1:%%PORT_8085_UDP%%;
+        resolver  127.0.0.1:%%PORT_8985_UDP%%;
     }
 
     server {
         listen    127.0.0.1:8031;
         protocol  smtp;
-        resolver  127.0.0.1:%%PORT_8086_UDP%%;
+        resolver  127.0.0.1:%%PORT_8986_UDP%%;
+        resolver_timeout 1s;
     }
 
     server {
         listen    127.0.0.1:8032;
         protocol  smtp;
-        resolver  127.0.0.1:%%PORT_8087_UDP%%;
+        resolver  127.0.0.1:%%PORT_8987_UDP%%;
     }
 
 }
@@ -116,12 +117,12 @@ http {
 EOF
 
 $t->run_daemon(\&Test::Nginx::SMTP::smtp_test_daemon);
-$t->run_daemon(\&dns_daemon, port($_), $t) foreach (8081 .. 8087);
+$t->run_daemon(\&dns_daemon, port($_), $t) foreach (8981 .. 8987);
 
 $t->run();
 
 $t->waitforsocket('127.0.0.1:' . port(8026));
-$t->waitforfile($t->testdir . '/' . port($_)) foreach (8081 .. 8087);
+$t->waitforfile($t->testdir . '/' . port($_)) foreach (8981 .. 8987);
 
 ###############################################################################
 
@@ -140,7 +141,7 @@ $s->ok('PTR');
 $s->send('QUIT');
 $s->read();
 
-# Cached PTR prevents from querying bad ns on port 8083
+# Cached PTR prevents from querying bad ns on port 8983
 
 $s = Test::Nginx::SMTP->new();
 $s->read();
@@ -251,131 +252,131 @@ $s->read();
 ###############################################################################
 
 sub reply_handler {
-	my ($recv_data, $port) = @_;
+    my ($recv_data, $port) = @_;
 
-	my (@name, @rdata);
+    my (@name, @rdata);
 
-	use constant NOERROR	=> 0;
-	use constant SERVFAIL	=> 2;
-	use constant NXDOMAIN	=> 3;
+    use constant NOERROR    => 0;
+    use constant SERVFAIL    => 2;
+    use constant NXDOMAIN    => 3;
 
-	use constant A		=> 1;
-	use constant CNAME	=> 5;
-	use constant PTR	=> 12;
-	use constant DNAME	=> 39;
+    use constant A        => 1;
+    use constant CNAME    => 5;
+    use constant PTR    => 12;
+    use constant DNAME    => 39;
 
-	use constant IN		=> 1;
+    use constant IN        => 1;
 
-	# default values
+    # default values
 
-	my ($hdr, $rcode, $ttl) = (0x8180, NOERROR, 3600);
+    my ($hdr, $rcode, $ttl) = (0x8180, NOERROR, 3600);
 
-	# decode name
+    # decode name
 
-	my ($len, $offset) = (undef, 12);
-	while (1) {
-		$len = unpack("\@$offset C", $recv_data);
-		last if $len == 0;
-		$offset++;
-		push @name, unpack("\@$offset A$len", $recv_data);
-		$offset += $len;
-	}
+    my ($len, $offset) = (undef, 12);
+    while (1) {
+        $len = unpack("\@$offset C", $recv_data);
+        last if $len == 0;
+        $offset++;
+        push @name, unpack("\@$offset A$len", $recv_data);
+        $offset += $len;
+    }
 
-	$offset -= 1;
-	my ($id, $type, $class) = unpack("n x$offset n2", $recv_data);
+    $offset -= 1;
+    my ($id, $type, $class) = unpack("n x$offset n2", $recv_data);
 
-	my $name = join('.', @name);
-	if ($name eq 'a.example.net' && $type == A) {
-		push @rdata, rd_addr($ttl, '127.0.0.1');
+    my $name = join('.', @name);
+    if ($name eq 'a.example.net' && $type == A) {
+        push @rdata, rd_addr($ttl, '127.0.0.1');
 
-	} elsif ($name eq '1.0.0.127.in-addr.arpa' && $type == PTR) {
-		if ($port == port(8081)) {
-			push @rdata, rd_name(PTR, $ttl, 'a.example.net');
+    } elsif ($name eq '1.0.0.127.in-addr.arpa' && $type == PTR) {
+        if ($port == port(8981)) {
+            push @rdata, rd_name(PTR, $ttl, 'a.example.net');
 
-		} elsif ($port == port(8082)) {
-			$rcode = SERVFAIL;
+        } elsif ($port == port(8982)) {
+            $rcode = SERVFAIL;
 
-		} elsif ($port == port(8083)) {
-			# zero length RDATA
+        } elsif ($port == port(8983)) {
+            # zero length RDATA
 
-			push @rdata, pack("n3N n", 0xc00c, PTR, IN, $ttl, 0);
+            push @rdata, pack("n3N n", 0xc00c, PTR, IN, $ttl, 0);
 
-		} elsif ($port == port(8084)) {
-			# PTR answered with CNAME
+        } elsif ($port == port(8984)) {
+            # PTR answered with CNAME
 
-			push @rdata, rd_name(CNAME, $ttl,
-				'1.1.0.0.127.in-addr.arpa');
+            push @rdata, rd_name(CNAME, $ttl,
+                '1.1.0.0.127.in-addr.arpa');
 
-		} elsif ($port == port(8085)) {
-			# uncompressed answer
+        } elsif ($port == port(8985)) {
+            # uncompressed answer
 
-			push @rdata, pack("(C/a*)6x n2N n(C/a*)3x",
-				('1', '0', '0', '127', 'in-addr', 'arpa'),
-				PTR, IN, $ttl, 15, ('a', 'example', 'net'));
+            push @rdata, pack("(C/a*)6x n2N n(C/a*)3x",
+                ('1', '0', '0', '127', 'in-addr', 'arpa'),
+                PTR, IN, $ttl, 15, ('a', 'example', 'net'));
 
-		} elsif ($port == port(8086)) {
-			push @rdata, rd_name(DNAME, $ttl, 'a.example.net');
+        } elsif ($port == port(8986)) {
+            push @rdata, rd_name(DNAME, $ttl, 'a.example.net');
 
-		} elsif ($port == port(8087)) {
-			# PTR answered with CNAME+PTR
+        } elsif ($port == port(8987)) {
+            # PTR answered with CNAME+PTR
 
-			push @rdata, rd_name(CNAME, $ttl,
-				'1.1.0.0.127.in-addr.arpa');
-			push @rdata, pack("n3N n(C/a*)3 x", 0xc034,
-				PTR, IN, $ttl, 15, ('a', 'example', 'net'));
-		}
+            push @rdata, rd_name(CNAME, $ttl,
+                '1.1.0.0.127.in-addr.arpa');
+            push @rdata, pack("n3N n(C/a*)3 x", 0xc034,
+                PTR, IN, $ttl, 15, ('a', 'example', 'net'));
+        }
 
-	} elsif ($name eq '1.1.0.0.127.in-addr.arpa' && $type == PTR) {
-		push @rdata, rd_name(PTR, $ttl, 'a.example.net');
-	}
+    } elsif ($name eq '1.1.0.0.127.in-addr.arpa' && $type == PTR) {
+        push @rdata, rd_name(PTR, $ttl, 'a.example.net');
+    }
 
-	$len = @name;
-	pack("n6 (C/a*)$len x n2", $id, $hdr | $rcode, 1, scalar @rdata,
-		0, 0, @name, $type, $class) . join('', @rdata);
+    $len = @name;
+    pack("n6 (C/a*)$len x n2", $id, $hdr | $rcode, 1, scalar @rdata,
+        0, 0, @name, $type, $class) . join('', @rdata);
 }
 
 sub rd_name {
-	my ($type, $ttl, $name) = @_;
-	my ($rdlen, @rdname);
+    my ($type, $ttl, $name) = @_;
+    my ($rdlen, @rdname);
 
-	@rdname = split /\./, $name;
-	$rdlen = length(join '', @rdname) + @rdname + 1;
-	pack("n3N n(C/a*)* x", 0xc00c, $type, IN, $ttl, $rdlen, @rdname);
+    @rdname = split /\./, $name;
+    $rdlen = length(join '', @rdname) + @rdname + 1;
+    pack("n3N n(C/a*)* x", 0xc00c, $type, IN, $ttl, $rdlen, @rdname);
 }
 
 sub rd_addr {
-	my ($ttl, $addr) = @_;
+    my ($ttl, $addr) = @_;
 
-	my $code = 'split(/\./, $addr)';
+    my $code = 'split(/\./, $addr)';
 
-	# use a special pack string to not zero pad
+    # use a special pack string to not zero pad
 
-	return pack 'n3N', 0xc00c, A, IN, $ttl if $addr eq '';
+    return pack 'n3N', 0xc00c, A, IN, $ttl if $addr eq '';
 
-	pack 'n3N nC4', 0xc00c, A, IN, $ttl, eval "scalar $code", eval($code);
+    pack 'n3N nC4', 0xc00c, A, IN, $ttl, eval "scalar $code", eval($code);
 }
 
 sub dns_daemon {
-	my ($port, $t) = @_;
+    my ($port, $t) = @_;
 
-	my ($data, $recv_data);
-	my $socket = IO::Socket::INET->new(
-		LocalAddr => '127.0.0.1',
-		LocalPort => $port,
-		Proto => 'udp',
-	)
-		or die "Can't create listening socket: $!\n";
+    my ($data, $recv_data);
+    my $socket = IO::Socket::INET->new(
+        LocalAddr => '127.0.0.1',
+        LocalPort => $port,
+        Proto => 'udp',
+    )
+        or die "Can't create listening socket: $!\n";
 
-	# signal we are ready
+    # signal we are ready
 
-	open my $fh, '>', $t->testdir() . '/' . $port;
-	close $fh;
+    open my $fh, '>', $t->testdir() . '/' . $port;
+    close $fh;
 
-	while (1) {
-		$socket->recv($recv_data, 65536);
-		$data = reply_handler($recv_data, $port);
-		$socket->send($data);
-	}
+    while (1) {
+        $socket->recv($recv_data, 65536);
+        $data = reply_handler($recv_data, $port);
+        $socket->send($data);
+    }
 }
 
 ###############################################################################

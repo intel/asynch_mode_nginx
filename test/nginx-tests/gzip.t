@@ -40,18 +40,16 @@ http {
         listen       127.0.0.1:8080;
         server_name  localhost;
         location / {
-            #gzip on;
-            qatzip on;
-            qatzip_min_length 0;
+            %%GZIP_ENABLE%%
+            %%QATZIP_ENABLE%%
         }
         location /proxy/ {
-            #gzip on;
-            qatzip on;
-            qatzip_min_length 0;
+            %%GZIP_ENABLE%%
+            %%QATZIP_ENABLE%%
             proxy_pass http://127.0.0.1:8080/local/;
         }
         location /local/ {
-            gzip off;
+            %%GZIP_DISABLE%%
             alias %%TESTDIR%%/;
         }
     }
@@ -79,7 +77,7 @@ http_gzip_like($r, qr/^X{64}\Z/, 'gzip proxied content');
 
 unlike(http_gzip_request('/'), qr/Accept-Ranges/im, 'cleared accept-ranges');
 unlike(http_gzip_request('/proxy/'), qr/Accept-Ranges/im,
-	'cleared headers from proxy');
+    'cleared headers from proxy');
 
 # HEAD requests should return correct headers
 
@@ -89,8 +87,8 @@ unlike(http_head('/'), qr/Content-Encoding: gzip/, 'no gzip head');
 ###############################################################################
 
 sub http_gzip_head {
-	my ($uri) = @_;
-	return http(<<EOF);
+    my ($uri) = @_;
+    return http(<<EOF);
 HEAD $uri HTTP/1.1
 Host: localhost
 Connection: close

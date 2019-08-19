@@ -1,7 +1,8 @@
 #!/usr/bin/perl
 
-# (C) Maxim Dounin
 # Copyright (C) Intel, Inc.
+# (C) Maxim Dounin
+
 # Tests for auth request module with satisfy directive.
 
 ###############################################################################
@@ -22,8 +23,8 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()
-	->has(qw/http rewrite access auth_basic auth_request/)
-	->plan(18);
+    ->has(qw/http rewrite access auth_basic auth_request/)
+    ->plan(18);
 
 $t->write_file_expand('nginx.conf', <<'EOF');
 

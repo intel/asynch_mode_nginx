@@ -23,7 +23,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http proxy cache rewrite/)->plan(7)
-	->write_file_expand('nginx.conf', <<'EOF');
+    ->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -86,13 +86,13 @@ $t->run();
 ###############################################################################
 
 like(http_get_ims('/'), qr/ims=;blah=blah;/,
-	'if-modified-since cleared with cache');
+    'if-modified-since cleared with cache');
 
 like(http_get_ims('/no/'), qr/ims=blah;blah=blah;/,
-	'if-modified-since preserved without cache');
+    'if-modified-since preserved without cache');
 
 like(http_get_ims('/setbody/'), qr/blah=blah;/,
-	'proxy_set_header inherited with proxy_set_body');
+    'proxy_set_header inherited with proxy_set_body');
 
 unlike(http_get('/'), qr/X-Pad/, 'proxy_pass_header default');
 like(http_get('/nested/'), qr/X-Pad/, 'proxy_pass_header nested');
@@ -102,8 +102,8 @@ unlike(http_get('/nested/'), qr/X-Hidden/, 'proxy_hide_header nested');
 ###############################################################################
 
 sub http_get_ims {
-	my ($url) = @_;
-	return http(<<EOF);
+    my ($url) = @_;
+    return http(<<EOF);
 GET $url HTTP/1.0
 Host: localhost
 Connection: close

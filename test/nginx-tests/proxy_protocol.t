@@ -25,7 +25,7 @@ use Test::Nginx;
 select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
-my $t = Test::Nginx->new()->has(qw/http access ipv6 realip/);
+my $t = Test::Nginx->new()->has(qw/http access realip/);
 
 $t->write_file_expand('nginx.conf', <<'EOF')->plan(18);
 
@@ -123,8 +123,8 @@ like($log, qr!^2001:DB8::1 GET /pp_6!mi, 'tcp6 access log');
 ###############################################################################
 
 sub pp_get {
-	my ($url, $proxy) = @_;
-	return http($proxy . <<EOF);
+    my ($url, $proxy) = @_;
+    return http($proxy . <<EOF);
 GET $url HTTP/1.0
 Host: localhost
 

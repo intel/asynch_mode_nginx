@@ -26,7 +26,7 @@ eval { require SCGI; };
 plan(skip_all => 'SCGI not installed') if $@;
 
 my $t = Test::Nginx->new()->has(qw/http scgi/)->plan(5)
-	->write_file_expand('nginx.conf', <<'EOF');
+    ->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -88,9 +88,9 @@ EOF
 ###############################################################################
 
 sub http_get_length {
-	my ($url, $body) = @_;
-	my $length = length $body;
-	return http(<<EOF);
+    my ($url, $body) = @_;
+    my $length = length $body;
+    return http(<<EOF);
 GET $url HTTP/1.1
 Host: localhost
 Connection: close
@@ -103,32 +103,32 @@ EOF
 ###############################################################################
 
 sub scgi_daemon {
-	my $server = IO::Socket::INET->new(
-		Proto => 'tcp',
-		LocalHost => '127.0.0.1:' . port(8081),
-		Listen => 5,
-		Reuse => 1
-	)
-		or die "Can't create listening socket: $!\n";
+    my $server = IO::Socket::INET->new(
+        Proto => 'tcp',
+        LocalHost => '127.0.0.1:' . port(8081),
+        Listen => 5,
+        Reuse => 1
+    )
+        or die "Can't create listening socket: $!\n";
 
-	my $scgi = SCGI->new($server, blocking => 1);
-	my $body;
+    my $scgi = SCGI->new($server, blocking => 1);
+    my $body;
 
-	while (my $request = $scgi->accept()) {
-		eval { $request->read_env(); };
-		next if $@;
+    while (my $request = $scgi->accept()) {
+        eval { $request->read_env(); };
+        next if $@;
 
-		read($request->connection, $body,
-			$request->env->{CONTENT_LENGTH});
+        read($request->connection, $body,
+            $request->env->{CONTENT_LENGTH});
 
-		$request->connection()->print(<<EOF);
+        $request->connection()->print(<<EOF);
 Location: http://localhost/redirect
 Content-Type: text/html
 X-Body: $body
 
 SEE-THIS
 EOF
-	}
+    }
 }
 
 ###############################################################################

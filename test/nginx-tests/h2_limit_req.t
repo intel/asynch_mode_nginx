@@ -25,7 +25,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http http_v2 proxy rewrite limit_req/)
-	->plan(7);
+    ->plan(7);
 
 $t->write_file_expand('nginx.conf', <<'EOF');
 
@@ -79,7 +79,7 @@ my $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
 my ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
 is(read_body_file($frame->{headers}->{'x-body-file'}), 'TEST',
-	'request body - limit req');
+    'request body - limit req');
 
 $s = Test::Nginx::HTTP2->new();
 $sid = $s->new_stream({ path => '/proxy_limit_req/', body_more => 1 });
@@ -89,7 +89,7 @@ $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
 is(read_body_file($frame->{headers}->{'x-body-file'}), 'TEST',
-	'request body - limit req - limited');
+    'request body - limit req - limited');
 
 # request body delayed in limit_req - with an empty DATA frame
 # "zero size buf in output" alerts seen
@@ -118,7 +118,7 @@ $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
 is(read_body_file($frame->{headers}->{'x-body-file'}), 'TEST2',
-	'request body - limit req 2');
+    'request body - limit req 2');
 
 }
 
@@ -131,7 +131,7 @@ SKIP: {
 skip 'not enough window', 1 if $maxwin < 4;
 
 $sid = $s->new_stream({ path => '/limit_req', body => 'TEST', split => [61],
-	split_delay => 1.1 });
+    split_delay => 1.1 });
 $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
@@ -153,7 +153,7 @@ skip 'not enough window', 1 if $maxwin < 4;
 
 $s = Test::Nginx::HTTP2->new();
 $sid = $s->new_stream({ path => '/limit_req', body => 'TEST', split => [61],
-	abort => 1 });
+    abort => 1 });
 
 select undef, undef, undef, 1.1;
 close $s->{socket};
@@ -165,13 +165,13 @@ pass('discard body - limit req - eof');
 ###############################################################################
 
 sub read_body_file {
-	my ($path) = @_;
-	return unless $path;
-	open FILE, $path or return "$!";
-	local $/;
-	my $content = <FILE>;
-	close FILE;
-	return $content;
+    my ($path) = @_;
+    return unless $path;
+    open FILE, $path or return "$!";
+    local $/;
+    my $content = <FILE>;
+    close FILE;
+    return $content;
 }
 
 ###############################################################################

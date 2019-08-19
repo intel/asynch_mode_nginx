@@ -30,7 +30,7 @@ plan(skip_all => 'FCGI not installed') if $@;
 plan(skip_all => 'win32') if $^O eq 'MSWin32';
 
 my $t = Test::Nginx->new()->has(qw/http fastcgi/)->plan(1)
-	->write_file_expand('nginx.conf', <<'EOF');
+    ->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -76,24 +76,24 @@ like(http_get('/'), qr/^Good: header/ms, 'fastcgi next upstream');
 ###############################################################################
 
 sub fastcgi_daemon {
-	my ($port) = @_;
-	my $socket = FCGI::OpenSocket("127.0.0.1:$port", 5);
-	my $request = FCGI::Request(\*STDIN, \*STDOUT, \*STDERR, \%ENV,
-		$socket);
+    my ($port) = @_;
+    my $socket = FCGI::OpenSocket("127.0.0.1:$port", 5);
+    my $request = FCGI::Request(\*STDIN, \*STDOUT, \*STDERR, \%ENV,
+        $socket);
 
-	my $count;
-	while( $request->Accept() >= 0 ) {
-		$count++;
+    my $count;
+    while( $request->Accept() >= 0 ) {
+        $count++;
 
-		if ($port == port(8081)) {
-			print 'BAD';
-		}
-		if ($port == port(8082)) {
-			print 'Good: header' . CRLF . CRLF;
-		}
-	}
+        if ($port == port(8081)) {
+            print 'BAD';
+        }
+        if ($port == port(8082)) {
+            print 'Good: header' . CRLF . CRLF;
+        }
+    }
 
-	FCGI::CloseSocket($socket);
+    FCGI::CloseSocket($socket);
 }
 
 ###############################################################################

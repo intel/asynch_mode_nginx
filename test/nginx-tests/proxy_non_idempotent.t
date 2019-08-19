@@ -24,7 +24,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http proxy rewrite upstream_keepalive/)
-	->plan(6);
+    ->plan(8);
 
 $t->write_file_expand('nginx.conf', <<'EOF');
 
@@ -57,7 +57,7 @@ http {
 
         location / {
             proxy_pass http://u;
-            proxy_next_upstream error timeout;
+            proxy_next_upstream error timeout http_404;
         }
 
         location /non {
@@ -81,6 +81,10 @@ http {
             return 444;
         }
 
+        location /404 {
+            return 404 SEE-THIS;
+        }
+
         location /keepalive/establish {
             return 204;
         }
@@ -99,6 +103,12 @@ $t->run();
 like(http_get('/'), qr/X-IP: (\S+), \1\x0d?$/m, 'get');
 like(http_post('/'), qr/X-IP: (\S+)\x0d?$/m, 'post');
 
+# non-idempotent requests should not be retried by default,
+# in particular, not emit builtin error page due to next upstream
+
+like(http_get('/404'), qr/X-IP: (\S+), \1.*SEE-THIS/s, 'get 404');
+like(http_post('/404'), qr/X-IP: (\S++)(?! ).*SEE-THIS/s, 'post 404');
+
 # with "proxy_next_upstream non_idempotent" there is no
 # difference between idempotent and non-idempotent requests,
 # non-idempotent requests are retried as usual
@@ -114,10 +124,10 @@ like(http_post('/keepalive/drop'), qr/X-IP: (\S+)\x0d?$/m, 'keepalive post');
 ###############################################################################
 
 sub http_post {
-	my ($uri, %extra) = @_;
-	my $cl = $extra{cl} || 0;
+    my ($uri, %extra) = @_;
+    my $cl = $extra{cl} || 0;
 
-	http(<<"EOF");
+    http(<<"EOF");
 POST $uri HTTP/1.0
 Content-Length: $cl
 

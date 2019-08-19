@@ -23,12 +23,18 @@ use Test::Nginx;
 select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
-eval { require IO::Socket::SSL; };
-plan(skip_all => 'IO::Socket::SSL not installed') if $@;
-eval { IO::Socket::SSL::SSL_VERIFY_NONE(); };
-plan(skip_all => 'IO::Socket::SSL too old') if $@;
+eval {
+    require Net::SSLeay;
+    Net::SSLeay::load_error_strings();
+    Net::SSLeay::SSLeay_add_ssl_algorithms();
+    Net::SSLeay::randomize();
+    Net::SSLeay::SSLeay();
+};
+plan(skip_all => 'Net::SSLeay not installed or too old') if $@;
 
 my $t = Test::Nginx->new()->has(qw/http http_ssl/)->has_daemon('openssl');
+
+plan(skip_all => 'no multiple certificates') if $t->has_module('BoringSSL');
 
 $t->write_file_expand('nginx.conf', <<'EOF');
 
@@ -41,18 +47,18 @@ events {
 
 http {
     %%TEST_GLOBALS_HTTP%%
-
-    ssl_dhparam dhparam.pem;
+    %%TEST_GLOBALS_HTTPS%%
 
     ssl_certificate_key rsa.key;
     ssl_certificate rsa.crt;
+    ssl_ciphers DEFAULT:ECCdraft;
 
     server {
         listen       127.0.0.1:8080 ssl;
         server_name  localhost;
 
-        ssl_certificate_key dsa.key;
-        ssl_certificate dsa.crt;
+        ssl_certificate_key ec.key;
+        ssl_certificate ec.crt;
 
         ssl_certificate_key rsa.key;
         ssl_certificate rsa.crt;
@@ -66,7 +72,7 @@ EOF
 
 $t->write_file('openssl.conf', <<EOF);
 [ req ]
-default_bits = 2048
+default_bits = 1024
 encrypt_key = no
 distinguished_name = req_distinguished_name
 [ req_distinguished_name ]
@@ -74,60 +80,78 @@ EOF
 
 my $d = $t->testdir();
 
-system("openssl dhparam -dsaparam 1024 -out '$d/dhparam.pem' "
-	. ">>$d/openssl.out 2>&1") == 0 or die "Can't create DH param: $!\n";
-system("openssl genrsa -out '$d/rsa.key' >>$d/openssl.out 2>&1") == 0
+system("openssl ecparam -genkey -out $d/ec.key -name prime256v1 "
+    . ">>$d/openssl.out 2>&1") == 0 or die "Can't create EC pem: $!\n";
+system("openssl genrsa -out $d/rsa.key 1024 >>$d/openssl.out 2>&1") == 0
         or die "Can't create RSA pem: $!\n";
-system("openssl dsaparam -genkey 1024 -out '$d/dsa.key' >>$d/openssl 2>&1") == 0
-	or die "Can't create DSA pem: $!\n";
 
-foreach my $name ('dsa', 'rsa') {
-	system("openssl req -x509 -new -key '$d/$name.key' "
-		. "-config '$d/openssl.conf' -subj '/CN=$name/' "
-		. "-out '$d/$name.crt' -keyout '$d/$name.key' "
-		. ">>$d/openssl.out 2>&1") == 0
-		or die "Can't create certificate for $name: $!\n";
+foreach my $name ('ec', 'rsa') {
+    system("openssl req -x509 -new -key $d/$name.key "
+        . "-config $d/openssl.conf -subj /CN=$name/ "
+        . "-out $d/$name.crt -keyout $d/$name.key "
+        . ">>$d/openssl.out 2>&1") == 0
+        or die "Can't create certificate for $name: $!\n";
 }
 
-$t->try_run('no multiple certificates')->plan(2);
+$t->run()->plan(2);
 
 ###############################################################################
 
 like(get_cert('RSA'), qr/CN=rsa/, 'ssl cert RSA');
-like(get_cert('DSS'), qr/CN=dsa/, 'ssl cert DSA');
+like(get_cert('ECDSA'), qr/CN=ec/, 'ssl cert ECDSA');
 
 ###############################################################################
 
+sub get_version {
+    my ($s, $ssl) = get_ssl_socket();
+    return Net::SSLeay::version($ssl);
+}
+
 sub get_cert {
-	my ($ciphers) = @_;
-	my $s;
+    my ($type) = @_;
+    $type = 'PSS' if $type eq 'RSA' && get_version() > 0x0303;
+    my ($s, $ssl) = get_ssl_socket($type);
+    my $cipher = Net::SSLeay::get_cipher($ssl);
+    Test::Nginx::log_core('||', "cipher: $cipher");
+    return Net::SSLeay::dump_peer_certificate($ssl);
+}
 
-	eval {
-		local $SIG{ALRM} = sub { die "timeout\n" };
-		local $SIG{PIPE} = sub { die "sigpipe\n" };
-		alarm(2);
-		$s = IO::Socket::SSL->new(
-			Proto => 'tcp',
-			PeerAddr => '127.0.0.1',
-			PeerPort => port(8080),
-			SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_NONE(),
-			SSL_cipher_list => $ciphers,
-			SSL_error_trap => sub { die $_[1] }
-		);
-		alarm(0);
-	};
-	alarm(0);
+sub get_ssl_socket {
+    my ($type) = @_;
+    my $s;
 
-	if ($@) {
-		log_in("died: $@");
-		return undef;
-	}
+    eval {
+        local $SIG{ALRM} = sub { die "timeout\n" };
+        local $SIG{PIPE} = sub { die "sigpipe\n" };
+        alarm(5);
+        $s = IO::Socket::INET->new('127.0.0.1:' . port(8080));
+        alarm(0);
+    };
+    alarm(0);
 
-	my $cipher = $s->get_cipher();
+    if ($@) {
+        log_in("died: $@");
+        return undef;
+    }
 
-	Test::Nginx::log_core('||', "cipher: $cipher");
+    my $ctx = Net::SSLeay::CTX_new() or die("Failed to create SSL_CTX $!");
 
-	return $s->dump_peer_certificate;
+    if (defined $type) {
+        my $ssleay = Net::SSLeay::SSLeay();
+        if ($ssleay < 0x1000200f || $ssleay == 0x20000000) {
+            Net::SSLeay::CTX_set_cipher_list($ctx, $type)
+                or die("Failed to set cipher list");
+        } else {
+            # SSL_CTRL_SET_SIGALGS_LIST
+            Net::SSLeay::CTX_ctrl($ctx, 98, 0, $type . '+SHA256')
+                or die("Failed to set sigalgs");
+        }
+    }
+
+    my $ssl = Net::SSLeay::new($ctx) or die("Failed to create SSL $!");
+    Net::SSLeay::set_fd($ssl, fileno($s));
+    Net::SSLeay::connect($ssl) or die("ssl connect");
+    return ($s, $ssl);
 }
 
 ###############################################################################

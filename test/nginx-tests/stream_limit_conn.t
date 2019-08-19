@@ -24,7 +24,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http stream stream_limit_conn/)
-	->plan(8)->write_file_expand('nginx.conf', <<'EOF');
+    ->plan(8)->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -113,25 +113,25 @@ is(get('127.0.0.1:' . port(8083)), undef, 'rejected proxy');
 ###############################################################################
 
 sub get {
-	my $peer = shift;
+    my $peer = shift;
 
-	my $r = http_get('/', socket => getconn($peer));
-	if (!$r) {
-		$r = undef;
-	}
+    my $r = http_get('/', socket => getconn($peer));
+    if (!$r) {
+        $r = undef;
+    }
 
-	return $r;
+    return $r;
 }
 
 sub getconn {
-	my $peer = shift;
-	my $s = IO::Socket::INET->new(
-		Proto => 'tcp',
-		PeerAddr => $peer || '127.0.0.1:' . port(8080)
-	)
-		or die "Can't connect to nginx: $!\n";
+    my $peer = shift;
+    my $s = IO::Socket::INET->new(
+        Proto => 'tcp',
+        PeerAddr => $peer || '127.0.0.1:' . port(8080)
+    )
+        or die "Can't connect to nginx: $!\n";
 
-	return $s;
+    return $s;
 }
 
 ###############################################################################

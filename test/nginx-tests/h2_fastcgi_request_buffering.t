@@ -54,18 +54,13 @@ http {
 EOF
 
 $t->run();
-
-my $f = get_body('/chunked');
-plan(skip_all => 'no unbuffered request body') unless $f;
-$f->{http_end}();
-
 $t->plan(48);
 
 ###############################################################################
 
 # unbuffered request body to fastcgi
 
-$f = get_body('/');
+my $f = get_body('/');
 ok($f->{headers}, 'request');
 is($f->{upload}('01234', body_more => 1), '01234', 'part');
 is($f->{upload}('56789'), '56789_eos', 'part 2');
@@ -81,9 +76,9 @@ is($f->{http_end}(), 200, 'buffer - response');
 $f = get_body('/');
 ok($f->{headers}, 'many');
 is($f->{upload}('01234many', body_split => [ 5 ], body_more => 1),
-	'01234many', 'many - part');
+    '01234many', 'many - part');
 is($f->{upload}('56789many', body_split => [ 5 ]),
-	'56789many_eos', 'many - part 2');
+    '56789many_eos', 'many - part 2');
 is($f->{http_end}(), 200, 'many - response');
 
 $f = get_body('/');
@@ -95,7 +90,7 @@ is($f->{http_end}(), 200, 'empty - response');
 $f = get_body('/');
 ok($f->{headers}, 'split');
 is($f->{upload}('0123456789', split => [ 14 ]), '0123456789_eos',
-	'split - part');
+    'split - part');
 is($f->{http_end}(), 200, 'split - response');
 
 # unbuffered request body to fastcgi, content-length
@@ -110,9 +105,9 @@ is($f->{http_end}(), 200, 'cl - response');
 $f = get_body('/', 'content-length' => 1536);
 ok($f->{headers}, 'cl buffer');
 is($f->{upload}('0123' x 128, body_more => 1), '0123' x 128,
-	'cl buffer - below');
+    'cl buffer - below');
 is($f->{upload}('4567' x 128, body_more => 1), '4567' x 128,
-	'cl buffer - equal');
+    'cl buffer - equal');
 is($f->{upload}('89AB' x 128), '89AB' x 128 . '_eos', 'cl buffer - above');
 is($f->{http_end}(), 200, 'cl buffer - response');
 
@@ -131,9 +126,9 @@ is($f->{http_end}(), 400, 'cl less - response');
 $f = get_body('/', 'content-length' => 18);
 ok($f->{headers}, 'cl many');
 is($f->{upload}('01234many', body_split => [ 5 ], body_more => 1),
-	'01234many', 'cl many - part');
+    '01234many', 'cl many - part');
 is($f->{upload}('56789many', body_split => [ 5 ]), '56789many_eos',
-	'cl many - part 2');
+    'cl many - part 2');
 is($f->{http_end}(), 200, 'cl many - response');
 
 $f = get_body('/', 'content-length' => 0);
@@ -154,128 +149,128 @@ is($f->{http_end}(), 200, 'cl split - response');
 # http://www.fastcgi.com/devkit/doc/fcgi-spec.html
 
 sub fastcgi_read_record($) {
-	my ($buf) = @_;
-	my $h;
+    my ($buf) = @_;
+    my $h;
 
-	return undef unless length $$buf;
+    return undef unless length $$buf;
 
-	@{$h}{qw/ version type id clen plen /} = unpack("CCnnC", $$buf);
+    @{$h}{qw/ version type id clen plen /} = unpack("CCnnC", $$buf);
 
-	$h->{content} = substr $$buf, 8, $h->{clen};
-	$h->{padding} = substr $$buf, 8 + $h->{clen}, $h->{plen};
+    $h->{content} = substr $$buf, 8, $h->{clen};
+    $h->{padding} = substr $$buf, 8 + $h->{clen}, $h->{plen};
 
-	$$buf = substr $$buf, 8 + $h->{clen} + $h->{plen};
+    $$buf = substr $$buf, 8 + $h->{clen} + $h->{plen};
 
-	return $h;
+    return $h;
 }
 
 sub fastcgi_respond($$$$) {
-	my ($socket, $version, $id, $body) = @_;
+    my ($socket, $version, $id, $body) = @_;
 
-	# stdout
-	$socket->write(pack("CCnnCx", $version, 6, $id, length($body), 0));
-	$socket->write($body);
+    # stdout
+    $socket->write(pack("CCnnCx", $version, 6, $id, length($body), 0));
+    $socket->write($body);
 
-	# close stdout
-	$socket->write(pack("CCnnCx", $version, 6, $id, 0, 0));
+    # close stdout
+    $socket->write(pack("CCnnCx", $version, 6, $id, 0, 0));
 
-	# end request
-	$socket->write(pack("CCnnCx", $version, 3, $id, 8, 0));
-	$socket->write(pack("NCxxx", 0, 0));
+    # end request
+    $socket->write(pack("CCnnCx", $version, 3, $id, 8, 0));
+    $socket->write(pack("NCxxx", 0, 0));
 }
 
 sub get_body {
-	my ($url, %extra) = @_;
-	my ($server, $client, $f);
+    my ($url, %extra) = @_;
+    my ($server, $client, $f);
 
-	$server = IO::Socket::INET->new(
-		Proto => 'tcp',
-		LocalHost => '127.0.0.1',
-		LocalPort => port(8081),
-		Listen => 5,
-		Timeout => 3,
-		Reuse => 1
-	)
-		or die "Can't create listening socket: $!\n";
+    $server = IO::Socket::INET->new(
+        Proto => 'tcp',
+        LocalHost => '127.0.0.1',
+        LocalPort => port(8081),
+        Listen => 5,
+        Timeout => 3,
+        Reuse => 1
+    )
+        or die "Can't create listening socket: $!\n";
 
-	my $s = Test::Nginx::HTTP2->new();
-	my $sid = exists $extra{'content-length'}
-		? $s->new_stream({ headers => [
-			{ name => ':method', value => 'GET' },
-			{ name => ':scheme', value => 'http' },
-			{ name => ':path', value => $url, },
-			{ name => ':authority', value => 'localhost' },
-			{ name => 'content-length',
-				value => $extra{'content-length'} }],
-			body_more => 1 })
-		: $s->new_stream({ path => $url, body_more => 1 });
+    my $s = Test::Nginx::HTTP2->new();
+    my $sid = exists $extra{'content-length'}
+        ? $s->new_stream({ headers => [
+            { name => ':method', value => 'GET' },
+            { name => ':scheme', value => 'http' },
+            { name => ':path', value => $url, },
+            { name => ':authority', value => 'localhost' },
+            { name => 'content-length',
+                value => $extra{'content-length'} }],
+            body_more => 1 })
+        : $s->new_stream({ path => $url, body_more => 1 });
 
-	$client = $server->accept() or return;
+    $client = $server->accept() or return;
 
-	log2c("(new connection $client)");
+    log2c("(new connection $client)");
 
-	$f->{headers} = backend_read($client);
+    $f->{headers} = backend_read($client);
 
-	my $h = fastcgi_read_record(\$f->{headers});
-	my $version = $h->{version};
-	my $id = $h->{id};
+    my $h = fastcgi_read_record(\$f->{headers});
+    my $version = $h->{version};
+    my $id = $h->{id};
 
-	$f->{upload} = sub {
-		my ($body, %extra) = @_;
-		my $len = length($body);
-		my $wait = $extra{wait};
+    $f->{upload} = sub {
+        my ($body, %extra) = @_;
+        my $len = length($body);
+        my $wait = $extra{wait};
 
-		$s->h2_body($body, { %extra });
+        $s->h2_body($body, { %extra });
 
-		$body = '';
+        $body = '';
 
-		for (1 .. 10) {
-			my $buf = backend_read($client, $wait) or return '';
+        for (1 .. 10) {
+            my $buf = backend_read($client, $wait) or return '';
 
-			while (my $h = fastcgi_read_record(\$buf)) {
+            while (my $h = fastcgi_read_record(\$buf)) {
 
-				# skip everything unless stdin
-				next if $h->{type} != 5;
+                # skip everything unless stdin
+                next if $h->{type} != 5;
 
-				$body .= $h->{content};
+                $body .= $h->{content};
 
-				# mark the end-of-stream indication
-				$body .= "_eos" if $h->{clen} == 0;
-			}
+                # mark the end-of-stream indication
+                $body .= "_eos" if $h->{clen} == 0;
+            }
 
-			last if length($body) >= $len;
-		}
+            last if length($body) >= $len;
+        }
 
-		return $body;
-	};
-	$f->{http_end} = sub {
-		local $SIG{PIPE} = 'IGNORE';
+        return $body;
+    };
+    $f->{http_end} = sub {
+        local $SIG{PIPE} = 'IGNORE';
 
-		fastcgi_respond($client, $version, $id, <<EOF);
+        fastcgi_respond($client, $version, $id, <<EOF);
 Status: 200 OK
 Connection: close
 
 OK
 EOF
 
-		$client->close;
+        $client->close;
 
-		my $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
-		my ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
-		return $frame->{headers}->{':status'};
-	};
-	return $f;
+        my $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
+        my ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
+        return $frame->{headers}->{':status'};
+    };
+    return $f;
 }
 
 sub backend_read {
-	my ($s, $timo) = @_;
-	my $buf = '';
+    my ($s, $timo) = @_;
+    my $buf = '';
 
-	if (IO::Select->new($s)->can_read($timo || 3)) {
-		$s->sysread($buf, 16384) or return;
-		log2i($buf);
-	}
-	return $buf;
+    if (IO::Select->new($s)->can_read($timo || 3)) {
+        $s->sysread($buf, 16384) or return;
+        log2i($buf);
+    }
+    return $buf;
 }
 
 sub log2i { Test::Nginx::log_core('|| <<', @_); }

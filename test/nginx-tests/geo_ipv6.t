@@ -23,8 +23,8 @@ use Test::Nginx;
 select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
-my $t = Test::Nginx->new()->has(qw/http geo ipv6/)
-	->write_file_expand('nginx.conf', <<'EOF');
+my $t = Test::Nginx->new()->has(qw/http geo/)
+    ->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -95,7 +95,7 @@ $t->write_file('addr', '');
 $t->try_run('no inet6 support');
 
 plan(skip_all => 'no ::1 on host')
-	if http_get('/addr') !~ /X-IP: ::1/m;
+    if http_get('/addr') !~ /X-IP: ::1/m;
 
 $t->plan(4);
 
@@ -106,13 +106,13 @@ like(http_get('/'), qr/^X-Del: world/m, 'geo ipv6 delete');
 
 like(http_xff('::ffff:192.0.2.1'), qr/^X-XFF: test/m, 'geo ipv6 ipv4-mapped');
 like(http_get('/?ip=::ffff:192.0.2.1'), qr/^X-Arg: test/m,
-	'geo ipv6 ipv4-mapped from variable');
+    'geo ipv6 ipv4-mapped from variable');
 
 ###############################################################################
 
 sub http_xff {
-	my ($xff) = @_;
-	return http(<<EOF);
+    my ($xff) = @_;
+    return http(<<EOF);
 GET / HTTP/1.0
 Host: localhost
 X-Forwarded-For: $xff

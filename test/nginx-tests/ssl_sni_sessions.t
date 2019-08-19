@@ -22,9 +22,9 @@ use Test::Nginx;
 select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
-my $t = Test::Nginx->new()->has(qw/http http_ssl sni rewrite/)
-	->has_daemon('openssl')
-	->write_file_expand('nginx.conf', <<'EOF');
+my $t = Test::Nginx->new()->has(qw/http http_ssl sni rewrite/);
+
+$t->has_daemon('openssl')->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -35,12 +35,13 @@ events {
 
 http {
     %%TEST_GLOBALS_HTTP%%
+    %%TEST_GLOBALS_HTTPS%%
 
     ssl_certificate_key localhost.key;
     ssl_certificate localhost.crt;
 
     server {
-        listen       127.0.0.1:8080 ssl asynch;
+        listen       127.0.0.1:8080 ssl;
         server_name  default;
 
         ssl_session_tickets off;
@@ -64,7 +65,7 @@ http {
     }
 
     server {
-        listen       127.0.0.1:8081 ssl asynch;
+        listen       127.0.0.1:8081 ssl;
         server_name  default;
 
         ssl_session_ticket_key ticket1.key;
@@ -92,16 +93,16 @@ eval { require IO::Socket::SSL; die if $IO::Socket::SSL::VERSION < 1.56; };
 plan(skip_all => 'IO::Socket::SSL version >= 1.56 required') if $@;
 
 eval {
-	if (IO::Socket::SSL->can('can_client_sni')) {
-		IO::Socket::SSL->can_client_sni() or die;
-	}
+    if (IO::Socket::SSL->can('can_client_sni')) {
+        IO::Socket::SSL->can_client_sni() or die;
+    }
 };
 plan(skip_all => 'IO::Socket::SSL with OpenSSL SNI support required') if $@;
 
 eval {
-	my $ctx = Net::SSLeay::CTX_new() or die;
-	my $ssl = Net::SSLeay::new($ctx) or die;
-	Net::SSLeay::set_tlsext_host_name($ssl, 'example.org') == 1 or die;
+    my $ctx = Net::SSLeay::CTX_new() or die;
+    my $ssl = Net::SSLeay::new($ctx) or die;
+    Net::SSLeay::set_tlsext_host_name($ssl, 'example.org') == 1 or die;
 };
 plan(skip_all => 'Net::SSLeay with OpenSSL SNI support required') if $@;
 
@@ -109,7 +110,7 @@ $t->plan(6);
 
 $t->write_file('openssl.conf', <<EOF);
 [ req ]
-default_bits = 2048
+default_bits = 1024
 encrypt_key = no
 distinguished_name = req_distinguished_name
 [ req_distinguished_name ]
@@ -118,19 +119,19 @@ EOF
 my $d = $t->testdir();
 
 foreach my $name ('localhost') {
-	system('openssl req -x509 -new '
-		. "-config '$d/openssl.conf' -subj '/CN=$name/' "
-		. "-out '$d/$name.crt' -keyout '$d/$name.key' "
-		. ">>$d/openssl.out 2>&1") == 0
-		or die "Can't create certificate for $name: $!\n";
+    system('openssl req -x509 -new '
+        . "-config $d/openssl.conf -subj /CN=$name/ "
+        . "-out $d/$name.crt -keyout $d/$name.key "
+        . ">>$d/openssl.out 2>&1") == 0
+        or die "Can't create certificate for $name: $!\n";
 }
 
 $t->write_file('ticket1.key', '1' x 48);
 $t->write_file('ticket2.key', '2' x 48);
 
-sleep $ENV{TEST_DELAY_TIME};
+sleep 60;
 $t->run();
-sleep $ENV{TEST_DELAY_TIME};
+sleep 60;
 ###############################################################################
 
 # check that everything works fine with default server
@@ -166,48 +167,52 @@ like(get('tickets', port(8081), $ctx), qr!tickets:r!, 'tickets reused');
 ###############################################################################
 
 sub get_ssl_context {
-	return IO::Socket::SSL::SSL_Context->new(
-		SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_NONE(),
-		SSL_session_cache_size => 100
-	);
+    return IO::Socket::SSL::SSL_Context->new(
+        SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_NONE(),
+        SSL_session_cache_size => 100
+    );
 }
 
 sub get_ssl_socket {
-	my ($host, $port, $ctx) = @_;
-	my $s;
+    my ($host, $port, $ctx) = @_;
+    my $s;
 
-	eval {
-		local $SIG{ALRM} = sub { die "timeout\n" };
-		local $SIG{PIPE} = sub { die "sigpipe\n" };
-		alarm(2);
-		$s = IO::Socket::SSL->new(
-			Proto => 'tcp',
-			PeerAddr => '127.0.0.1',
-			PeerPort => $port,
-			SSL_hostname => $host,
-			SSL_reuse_ctx => $ctx,
-			SSL_error_trap => sub { die $_[1] }
-		);
-		alarm(0);
-	};
-	alarm(0);
+    eval {
+        local $SIG{ALRM} = sub { die "timeout\n" };
+        local $SIG{PIPE} = sub { die "sigpipe\n" };
+        alarm(5);
+        $s = IO::Socket::SSL->new(
+            Proto => 'tcp',
+            PeerAddr => '127.0.0.1',
+            PeerPort => $port,
+            SSL_hostname => $host,
+            SSL_reuse_ctx => $ctx,
+            SSL_error_trap => sub { die $_[1] }
+        );
+        alarm(0);
+    };
+    alarm(0);
 
-	if ($@) {
-		log_in("died: $@");
-		return undef;
-	}
+    if ($@) {
+        log_in("died: $@");
+        return undef;
+    }
 
-	return $s;
+    return $s;
 }
 
 sub get {
-	my ($host, $port, $ctx) = @_;
+    my ($host, $port, $ctx) = @_;
 
-	return http(<<EOF, socket => get_ssl_socket($host, $port, $ctx));
+    my $s = get_ssl_socket($host, $port, $ctx) or return;
+    my $r = http(<<EOF, socket => $s);
 GET / HTTP/1.0
 Host: $host
 
 EOF
+
+    $s->close();
+    return $r;
 }
 
 ###############################################################################

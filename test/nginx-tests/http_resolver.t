@@ -44,7 +44,7 @@ http {
         server_name  localhost;
 
         location / {
-            resolver    127.0.0.1:%%PORT_8081_UDP%%;
+            resolver    127.0.0.1:%%PORT_8981_UDP%%;
             resolver_timeout 1s;
             proxy_pass  http://$host:%%PORT_8080%%/backend;
 
@@ -54,37 +54,37 @@ http {
             error_page 504 502 /50x;
         }
         location /two {
-            resolver    127.0.0.1:%%PORT_8081_UDP%% 127.0.0.1:%%PORT_8082_UDP%%;
+            resolver    127.0.0.1:%%PORT_8981_UDP%% 127.0.0.1:%%PORT_8982_UDP%%;
             proxy_pass  http://$host:%%PORT_8080%%/backend;
         }
         location /valid {
-            resolver    127.0.0.1:%%PORT_8081_UDP%% valid=5s;
+            resolver    127.0.0.1:%%PORT_8981_UDP%% valid=5s;
             proxy_pass  http://$host:%%PORT_8080%%/backend;
         }
         location /case {
-            resolver    127.0.0.1:%%PORT_8081_UDP%%;
+            resolver    127.0.0.1:%%PORT_8981_UDP%%;
             proxy_pass  http://$http_x_name:%%PORT_8080%%/backend;
         }
         location /invalid {
             proxy_pass  http://$host:%%PORT_8080%%/backend;
         }
         location /long {
-            resolver    127.0.0.1:%%PORT_8081_UDP%%;
+            resolver    127.0.0.1:%%PORT_8981_UDP%%;
             resolver_timeout 4s;
             proxy_pass  http://$host:%%PORT_8080%%/backend;
         }
         location /resend {
-            resolver    127.0.0.1:%%PORT_8081_UDP%%;
+            resolver    127.0.0.1:%%PORT_8981_UDP%%;
             resolver_timeout 8s;
             proxy_pass  http://$host:%%PORT_8080%%/backend;
         }
         location /bad {
-            resolver    127.0.0.1:%%PORT_8084_UDP%%;
+            resolver    127.0.0.1:%%PORT_8984_UDP%%;
             resolver_timeout 1s;
             proxy_pass  http://$host:%%PORT_8080%%/backend;
         }
         location /tcp {
-            resolver    127.0.0.1:%%PORT_8083_UDP%% 127.0.0.1:%%PORT_8082_UDP%%;
+            resolver    127.0.0.1:%%PORT_8983_UDP%% 127.0.0.1:%%PORT_8982_UDP%%;
             resolver_timeout 1s;
             proxy_pass  http://$host:%%PORT_8080%%/backend;
             proxy_connect_timeout 1s;
@@ -108,20 +108,20 @@ http {
 
 EOF
 
-$t->run_daemon(\&dns_daemon, port(8081), $t);
-$t->run_daemon(\&dns_daemon, port(8082), $t);
+$t->run_daemon(\&dns_daemon, port(8981), $t);
+$t->run_daemon(\&dns_daemon, port(8982), $t);
 
-$t->run_daemon(\&dns_daemon, port(8083), $t, tcp => 1);
-$t->waitforfile($t->testdir . '/' . port(8083));
-port(8083, socket => 1)->close();
+$t->run_daemon(\&dns_daemon, port(8983), $t, tcp => 1);
+$t->waitforfile($t->testdir . '/' . port(8983));
+port(8983, socket => 1)->close();
 
-$t->run_daemon(\&dns_daemon, port(8084), $t);
+$t->run_daemon(\&dns_daemon, port(8984), $t);
 
 $t->run()->plan(38);
 
-$t->waitforfile($t->testdir . '/' . port(8081));
-$t->waitforfile($t->testdir . '/' . port(8082));
-$t->waitforfile($t->testdir . '/' . port(8084));
+$t->waitforfile($t->testdir . '/' . port(8981));
+$t->waitforfile($t->testdir . '/' . port(8982));
+$t->waitforfile($t->testdir . '/' . port(8984));
 
 ###############################################################################
 
@@ -139,16 +139,16 @@ like(http_host_header('a.example.net', '/'), qr/200 OK/, 'A');
 
 http_x_name_header('case.example.net', '/case');
 like(http_x_name_header('CASE.example.net', '/case'), qr/200 OK/,
-	'A case-insensitive');
+    'A case-insensitive');
 
 like(http_host_header('awide.example.net', '/'), qr/200 OK/, 'A uncompressed');
 like(http_host_header('short.example.net', '/'), qr/502 Bad/,
-	'A short dns response');
+    'A short dns response');
 
 like(http_host_header('nx.example.net', '/'), qr/502 Bad/, 'NXDOMAIN');
 like(http_host_header('cname.example.net', '/'), qr/200 OK/, 'CNAME');
 like(http_host_header('cname.example.net', '/'), qr/200 OK/,
-	'CNAME cached');
+    'CNAME cached');
 
 # CNAME + A combined answer
 # demonstrates the name in answer section different from what is asked
@@ -169,12 +169,12 @@ like(http_host_header('alias.example.com', '/'), qr/200 OK/, 'DNAME');
 # nonexisting IPs enumerated with proxy_next_upstream
 
 like(http_host_header('many.example.net', '/'),
-	qr/^127.0.0.20(1:$p0, 127.0.0.202:$p0|2:$p0, 127.0.0.201:$p0)$/m,
-	'A many');
+    qr/^127.0.0.20(1:$p0, 127.0.0.202:$p0|2:$p0, 127.0.0.201:$p0)$/m,
+    'A many');
 
 like(http_host_header('many.example.net', '/'),
-	qr/^127.0.0.20(1:$p0, 127.0.0.202:$p0|2:$p0, 127.0.0.201:$p0)$/m,
-	'A many cached');
+    qr/^127.0.0.20(1:$p0, 127.0.0.202:$p0|2:$p0, 127.0.0.201:$p0)$/m,
+    'A many cached');
 
 # tests for several resolvers specified in directive
 # query bad ns, make sure that error responses are not cached
@@ -213,7 +213,7 @@ TODO: {
 local $TODO = 'support for zero ttl';
 
 like(http_host_header('ttl0.example.net', '/'), qr/502 Bad/,
-	'zero ttl not cached');
+    'zero ttl not cached');
 
 }
 
@@ -225,9 +225,9 @@ like(http_host_header('ttl.example.net', '/valid'), qr/200 OK/, 'valid');
 # response is cached, actual request would get error
 
 like(http_host_header('ttl.example.net', '/valid'), qr/200 OK/,
-	'valid cached 1');
+    'valid cached 1');
 like(http_host_header('ttl.example.net', '/valid'), qr/200 OK/,
-	'valid cached 2');
+    'valid cached 2');
 
 sleep 2;
 
@@ -235,14 +235,14 @@ sleep 2;
 # response is taken from cache
 
 like(http_host_header('ttl.example.net', '/valid'), qr/200 OK/,
-	'valid overrides ttl');
+    'valid overrides ttl');
 
 sleep 4;
 
 # expired "valid" value causes nginx to make actual query
 
 like(http_host_header('ttl.example.net', '/valid'), qr/502 Bad/,
-	'valid expired');
+    'valid expired');
 
 # Ensure that resolver respects expired CNAME in CNAME + A combined response.
 # When ttl in CNAME is expired, the answer should not be served from cache.
@@ -253,7 +253,7 @@ http_host_header('cname_a_ttl2.example.net', '/');
 sleep 2;
 
 like(http_host_header('cname_a_ttl2.example.net', '/'), qr/502 Bad/,
-	'CNAME + A with expired CNAME ttl');
+    'CNAME + A with expired CNAME ttl');
 
 like(http_host_header('example.net', '/invalid'), qr/502 Bad/, 'no resolver');
 
@@ -286,13 +286,13 @@ like(http_end($s2), qr/502 Bad/, 'timeout after aborted request');
 unlike(http_host_header('tcp.example.net', '/tcp'), qr/127.0.0.201/, 'tc');
 like(http_host_header('tcp.example.net', '/tcp'), qr/X-IP: 127.0.0.1/, 'tcp');
 like(http_host_header('tcp2.example.net', '/tcp2'), qr/X-IP: 127.0.0.1/,
-	'tcp with resend');
+    'tcp with resend');
 
 ###############################################################################
 
 sub http_host_header {
-	my ($host, $uri, %extra) = @_;
-	return http(<<EOF, %extra);
+    my ($host, $uri, %extra) = @_;
+    return http(<<EOF, %extra);
 GET $uri HTTP/1.0
 Host: $host
 
@@ -300,8 +300,8 @@ EOF
 }
 
 sub http_x_name_header {
-	my ($host, $uri) = @_;
-	return http(<<EOF);
+    my ($host, $uri) = @_;
+    return http(<<EOF);
 GET $uri HTTP/1.0
 X-Name: $host
 
@@ -311,286 +311,286 @@ EOF
 ###############################################################################
 
 sub reply_handler {
-	my ($recv_data, $port, $state, %extra) = @_;
+    my ($recv_data, $port, $state, %extra) = @_;
 
-	my (@name, @rdata);
+    my (@name, @rdata);
 
-	use constant NOERROR	=> 0;
-	use constant FORMERR	=> 1;
-	use constant SERVFAIL	=> 2;
-	use constant NXDOMAIN	=> 3;
+    use constant NOERROR    => 0;
+    use constant FORMERR    => 1;
+    use constant SERVFAIL    => 2;
+    use constant NXDOMAIN    => 3;
 
-	use constant A		=> 1;
-	use constant CNAME	=> 5;
-	use constant DNAME	=> 39;
+    use constant A        => 1;
+    use constant CNAME    => 5;
+    use constant DNAME    => 39;
 
-	use constant IN		=> 1;
+    use constant IN        => 1;
 
-	# default values
+    # default values
 
-	my ($hdr, $rcode, $ttl) = (0x8180, NOERROR, 3600);
+    my ($hdr, $rcode, $ttl) = (0x8180, NOERROR, 3600);
 
-	# decode name
+    # decode name
 
-	my ($len, $offset) = (undef, 12);
-	while (1) {
-		$len = unpack("\@$offset C", $recv_data);
-		last if $len == 0;
-		$offset++;
-		push @name, unpack("\@$offset A$len", $recv_data);
-		$offset += $len;
-	}
+    my ($len, $offset) = (undef, 12);
+    while (1) {
+        $len = unpack("\@$offset C", $recv_data);
+        last if $len == 0;
+        $offset++;
+        push @name, unpack("\@$offset A$len", $recv_data);
+        $offset += $len;
+    }
 
-	$offset -= 1;
-	my ($id, $type, $class) = unpack("n x$offset n2", $recv_data);
+    $offset -= 1;
+    my ($id, $type, $class) = unpack("n x$offset n2", $recv_data);
 
-	my $name = join('.', @name);
-	if (($name eq 'a.example.net') || ($name eq 'alias.example.net')) {
-		if ($type == A || $type == CNAME) {
-			push @rdata, rd_addr($ttl, '127.0.0.1');
-		}
+    my $name = join('.', @name);
+    if (($name eq 'a.example.net') || ($name eq 'alias.example.net')) {
+        if ($type == A || $type == CNAME) {
+            push @rdata, rd_addr($ttl, '127.0.0.1');
+        }
 
-	} elsif ($name eq 'fe.example.net' && $type == A) {
-		if (++$state->{fecnt} > 1) {
-			$rcode = FORMERR;
-		}
+    } elsif ($name eq 'fe.example.net' && $type == A) {
+        if (++$state->{fecnt} > 1) {
+            $rcode = FORMERR;
+        }
 
-		push @rdata, rd_addr($ttl, '127.0.0.1');
+        push @rdata, rd_addr($ttl, '127.0.0.1');
 
-	} elsif ($name eq 'fe_id.example.net' && $type == A) {
-		$id = 42;
-		$rcode = FORMERR;
+    } elsif ($name eq 'fe_id.example.net' && $type == A) {
+        $id = 42;
+        $rcode = FORMERR;
 
-	} elsif ($name eq 'case.example.net' && $type == A) {
-		if (++$state->{casecnt} > 1) {
-			$rcode = SERVFAIL;
-		}
+    } elsif ($name eq 'case.example.net' && $type == A) {
+        if (++$state->{casecnt} > 1) {
+            $rcode = SERVFAIL;
+        }
 
-		push @rdata, rd_addr($ttl, '127.0.0.1');
+        push @rdata, rd_addr($ttl, '127.0.0.1');
 
-	} elsif ($name eq 'id.example.net' && $type == A) {
-		if (++$state->{idcnt} == 1) {
-			$id++;
-		}
+    } elsif ($name eq 'id.example.net' && $type == A) {
+        if (++$state->{idcnt} == 1) {
+            $id++;
+        }
 
-		push @rdata, rd_addr($ttl, '127.0.0.1');
+        push @rdata, rd_addr($ttl, '127.0.0.1');
 
-	} elsif ($name eq 'awide.example.net' && $type == A) {
-		push @rdata, pack '(C/a*)3x n2N nC4',
-			('awide', 'example', 'net'), A, IN, $ttl,
-			4, (127, 0, 0, 1);
+    } elsif ($name eq 'awide.example.net' && $type == A) {
+        push @rdata, pack '(C/a*)3x n2N nC4',
+            ('awide', 'example', 'net'), A, IN, $ttl,
+            4, (127, 0, 0, 1);
 
-	} elsif (($name eq 'many.example.net') && $type == A) {
-		$state->{manycnt}++;
-		if ($state->{manycnt} > 1) {
-			$rcode = SERVFAIL;
-		}
+    } elsif (($name eq 'many.example.net') && $type == A) {
+        $state->{manycnt}++;
+        if ($state->{manycnt} > 1) {
+            $rcode = SERVFAIL;
+        }
 
-		push @rdata, rd_addr($ttl, '127.0.0.201');
-		push @rdata, rd_addr($ttl, '127.0.0.202');
+        push @rdata, rd_addr($ttl, '127.0.0.201');
+        push @rdata, rd_addr($ttl, '127.0.0.202');
 
 
-	} elsif (($name eq 'short.example.net')) {
-		# zero length RDATA in DNS response
+    } elsif (($name eq 'short.example.net')) {
+        # zero length RDATA in DNS response
 
-		if ($type == A) {
-			push @rdata, rd_addr($ttl, '');
-		}
+        if ($type == A) {
+            push @rdata, rd_addr($ttl, '');
+        }
 
-	} elsif (($name eq 'alias.example.com')) {
-		# example.com.       3600 IN DNAME example.net.
+    } elsif (($name eq 'alias.example.com')) {
+        # example.com.       3600 IN DNAME example.net.
 
-		my @dname = ('example', 'net');
-		my $rdlen = length(join '', @dname) + @dname + 1;
-		push @rdata, pack("n3N n(C/a*)* x", 0xc012, DNAME, IN, $ttl,
-			$rdlen, @dname);
+        my @dname = ('example', 'net');
+        my $rdlen = length(join '', @dname) + @dname + 1;
+        push @rdata, pack("n3N n(C/a*)* x", 0xc012, DNAME, IN, $ttl,
+            $rdlen, @dname);
 
-		# alias.example.com. 3600 IN CNAME alias.example.net.
+        # alias.example.com. 3600 IN CNAME alias.example.net.
 
-		push @rdata, pack("n3N nCa5n", 0xc00c, CNAME, IN, $ttl,
-			8, 5, 'alias', 0xc02f);
+        push @rdata, pack("n3N nCa5n", 0xc00c, CNAME, IN, $ttl,
+            8, 5, 'alias', 0xc02f);
 
-	} elsif ($name eq 'cname.example.net') {
-		$state->{cnamecnt}++;
-		if ($state->{cnamecnt} > 2) {
-			$rcode = SERVFAIL;
-		}
-		push @rdata, pack("n3N nCa5n", 0xc00c, CNAME, IN, $ttl,
-			8, 5, 'alias', 0xc012);
+    } elsif ($name eq 'cname.example.net') {
+        $state->{cnamecnt}++;
+        if ($state->{cnamecnt} > 2) {
+            $rcode = SERVFAIL;
+        }
+        push @rdata, pack("n3N nCa5n", 0xc00c, CNAME, IN, $ttl,
+            8, 5, 'alias', 0xc012);
 
-	} elsif ($name eq 'timeout.example.net') {
-		select undef, undef, undef, 2.1;
-		return;
+    } elsif ($name eq 'timeout.example.net') {
+        select undef, undef, undef, 2.1;
+        return;
 
-	} elsif ($name eq 'cname_a.example.net') {
-		push @rdata, pack("n3N nCa5n", 0xc00c, CNAME, IN, $ttl,
-			8, 5, 'alias', 0xc014);
+    } elsif ($name eq 'cname_a.example.net') {
+        push @rdata, pack("n3N nCa5n", 0xc00c, CNAME, IN, $ttl,
+            8, 5, 'alias', 0xc014);
 
-		# points to "alias" set in previous rdata
+        # points to "alias" set in previous rdata
 
-		if ($type == A) {
-			push @rdata, pack('n3N nC4', 0xc031, A, IN, $ttl,
-				4, split(/\./, '127.0.0.1'));
-		}
+        if ($type == A) {
+            push @rdata, pack('n3N nC4', 0xc031, A, IN, $ttl,
+                4, split(/\./, '127.0.0.1'));
+        }
 
-	} elsif ($name eq 'cname_a_ttl2.example.net' && $type == A) {
-		push @rdata, pack("n3N nCa18n", 0xc00c, CNAME, IN, 1,
-			21, 18, 'cname_a_ttl2_alias', 0xc019);
-		if (++$state->{cttl2cnt} >= 2) {
-			$rcode = SERVFAIL;
-		}
-		push @rdata, pack('n3N nC4', 0xc036, A, IN, $ttl,
-			4, split(/\./, '127.0.0.1'));
+    } elsif ($name eq 'cname_a_ttl2.example.net' && $type == A) {
+        push @rdata, pack("n3N nCa18n", 0xc00c, CNAME, IN, 1,
+            21, 18, 'cname_a_ttl2_alias', 0xc019);
+        if (++$state->{cttl2cnt} >= 2) {
+            $rcode = SERVFAIL;
+        }
+        push @rdata, pack('n3N nC4', 0xc036, A, IN, $ttl,
+            4, split(/\./, '127.0.0.1'));
 
-	} elsif ($name eq 'cname_a_ttl_alias.example.net' && $type == A) {
-		push @rdata, rd_addr($ttl, '127.0.0.1');
+    } elsif ($name eq 'cname_a_ttl_alias.example.net' && $type == A) {
+        push @rdata, rd_addr($ttl, '127.0.0.1');
 
-	} elsif ($name eq 'cname2.example.net') {
-		# points to non-existing A
+    } elsif ($name eq 'cname2.example.net') {
+        # points to non-existing A
 
-		push @rdata, pack("n3N nCa2n", 0xc00c, CNAME, IN, $ttl,
-			5, 2, 'nx', 0xc02f);
+        push @rdata, pack("n3N nCa2n", 0xc00c, CNAME, IN, $ttl,
+            5, 2, 'nx', 0xc02f);
 
-	} elsif ($name eq 'long.example.net') {
-		push @rdata, pack("n3N nCA63x", 0xc00c, CNAME, IN, $ttl,
-			65, 63, 'a' x 63);
+    } elsif ($name eq 'long.example.net') {
+        push @rdata, pack("n3N nCA63x", 0xc00c, CNAME, IN, $ttl,
+            65, 63, 'a' x 63);
 
-	} elsif (($name eq 'a' x 63) && $type == A) {
-		push @rdata, rd_addr($ttl, '127.0.0.1');
+    } elsif (($name eq 'a' x 63) && $type == A) {
+        push @rdata, rd_addr($ttl, '127.0.0.1');
 
-	} elsif ($name eq 'long2.example.net') {
-		push @rdata, pack("n3N n(CA63)4x", 0xc00c, CNAME, IN, $ttl, 257,
-			63, 'a' x 63, 63, 'a' x 63, 63, 'a' x 63, 63, 'a' x 63);
+    } elsif ($name eq 'long2.example.net') {
+        push @rdata, pack("n3N n(CA63)4x", 0xc00c, CNAME, IN, $ttl, 257,
+            63, 'a' x 63, 63, 'a' x 63, 63, 'a' x 63, 63, 'a' x 63);
 
-	} elsif (($name eq 'a' x 63 . '.' . 'a' x 63 . '.' . 'a' x 63 . '.'
-			. 'a' x 63) && $type == A)
-	{
-		push @rdata, rd_addr($ttl, '127.0.0.1');
+    } elsif (($name eq 'a' x 63 . '.' . 'a' x 63 . '.' . 'a' x 63 . '.'
+            . 'a' x 63) && $type == A)
+    {
+        push @rdata, rd_addr($ttl, '127.0.0.1');
 
-	} elsif ($name eq 'ttl.example.net' && $type == A) {
-		$state->{ttlcnt}++;
-		if ($state->{ttlcnt} == 2 || $state->{ttlcnt} == 4) {
-			$rcode = SERVFAIL;
-		}
+    } elsif ($name eq 'ttl.example.net' && $type == A) {
+        $state->{ttlcnt}++;
+        if ($state->{ttlcnt} == 2 || $state->{ttlcnt} == 4) {
+            $rcode = SERVFAIL;
+        }
 
-		push @rdata, rd_addr(1, '127.0.0.1');
+        push @rdata, rd_addr(1, '127.0.0.1');
 
-	} elsif ($name eq 'ttl0.example.net' && $type == A) {
-		$state->{ttl0cnt}++;
-		if ($state->{ttl0cnt} == 2) {
-			$rcode = SERVFAIL;
-		}
+    } elsif ($name eq 'ttl0.example.net' && $type == A) {
+        $state->{ttl0cnt}++;
+        if ($state->{ttl0cnt} == 2) {
+            $rcode = SERVFAIL;
+        }
 
-		push @rdata, rd_addr(0, '127.0.0.1');
+        push @rdata, rd_addr(0, '127.0.0.1');
 
-	} elsif ($name eq '2.example.net') {
-		if ($port == port(8081)) {
-			$state->{twocnt}++;
-		}
-		if ($state->{twocnt} & 1) {
-			$rcode = SERVFAIL;
-		}
+    } elsif ($name eq '2.example.net') {
+        if ($port == port(8981)) {
+            $state->{twocnt}++;
+        }
+        if ($state->{twocnt} & 1) {
+            $rcode = SERVFAIL;
+        }
 
-		if ($type == A) {
-			push @rdata, rd_addr($ttl, '127.0.0.1');
-		}
+        if ($type == A) {
+            push @rdata, rd_addr($ttl, '127.0.0.1');
+        }
 
-	} elsif ($name =~ /tcp2?.example.net/) {
-		$rcode = FORMERR if $port == port(8082);
-		$hdr |= 0x0300 unless $extra{tcp};
-		push @rdata, rd_addr($ttl, $extra{tcp}
-			? '127.0.0.1' : '127.0.0.201') if $type == A;
-	}
+    } elsif ($name =~ /tcp2?.example.net/) {
+        $rcode = FORMERR if $port == port(8982);
+        $hdr |= 0x0300 unless $extra{tcp};
+        push @rdata, rd_addr($ttl, $extra{tcp}
+            ? '127.0.0.1' : '127.0.0.201') if $type == A;
+    }
 
-	$len = @name;
-	pack("n6 (C/a*)$len x n2", $id, $hdr | $rcode, 1, scalar @rdata,
-		0, 0, @name, $type, $class) . join('', @rdata);
+    $len = @name;
+    pack("n6 (C/a*)$len x n2", $id, $hdr | $rcode, 1, scalar @rdata,
+        0, 0, @name, $type, $class) . join('', @rdata);
 }
 
 sub rd_addr {
-	my ($ttl, $addr) = @_;
+    my ($ttl, $addr) = @_;
 
-	my $code = 'split(/\./, $addr)';
+    my $code = 'split(/\./, $addr)';
 
-	return pack 'n3N', 0xc00c, A, IN, $ttl if $addr eq '';
+    return pack 'n3N', 0xc00c, A, IN, $ttl if $addr eq '';
 
-	pack 'n3N nC4', 0xc00c, A, IN, $ttl, eval "scalar $code", eval($code);
+    pack 'n3N nC4', 0xc00c, A, IN, $ttl, eval "scalar $code", eval($code);
 }
 
 sub dns_daemon {
-	my ($port, $t, %extra) = @_;
+    my ($port, $t, %extra) = @_;
 
-	my ($data, $recv_data);
-	my $socket = IO::Socket::INET->new(
-		LocalAddr => '127.0.0.1',
-		LocalPort => $port,
-		Proto => 'udp',
-	)
-		or die "Can't create listening socket: $!\n";
+    my ($data, $recv_data);
+    my $socket = IO::Socket::INET->new(
+        LocalAddr => '127.0.0.1',
+        LocalPort => $port,
+        Proto => 'udp',
+    )
+        or die "Can't create listening socket: $!\n";
 
-	my $sel = IO::Select->new($socket);
-	my $tcp = 0;
+    my $sel = IO::Select->new($socket);
+    my $tcp = 0;
 
-	if ($extra{tcp}) {
-		$tcp = port(8083, socket => 1);
-		$sel->add($tcp);
-	}
+    if ($extra{tcp}) {
+        $tcp = port(8983, socket => 1);
+        $sel->add($tcp);
+    }
 
-	local $SIG{PIPE} = 'IGNORE';
+    local $SIG{PIPE} = 'IGNORE';
 
-	# track number of relevant queries
+    # track number of relevant queries
 
-	my %state = (
-		cnamecnt	=> 0,
-		twocnt		=> 0,
-		ttlcnt		=> 0,
-		ttl0cnt		=> 0,
-		cttlcnt		=> 0,
-		cttl2cnt	=> 0,
-		manycnt		=> 0,
-		casecnt		=> 0,
-		idcnt		=> 0,
-		fecnt		=> 0,
-	);
+    my %state = (
+        cnamecnt    => 0,
+        twocnt        => 0,
+        ttlcnt        => 0,
+        ttl0cnt        => 0,
+        cttlcnt        => 0,
+        cttl2cnt    => 0,
+        manycnt        => 0,
+        casecnt        => 0,
+        idcnt        => 0,
+        fecnt        => 0,
+    );
 
-	# signal we are ready
+    # signal we are ready
 
-	open my $fh, '>', $t->testdir() . '/' . $port;
-	close $fh;
+    open my $fh, '>', $t->testdir() . '/' . $port;
+    close $fh;
 
-	while (my @ready = $sel->can_read) {
-		foreach my $fh (@ready) {
-			if ($tcp == $fh) {
-				my $new = $fh->accept;
-				$new->autoflush(1);
-				$sel->add($new);
+    while (my @ready = $sel->can_read) {
+        foreach my $fh (@ready) {
+            if ($tcp == $fh) {
+                my $new = $fh->accept;
+                $new->autoflush(1);
+                $sel->add($new);
 
-			} elsif ($socket == $fh) {
-				$fh->recv($recv_data, 65536);
-				$data = reply_handler($recv_data, $port,
-					\%state);
-				$fh->send($data);
+            } elsif ($socket == $fh) {
+                $fh->recv($recv_data, 65536);
+                $data = reply_handler($recv_data, $port,
+                    \%state);
+                $fh->send($data);
 
-			} else {
-				$fh->recv($recv_data, 65536);
-				unless (length $recv_data) {
-					$sel->remove($fh);
-					$fh->close;
-					next;
-				}
+            } else {
+                $fh->recv($recv_data, 65536);
+                unless (length $recv_data) {
+                    $sel->remove($fh);
+                    $fh->close;
+                    next;
+                }
 
 again:
-				my $len = unpack("n", $recv_data);
-				$data = substr $recv_data, 2, $len;
-				$data = reply_handler($data, $port, \%state,
-					tcp => 1);
-				$data = pack("n", length $data) . $data;
-				$fh->send($data);
-				$recv_data = substr $recv_data, 2 + $len;
-				goto again if length $recv_data;
-			}
-		}
-	}
+                my $len = unpack("n", $recv_data);
+                $data = substr $recv_data, 2, $len;
+                $data = reply_handler($data, $port, \%state,
+                    tcp => 1);
+                $data = pack("n", length $data) . $data;
+                $fh->send($data);
+                $recv_data = substr $recv_data, 2 + $len;
+                goto again if length $recv_data;
+            }
+        }
+    }
 }
 
 ###############################################################################

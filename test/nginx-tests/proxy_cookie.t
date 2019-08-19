@@ -81,33 +81,33 @@ $t->run()->plan(8);
 my $port = port(8080);
 
 is(http_get_set_cookie('/?domain=www.Example.org'),
-	'v=path=domain=; Domain=example.com', 'domain rewrite');
+    'v=path=domain=; Domain=example.com', 'domain rewrite');
 is(http_get_set_cookie('/?domain=.LocalHost.com'),
-	'v=path=domain=; Domain=.en.localhost.org',
-	'domain rewrite with vars');
+    'v=path=domain=; Domain=.en.localhost.org',
+    'domain rewrite with vars');
 is(http_get_set_cookie('/?domain=www.example.COM'),
-	'v=path=domain=; Domain=www.example.org', 'domain regex rewrite');
+    'v=path=domain=; Domain=www.example.org', 'domain regex rewrite');
 
 is(http_get_set_cookie('/?path=/path/test.html'),
-	'v=path=domain=; Path=/new/test.html', 'path rewrite');
+    'v=path=domain=; Path=/new/test.html', 'path rewrite');
 is(http_get_set_cookie('/?path=/localhost/test.html'),
-	'v=path=domain=; Path=/new/localhost/test.html',
-	'path rewrite with vars');
+    'v=path=domain=; Path=/new/localhost/test.html',
+    'path rewrite with vars');
 is(http_get_set_cookie('/?path=/regex/test.html'),
-	'v=path=domain=; Path=/test.html', 'path regex rewrite');
+    'v=path=domain=; Path=/test.html', 'path regex rewrite');
 is(http_get_set_cookie('/?path=/CASEless/test.html'),
-	'v=path=domain=; Path=/test.html', 'path caseless regex rewrite');
+    'v=path=domain=; Path=/test.html', 'path caseless regex rewrite');
 
 is(http_get_set_cookie('/?domain=www.example.org&path=/path/test.html'),
-	'v=path=domain=; Domain=example.com; Path=/new/test.html',
-	'domain and path rewrite');
+    'v=path=domain=; Domain=example.com; Path=/new/test.html',
+    'domain and path rewrite');
 
 ###############################################################################
 
 sub http_get_set_cookie {
-	my ($uri) = @_;
-	http_get("http://127.0.0.1:$port$uri") =~ /^Set-Cookie:\s(.+?)\x0d?$/mi;
-	return $1;
+    my ($uri) = @_;
+    http_get("http://127.0.0.1:$port$uri") =~ /^Set-Cookie:\s(.+?)\x0d?$/mi;
+    return $1;
 }
 
 ###############################################################################

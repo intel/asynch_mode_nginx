@@ -58,15 +58,15 @@ stream {
 EOF
 
 $t->write_file('base.conf', join('', map {
-	"127." . $_/256/256 % 256 . "." . $_/256 % 256 . "." . $_ % 256 .
-	"-127." . $_/256/256 % 256 . "." . $_/256 % 256 . "." .$_ % 256 . " " .
-	($_ == 1 ? "loopback" : "range$_") . ";" } (0 .. 100000)));
+    "127." . $_/256/256 % 256 . "." . $_/256 % 256 . "." . $_ % 256 .
+    "-127." . $_/256/256 % 256 . "." . $_/256 % 256 . "." .$_ % 256 . " " .
+    ($_ == 1 ? "loopback" : "range$_") . ";" } (0 .. 100000)));
 
-$t->try_run('no stream geo')->plan(2);
+$t->run()->plan(2);
 
 ###############################################################################
 
-my %data = stream()->read() =~ /(\w+):(\w+)/g;
+my %data = stream('127.0.0.1:' . port(8080))->read() =~ /(\w+):(\w+)/g;
 is($data{geo_base_create}, 'loopback', 'geo binary base create');
 is($data{geo_base_include}, 'loopback', 'geo binary base include');
 

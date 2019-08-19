@@ -1,7 +1,8 @@
 #!/usr/bin/perl
 
-# (C) Sergey Kandaurov
 # Copyright (C) Intel, Inc.
+# (C) Sergey Kandaurov
+
 # Tests for nginx access module.
 
 # At the moment only the new "unix:" syntax is tested (cf "all").
@@ -23,7 +24,7 @@ use Test::Nginx;
 select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
-my $t = Test::Nginx->new()->has(qw/http proxy access ipv6 unix/);
+my $t = Test::Nginx->new()->has(qw/http proxy access unix/);
 
 $t->write_file_expand('nginx.conf', <<'EOF');
 

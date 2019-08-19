@@ -26,8 +26,8 @@ eval { require Cache::Memcached; };
 plan(skip_all => 'Cache::Memcached not installed') if $@;
 
 my $t = Test::Nginx->new()->has(qw/http rewrite memcached/)
-	->has_daemon('memcached')->plan(4)
-	->write_file_expand('nginx.conf', <<'EOF');
+    ->has_daemon('memcached')->plan(4)
+    ->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -62,26 +62,26 @@ my $memhelp = `memcached -h`;
 my @memopts = ();
 
 if ($memhelp =~ /repcached/) {
-	# repcached patch adds additional listen socket
-	push @memopts, '-X', port(8082);
+    # repcached patch adds additional listen socket
+    push @memopts, '-X', port(8082);
 }
 if ($memhelp =~ /-U/) {
-	# UDP port is on by default in memcached 1.2.7+
-	push @memopts, '-U', '0';
+    # UDP port is on by default in memcached 1.2.7+
+    push @memopts, '-U', '0';
 }
 
 $t->run_daemon('memcached', '-u', 'root', '-l', '127.0.0.1', '-p', port(8081), @memopts);
 $t->run();
 
 $t->waitforsocket('127.0.0.1:' . port(8081))
-	or die "Can't start memcached";
+    or die "Can't start memcached";
 
 ###############################################################################
 
 my $memd = Cache::Memcached->new(servers => [ '127.0.0.1:' . port(8081) ],
-	connect_timeout => 1.0);
+    connect_timeout => 1.0);
 $memd->set('/', 'SEE-THIS')
-	or die "can't put value into memcached: $!";
+    or die "can't put value into memcached: $!";
 
 like(http_get('/'), qr/SEE-THIS/, 'memcached request');
 

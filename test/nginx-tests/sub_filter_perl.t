@@ -1,7 +1,8 @@
 #!/usr/bin/perl
 
-# (C) Maxim Dounin
 # Copyright (C) Intel, Inc.
+# (C) Maxim Dounin
+
 # Tests for sub filter, extended tests using embedded perl.
 
 ###############################################################################
@@ -22,7 +23,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http sub perl/)->plan(22)
-	->write_file_expand('nginx.conf', <<'EOF');
+    ->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -102,9 +103,9 @@ like(http_get('/multi?a=aa&b=aaaab'), qr/^aaaa_replaced$/m, 'aab in aa + aaaab')
 
 like(http_get('/multi?a=aa&b=xaaab'), qr/^aaxa_replaced$/m, 'aab in aa + xaaab');
 like(http_get('/multi?a=aa&b=axaaab'), qr/^aaaxa_replaced$/m,
-	'aab in aa + axaaab');
+    'aab in aa + axaaab');
 like(http_get('/multi?a=aa&b=aaxaaab'), qr/^aaaaxa_replaced$/m,
-	'aab in aa + aaxaaab');
+    'aab in aa + aaxaaab');
 
 # short pattern
 

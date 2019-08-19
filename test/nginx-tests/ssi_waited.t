@@ -48,10 +48,10 @@ http {
 EOF
 
 $t->write_file('index.html', 'x<!--#include virtual="/first.html" -->' .
-	'x<!--#include virtual="/second.html" -->x');
+    'x<!--#include virtual="/second.html" -->x');
 $t->write_file('first.html', 'FIRST');
 $t->write_file('second.html',
-	'<!--#include virtual="/waited.html" wait="yes"-->xSECOND');
+    '<!--#include virtual="/waited.html" wait="yes"-->xSECOND');
 $t->write_file('waited.html', 'WAITED');
 
 $t->run();

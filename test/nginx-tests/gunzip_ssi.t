@@ -26,7 +26,7 @@ eval { require IO::Compress::Gzip; };
 plan(skip_all => "IO::Compress::Gzip not found") if $@;
 
 my $t = Test::Nginx->new()->has(qw/http gunzip ssi proxy gzip_static/)
-	->plan(4);
+    ->plan(4);
 
 $t->write_file_expand('nginx.conf', <<'EOF');
 
@@ -39,6 +39,7 @@ events {
 
 http {
     %%TEST_GLOBALS_HTTP%%
+    qatzip_sw only;
 
     server {
         listen       127.0.0.1:8080;

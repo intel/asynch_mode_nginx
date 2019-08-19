@@ -23,7 +23,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http autoindex charset symlink/)->plan(16)
-	->write_file_expand('nginx.conf', <<'EOF');
+    ->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -101,10 +101,10 @@ like($r, qr!test-utf8-(\xd1\x84){37}\.\.!ms, 'utf8 long');
 
 like($r, qr!test-utf8-&lt;&gt;&amp;-\xd1\x84</a>!ms, 'utf8 escaped');
 like($r, qr!test-utf8-&lt;&gt;&amp;-(\xd1\x84){33}\.\.!ms,
-	'utf8 escaped long');
+    'utf8 escaped long');
 like($r, qr!test-utf8-(\xd1\x84){3}-(&gt;){33}\.\.!ms, 'utf8 long escaped');
 
 like(http_get('/test-dir-escape-<>&/'), qr!test-dir-escape-&lt;&gt;&amp;!ms,
-	'escaped title');
+    'escaped title');
 
 ###############################################################################

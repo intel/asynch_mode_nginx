@@ -1,8 +1,9 @@
 #!/usr/bin/perl
 
+# Copyright (C) Intel, Inc.
 # (C) Sergey Kandaurov
 # (C) Nginx, Inc.
-# Copyright (C) Intel, Inc.
+
 # Tests for addition module.
 
 ###############################################################################

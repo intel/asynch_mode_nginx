@@ -1,8 +1,9 @@
 #!/usr/bin/perl
 
+# Copyright (C) Intel, Inc.
 # (C) Andrey Zelenkov
 # (C) Nginx, Inc.
-# Copyright (C) Intel, Inc.
+
 # Tests for log module variables.
 
 ###############################################################################
@@ -23,7 +24,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http rewrite/)->plan(6)
-	->write_file_expand('nginx.conf', <<'EOF');
+    ->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -106,11 +107,11 @@ $t->stop();
 
 my $log = $t->read_file('iso8601.log');
 like($log, qr!/iso8601 \d{4}-\d\d-\d\dT\d\d:\d\d:\d\d[+-]\d\d:\d\d!,
-	'time_iso8601');
+    'time_iso8601');
 
 $log = $t->read_file('local.log');
 like($log, qr!/local \d\d/[A-Z][a-z]{2}/\d{4}:\d\d:\d\d:\d\d [+-]\d{4}!,
-	'time_local');
+    'time_local');
 
 $log = $t->read_file('msec.log');
 like($log, qr!/msec [\d\.]+!, 'msec');

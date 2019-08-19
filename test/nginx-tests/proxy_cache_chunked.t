@@ -67,37 +67,37 @@ like(http_get("/"), qr/SEE-THIS.*HIT/s, "chunked cached");
 ###############################################################################
 
 sub http_chunked_daemon {
-	my $server = IO::Socket::INET->new(
-		Proto => 'tcp',
-		LocalAddr => '127.0.0.1:' . port(8081),
-		Listen => 5,
-		Reuse => 1
-	)
-		or die "Can't create listening socket: $!\n";
+    my $server = IO::Socket::INET->new(
+        Proto => 'tcp',
+        LocalAddr => '127.0.0.1:' . port(8081),
+        Listen => 5,
+        Reuse => 1
+    )
+        or die "Can't create listening socket: $!\n";
 
-	local $SIG{PIPE} = 'IGNORE';
+    local $SIG{PIPE} = 'IGNORE';
 
-	while (my $client = $server->accept()) {
-		$client->autoflush(1);
+    while (my $client = $server->accept()) {
+        $client->autoflush(1);
 
-		while (<$client>) {
-			last if (/^\x0d?\x0a?$/);
-		}
+        while (<$client>) {
+            last if (/^\x0d?\x0a?$/);
+        }
 
-		print $client <<'EOF';
+        print $client <<'EOF';
 HTTP/1.1 200 OK
 X-Test: SEE-THIS
 Connection: close
 Transfer-Encoding: chunked
 
 EOF
-		print $client "85" . CRLF;
-		select undef, undef, undef, 0.1;
-		print $client "FOO" . ("0123456789abcdef" x 8) . CRLF . CRLF;
+        print $client "85" . CRLF;
+        select undef, undef, undef, 0.1;
+        print $client "FOO" . ("0123456789abcdef" x 8) . CRLF . CRLF;
 
-		print $client "0" . CRLF . CRLF;
-		close $client;
-	}
+        print $client "0" . CRLF . CRLF;
+        close $client;
+    }
 }
 
 ###############################################################################

@@ -25,10 +25,10 @@ select STDOUT; $| = 1;
 
 plan(skip_all => 'win32') if $^O eq 'MSWin32';
 plan(skip_all => '127.0.0.2 local address required')
-	unless defined IO::Socket::INET->new( LocalAddr => '127.0.0.2' );
+    unless defined IO::Socket::INET->new( LocalAddr => '127.0.0.2' );
 
 my $t = Test::Nginx->new()->has(qw/http proxy/)->plan(5)
-	->write_file_expand('nginx.conf', <<'EOF');
+    ->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -94,12 +94,6 @@ like(http_get('/'), qr/X-IP: 127.0.0.1/, 'bind');
 like(http_get('/inherit'), qr/X-IP: 127.0.0.2/, 'bind inherit');
 like(http_get('/off'), qr/X-IP: 127.0.0.1/, 'bind off');
 like(http_get('/var?b=127.0.0.2'), qr/X-IP: 127.0.0.2/, 'bind var');
-
-TODO: {
-local $TODO = 'not yet' unless $t->has_version('1.11.2');
-
 like(http_get('/port'), qr/Port: (\d+)(?!\d).*Port: \1/s, 'bind port');
-
-}
 
 ###############################################################################

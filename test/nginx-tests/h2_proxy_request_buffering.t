@@ -67,18 +67,13 @@ http {
 EOF
 
 $t->run();
-
-my $f = get_body('/chunked');
-plan(skip_all => 'no unbuffered request body') unless $f;
-$f->{http_end}();
-
 $t->plan(49);
 
 ###############################################################################
 
 # unbuffered request body
 
-$f = get_body('/', 'content-length' => 10);
+my $f = get_body('/', 'content-length' => 10);
 ok($f->{headers}, 'request');
 is($f->{upload}('01234', body_more => 1), '01234', 'part');
 is($f->{upload}('56789'), '56789', 'part 2');
@@ -99,9 +94,9 @@ is($f->{http_end}(), 400, 'less - response');
 $f = get_body('/', 'content-length' => 18);
 ok($f->{headers}, 'many');
 is($f->{upload}('01234many', body_split => [ 5 ], body_more => 1),
-	'01234many', 'many - part');
+    '01234many', 'many - part');
 is($f->{upload}('56789many', body_split => [ 5 ]),
-	'56789many', 'many - part 2');
+    '56789many', 'many - part 2');
 is($f->{http_end}(), 200, 'many - response');
 
 $f = get_body('/', 'content-length' => 0);
@@ -113,9 +108,9 @@ is($f->{http_end}(), 200, 'empty - response');
 $f = get_body('/', 'content-length' => 1536);
 ok($f->{headers}, 'buffer');
 is($f->{upload}('0123' x 128, body_more => 1), '0123' x 128,
-	'buffer - below');
+    'buffer - below');
 is($f->{upload}('4567' x 128, body_more => 1), '4567' x 128,
-	'buffer - equal');
+    'buffer - equal');
 is($f->{upload}('89AB' x 128), '89AB' x 128, 'buffer - above');
 is($f->{http_end}(), 200, 'buffer - response');
 
@@ -129,29 +124,29 @@ is($f->{http_end}(), 200, 'split - response');
 $f = get_body('/chunked');
 ok($f->{headers}, 'chunked');
 is($f->{upload}('01234', body_more => 1), '5' . CRLF . '01234' . CRLF,
-	'chunked - part');
+    'chunked - part');
 is($f->{upload}('56789'), '5' . CRLF . '56789' . CRLF . '0' . CRLF . CRLF,
-	'chunked - part 2');
+    'chunked - part 2');
 is($f->{http_end}(), 200, 'chunked - response');
 
 $f = get_body('/chunked');
 ok($f->{headers}, 'chunked buffer');
 is($f->{upload}('0123' x 128, body_more => 1),
-	'200' . CRLF . '0123' x 128 . CRLF, 'chunked buffer - below');
+    '200' . CRLF . '0123' x 128 . CRLF, 'chunked buffer - below');
 is($f->{upload}('4567' x 128, body_more => 1),
-	'200' . CRLF . '4567' x 128 . CRLF, 'chunked buffer - equal');
+    '200' . CRLF . '4567' x 128 . CRLF, 'chunked buffer - equal');
 is($f->{upload}('89AB' x 128),
-	'200' . CRLF . '89AB' x 128 . CRLF . '0' . CRLF . CRLF,
-	'chunked buffer - above');
+    '200' . CRLF . '89AB' x 128 . CRLF . '0' . CRLF . CRLF,
+    'chunked buffer - above');
 is($f->{http_end}(), 200, 'chunked buffer - response');
 
 $f = get_body('/chunked');
 ok($f->{headers}, 'chunked many');
 is($f->{upload}('01234many', body_split => [ 5 ], body_more => 1),
-	'9' . CRLF . '01234many' . CRLF, 'chunked many - part');
+    '9' . CRLF . '01234many' . CRLF, 'chunked many - part');
 is($f->{upload}('56789many', body_split => [ 5 ]),
-	'9' . CRLF . '56789many' . CRLF . '0' . CRLF . CRLF,
-	'chunked many - part 2');
+    '9' . CRLF . '56789many' . CRLF . '0' . CRLF . CRLF,
+    'chunked many - part 2');
 is($f->{http_end}(), 200, 'chunked many - response');
 
 $f = get_body('/chunked');
@@ -162,17 +157,12 @@ is($f->{http_end}(), 200, 'chunked empty - response');
 
 $f = get_body('/chunked');
 ok($f->{headers}, 'chunked split');
-is($f->{upload}('0123456789', split => [ 14 ]),
-	'5' . CRLF . '01234' . CRLF . '5' . CRLF . '56789' . CRLF .
-	'0' . CRLF . CRLF, 'chunked split');
+is(http_content($f->{upload}('0123456789', split => [ 14 ])),
+    '0123456789', 'chunked split');
 is($f->{http_end}(), 200, 'chunked split - response');
 
 # unbuffered request body, chunked transfer-encoding
 # client sends partial DATA frame and closes connection
-
-TODO: {
-todo_skip 'use-after-free', 1 unless $ENV{TEST_NGINX_UNSAFE}
-	or $t->has_version('1.11.2');
 
 my $s = Test::Nginx::HTTP2->new();
 my $s2 = Test::Nginx::HTTP2->new();
@@ -185,91 +175,102 @@ close $s->{socket};
 $s2->h2_ping('PING');
 isnt(@{$s2->read()}, 0, 'chunked abort');
 
-}
-
 ###############################################################################
 
+sub http_content {
+    my ($body) = @_;
+    my $content = '';
+
+    while ($body =~ /\G\x0d?\x0a?([0-9a-f]+)\x0d\x0a?/gcmsi) {
+        my $len = hex($1);
+        $content .= substr($body, pos($body), $len);
+        pos($body) += $len;
+    }
+
+    return $content;
+}
+
 sub get_body {
-	my ($url, %extra) = @_;
-	my ($server, $client, $f);
+    my ($url, %extra) = @_;
+    my ($server, $client, $f);
 
-	$server = IO::Socket::INET->new(
-		Proto => 'tcp',
-		LocalHost => '127.0.0.1',
-		LocalPort => port(8081),
-		Listen => 5,
-		Timeout => 3,
-		Reuse => 1
-	)
-		or die "Can't create listening socket: $!\n";
+    $server = IO::Socket::INET->new(
+        Proto => 'tcp',
+        LocalHost => '127.0.0.1',
+        LocalPort => port(8081),
+        Listen => 5,
+        Timeout => 3,
+        Reuse => 1
+    )
+        or die "Can't create listening socket: $!\n";
 
-	my $s = Test::Nginx::HTTP2->new();
-	my $sid = exists $extra{'content-length'}
-		? $s->new_stream({ headers => [
-			{ name => ':method', value => 'GET' },
-			{ name => ':scheme', value => 'http' },
-			{ name => ':path', value => $url, },
-			{ name => ':authority', value => 'localhost' },
-			{ name => 'content-length',
-				value => $extra{'content-length'} }],
-			body_more => 1 })
-		: $s->new_stream({ path => $url, body_more => 1 });
+    my $s = Test::Nginx::HTTP2->new();
+    my $sid = exists $extra{'content-length'}
+        ? $s->new_stream({ headers => [
+            { name => ':method', value => 'GET' },
+            { name => ':scheme', value => 'http' },
+            { name => ':path', value => $url, },
+            { name => ':authority', value => 'localhost' },
+            { name => 'content-length',
+                value => $extra{'content-length'} }],
+            body_more => 1 })
+        : $s->new_stream({ path => $url, body_more => 1 });
 
-	$client = $server->accept() or return;
+    $client = $server->accept() or return;
 
-	log2c("(new connection $client)");
+    log2c("(new connection $client)");
 
-	$f->{headers} = backend_read($client);
+    $f->{headers} = backend_read($client);
 
-	my $chunked = $f->{headers} =~ /chunked/;
+    my $chunked = $f->{headers} =~ /chunked/;
 
-	$f->{upload} = sub {
-		my ($body, %extra) = @_;
-		my $len = length($body);
-		my $wait = $extra{wait};
+    $f->{upload} = sub {
+        my ($body, %extra) = @_;
+        my $len = length($body);
+        my $wait = $extra{wait};
 
-		$s->h2_body($body, { %extra });
+        $s->h2_body($body, { %extra });
 
-		$body = '';
+        $body = '';
 
-		for (1 .. 10) {
-			my $buf = backend_read($client, $wait) or return '';
-			$body .= $buf;
+        for (1 .. 10) {
+            my $buf = backend_read($client, $wait) or return '';
+            $body .= $buf;
 
-			my $got = 0;
-			$got += $chunked ? hex $_ : $_ for $chunked
-				? $body =~ /(\w+)\x0d\x0a?\w+\x0d\x0a?/g
-				: length($body);
-			last if $got >= $len;
-		}
+            my $got = 0;
+            $got += $chunked ? hex $_ : $_ for $chunked
+                ? $body =~ /(\w+)\x0d\x0a?\w+\x0d\x0a?/g
+                : length($body);
+            last if $got >= $len;
+        }
 
-		return $body;
-	};
-	$f->{http_end} = sub {
-		$client->write(<<EOF);
+        return $body;
+    };
+    $f->{http_end} = sub {
+        $client->write(<<EOF);
 HTTP/1.1 200 OK
 Connection: close
 
 EOF
 
-		$client->close;
+        $client->close;
 
-		my $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
-		my ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
-		return $frame->{headers}->{':status'};
-	};
-	return $f;
+        my $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
+        my ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
+        return $frame->{headers}->{':status'};
+    };
+    return $f;
 }
 
 sub backend_read {
-	my ($s, $timo) = @_;
-	my $buf = '';
+    my ($s, $timo) = @_;
+    my $buf = '';
 
-	if (IO::Select->new($s)->can_read($timo || 3)) {
-		$s->sysread($buf, 16384) or return;
-		log2i($buf);
-	}
-	return $buf;
+    if (IO::Select->new($s)->can_read($timo || 3)) {
+        $s->sysread($buf, 16384) or return;
+        log2i($buf);
+    }
+    return $buf;
 }
 
 sub log2i { Test::Nginx::log_core('|| <<', @_); }

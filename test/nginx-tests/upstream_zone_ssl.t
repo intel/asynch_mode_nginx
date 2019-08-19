@@ -1,8 +1,9 @@
 #!/usr/bin/perl
 
+# Copyright (C) Intel, Inc.
 # (C) Sergey Kandaurov
 # (C) Nginx, Inc.
-# Copyright (C) Intel, Inc.
+
 # Tests for upstream zone with ssl backend.
 
 ###############################################################################
@@ -23,8 +24,10 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http proxy http_ssl upstream_zone/)
-	->has_daemon('openssl')->plan(8)
-	->write_file_expand('nginx.conf', <<'EOF');
+    ->has_daemon('openssl')->plan(9)
+    ->write_file_expand('nginx.conf', <<'EOF');
+
+user root;
 
 %%TEST_GLOBALS%%
 
@@ -48,8 +51,9 @@ http {
     }
 
     server {
-        listen 127.0.0.1:8081 ssl asynch;
+        listen 127.0.0.1:8081 ssl;
 
+        %%TEST_GLOBALS_HTTPS%%
         ssl_certificate_key localhost.key;
         ssl_certificate localhost.crt;
         ssl_session_cache builtin;
@@ -93,7 +97,7 @@ EOF
 
 $t->write_file('openssl.conf', <<EOF);
 [ req ]
-default_bits = 2048
+default_bits = 1024
 encrypt_key = no
 distinguished_name = req_distinguished_name
 [ req_distinguished_name ]
@@ -104,11 +108,11 @@ $t->write_file('index.html', '');
 my $d = $t->testdir();
 
 foreach my $name ('localhost') {
-	system('openssl req -x509 -new '
-		. "-config '$d/openssl.conf' -subj '/CN=$name/' "
-		. "-out '$d/$name.crt' -keyout '$d/$name.key' "
-		. ">>$d/openssl.out 2>&1") == 0
-		or die "Can't create certificate for $name: $!\n";
+    system('openssl req -x509 -new '
+        . "-config $d/openssl.conf -subj /CN=$name/ "
+        . "-out $d/$name.crt -keyout $d/$name.key "
+        . ">>$d/openssl.out 2>&1") == 0
+        or die "Can't create certificate for $name: $!\n";
 }
 
 $t->run();
@@ -117,12 +121,13 @@ $t->run();
 
 like(http_get('/ssl'), qr/200 OK.*X-Session: \./s, 'ssl');
 like(http_get('/ssl'), qr/200 OK.*X-Session: \./s, 'ssl 2');
-like(http_get('/ssl_reuse'), qr/200 OK.*X-Session: \./s, 'ssl reuse session');
-like(http_get('/ssl_reuse'), qr/200 OK.*X-Session: r/s, 'ssl reuse session 2');
+like(http_get('/ssl_reuse'), qr/200 OK.*X-Session: \./s, 'ssl session new');
+like(http_get('/ssl_reuse'), qr/200 OK.*X-Session: r/s, 'ssl session reused');
+like(http_get('/ssl_reuse'), qr/200 OK.*X-Session: r/s, 'ssl session reused 2');
 
 like(http_get('/backup'), qr/200 OK.*X-Session: \./s, 'backup');
 like(http_get('/backup'), qr/200 OK.*X-Session: \./s, 'backup 2');
-like(http_get('/backup_reuse'), qr/200 OK.*X-Session: \./s, 'backup reuse');
-like(http_get('/backup_reuse'), qr/200 OK.*X-Session: r/s, 'backup reuse 2');
+like(http_get('/backup_reuse'), qr/200 OK.*X-Session: \./s, 'backup new');
+like(http_get('/backup_reuse'), qr/200 OK.*X-Session: r/s, 'backup reused');
 
 ###############################################################################

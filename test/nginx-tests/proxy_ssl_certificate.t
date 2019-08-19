@@ -25,9 +25,11 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http http_ssl proxy/)
-	->has_daemon('openssl')->plan(5);
+    ->has_daemon('openssl')->plan(5);
 
 $t->write_file_expand('nginx.conf', <<'EOF');
+
+user root;
 
 %%TEST_GLOBALS%%
 
@@ -69,8 +71,10 @@ http {
     }
 
     server {
-        listen       127.0.0.1:8081 ssl asynch;
+        listen       127.0.0.1:8081 ssl;
         server_name  localhost;
+
+        %%TEST_GLOBALS_HTTPS%%
 
         ssl_certificate 2.example.com.crt;
         ssl_certificate_key 2.example.com.key;
@@ -85,8 +89,9 @@ http {
     }
 
     server {
-        listen       127.0.0.1:8082 ssl asynch;
+        listen       127.0.0.1:8082 ssl;
         server_name  localhost;
+        %%TEST_GLOBALS_HTTPS%%
 
         ssl_certificate 1.example.com.crt;
         ssl_certificate_key 1.example.com.key;
@@ -113,24 +118,26 @@ EOF
 my $d = $t->testdir();
 
 foreach my $name ('1.example.com', '2.example.com') {
-	system('openssl req -x509 -new '
-		. "-config '$d/openssl.conf' -subj '/CN=$name/' "
-		. "-out '$d/$name.crt' -keyout '$d/$name.key' "
-		. ">>$d/openssl.out 2>&1") == 0
-		or die "Can't create certificate for $name: $!\n";
+    system('openssl req -x509 -new '
+        . "-config $d/openssl.conf -subj /CN=$name/ "
+        . "-out $d/$name.crt -keyout $d/$name.key "
+        . ">>$d/openssl.out 2>&1") == 0
+        or die "Can't create certificate for $name: $!\n";
 }
 
 foreach my $name ('3.example.com') {
-	system("openssl genrsa -out '$d/$name.key' -passout pass:$name "
-		. "-aes128 2048 >>$d/openssl.out 2>&1") == 0
-		or die "Can't create private key: $!\n";
-	system('openssl req -x509 -new '
-		. "-config '$d/openssl.conf' -subj '/CN=$name/' "
-		. "-out '$d/$name.crt' "
-		. "-key '$d/$name.key' -passin pass:$name"
-		. ">>$d/openssl.out 2>&1") == 0
-		or die "Can't create certificate for $name: $!\n";
+    system("openssl genrsa -out $d/$name.key -passout pass:$name "
+        . "-aes128 1024 >>$d/openssl.out 2>&1") == 0
+        or die "Can't create private key: $!\n";
+    system('openssl req -x509 -new '
+        . "-config $d/openssl.conf -subj /CN=$name/ "
+        . "-out $d/$name.crt "
+        . "-key $d/$name.key -passin pass:$name"
+        . ">>$d/openssl.out 2>&1") == 0
+        or die "Can't create certificate for $name: $!\n";
 }
+
+sleep 1 if $^O eq 'MSWin32';
 
 $t->write_file('password', '3.example.com');
 $t->write_file('index.html', '');

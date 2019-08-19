@@ -111,8 +111,8 @@ like(http_get_inm('/cache/etag', $etag), qr/ 304 /, 'inm etag from cache');
 ###############################################################################
 
 sub http_get_ims {
-	my ($url, $ims) = @_;
-	return http(<<EOF);
+    my ($url, $ims) = @_;
+    return http(<<EOF);
 GET $url HTTP/1.0
 Host: localhost
 If-Modified-Since: $ims
@@ -121,8 +121,8 @@ EOF
 }
 
 sub http_get_iums {
-	my ($url, $ims) = @_;
-	return http(<<EOF);
+    my ($url, $ims) = @_;
+    return http(<<EOF);
 GET $url HTTP/1.0
 Host: localhost
 If-Unmodified-Since: $ims
@@ -131,8 +131,8 @@ EOF
 }
 
 sub http_get_inm {
-	my ($url, $inm) = @_;
-	return http(<<EOF);
+    my ($url, $inm) = @_;
+    return http(<<EOF);
 GET $url HTTP/1.0
 Host: localhost
 If-None-Match: $inm

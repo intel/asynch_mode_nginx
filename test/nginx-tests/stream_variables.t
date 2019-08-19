@@ -1,8 +1,9 @@
 #!/usr/bin/perl
 
+# Copyright (C) Intel, Inc.
 # (C) Sergey Kandaurov
 # (C) Nginx, Inc.
-# Copyright (C) Intel, Inc.
+
 # Tests for stream variables.
 
 ###############################################################################
@@ -23,7 +24,7 @@ use Test::Nginx::Stream qw/ stream dgram /;
 select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
-my $t = Test::Nginx->new()->has(qw/stream stream_return ipv6 udp/);
+my $t = Test::Nginx->new()->has(qw/stream stream_return udp/);
 
 $t->write_file_expand('nginx.conf', <<'EOF');
 
@@ -69,19 +70,20 @@ stream {
 
     server {
         listen  127.0.0.1:8086;
-        listen  127.0.0.1:%%PORT_8087_UDP%% udp;
+        listen  127.0.0.1:%%PORT_8987_UDP%% udp;
         return  $protocol;
     }
 }
 
 EOF
 
-$t->try_run('no stream return and/or inet6 support')->plan(8);
+$t->try_run('no inet6 support')->plan(8);
 
 ###############################################################################
 
 chomp(my $hostname = lc `hostname`);
-like(stream()->read(), qr/^\d+:[\d.]+:$hostname:\d+:0$/, 'vars');
+like(stream('127.0.0.1:' . port(8080))->read(),
+    qr/^\d+:[\d.]+:$hostname:\d+:0$/, 'vars');
 
 my $dport = port(8081);
 my $s = stream("127.0.0.1:$dport");
@@ -101,6 +103,6 @@ $data = stream('127.0.0.1:' . port(8085))->read();
 like($data, qr#^\d+.\d+![-+\w/: ]+![-+\dT:]+$#, 'time');
 
 is(stream('127.0.0.1:' . port(8086))->read(), 'TCP', 'protocol TCP');
-is(dgram('127.0.0.1:' . port(8087))->io('.'), 'UDP', 'protocol UDP');
+is(dgram('127.0.0.1:' . port(8987))->io('.'), 'UDP', 'protocol UDP');
 
 ###############################################################################

@@ -1,8 +1,7 @@
 package Test::Nginx::IMAP;
 
-# Copyright (C) Intel, Inc
 # (C) Maxim Dounin
-
+# Copyright (C) Intel, Inc.
 # Module for nginx imap tests.
 
 ###############################################################################
@@ -11,116 +10,122 @@ use warnings;
 use strict;
 
 use Test::More qw//;
+use IO::Select;
 use IO::Socket;
 use Socket qw/ CRLF /;
 
 use Test::Nginx;
 
 sub new {
-	my $self = {};
-	bless $self, shift @_;
+    my $self = {};
+    bless $self, shift @_;
 
-	$self->{_socket} = IO::Socket::INET->new(
-		Proto => "tcp",
-		PeerAddr => "127.0.0.1:" . port(8143),
-		@_
-	)
-		or die "Can't connect to nginx: $!\n";
+    $self->{_socket} = IO::Socket::INET->new(
+        Proto => "tcp",
+        PeerAddr => "127.0.0.1:" . port(8143),
+        @_
+    )
+        or die "Can't connect to nginx: $!\n";
 
-	if ({@_}->{'SSL'}) {
-		require IO::Socket::SSL;
-		IO::Socket::SSL->start_SSL($self->{_socket}, @_)
-			or die $IO::Socket::SSL::SSL_ERROR . "\n";
-	}
+    if ({@_}->{'SSL'}) {
+        require IO::Socket::SSL;
+        IO::Socket::SSL->start_SSL($self->{_socket}, @_)
+            or die $IO::Socket::SSL::SSL_ERROR . "\n";
+    }
 
-	$self->{_socket}->autoflush(1);
+    $self->{_socket}->autoflush(1);
 
-	return $self;
+    return $self;
 }
 
 sub eof {
-	my $self = shift;
-	return $self->{_socket}->eof();
+    my $self = shift;
+    return $self->{_socket}->eof();
 }
 
 sub print {
-	my ($self, $cmd) = @_;
-	log_out($cmd);
-	$self->{_socket}->print($cmd);
+    my ($self, $cmd) = @_;
+    log_out($cmd);
+    $self->{_socket}->print($cmd);
 }
 
 sub send {
-	my ($self, $cmd) = @_;
-	log_out($cmd);
-	$self->{_socket}->print($cmd . CRLF);
+    my ($self, $cmd) = @_;
+    log_out($cmd);
+    $self->{_socket}->print($cmd . CRLF);
 }
 
 sub read {
-	my ($self) = @_;
-	my $socket = $self->{_socket};
-	eval {
-		local $SIG{ALRM} = sub { die "timeout\n" };
-		alarm(3);
-		while (<$socket>) {
-			log_in($_);
-			# XXX
-			next if m/^\d\d\d-/;
-			last;
-		}
-		alarm(0);
-	};
-	alarm(0);
-	if ($@) {
-		log_in("died: $@");
-		return undef;
-	}
-	return $_;
+    my ($self) = @_;
+    my $socket = $self->{_socket};
+    eval {
+        local $SIG{ALRM} = sub { die "timeout\n" };
+        alarm(3);
+        while (<$socket>) {
+            log_in($_);
+            # XXX
+            next if m/^\d\d\d-/;
+            last;
+        }
+        alarm(0);
+    };
+    alarm(0);
+    if ($@) {
+        log_in("died: $@");
+        return undef;
+    }
+    return $_;
 }
 
 sub check {
-	my ($self, $regex, $name) = @_;
-	Test::More->builder->like($self->read(), $regex, $name);
+    my ($self, $regex, $name) = @_;
+    Test::More->builder->like($self->read(), $regex, $name);
 }
 
 sub ok {
-	my $self = shift;
-	Test::More->builder->like($self->read(), qr/^\S+ OK/, @_);
+    my $self = shift;
+    Test::More->builder->like($self->read(), qr/^\S+ OK/, @_);
+}
+
+sub can_read {
+    my ($self, $timo) = @_;
+    IO::Select->new($self->{_socket})->can_read($timo || 3);
 }
 
 ###############################################################################
 
 sub imap_test_daemon {
-	my ($port) = @_;
+    my ($port) = @_;
 
-	my $server = IO::Socket::INET->new(
-		Proto => 'tcp',
-		LocalAddr => '127.0.0.1:' . ($port || port(8144)),
-		Listen => 5,
-		Reuse => 1
-	)
-		or die "Can't create listening socket: $!\n";
+    my $server = IO::Socket::INET->new(
+        Proto => 'tcp',
+        LocalAddr => '127.0.0.1:' . ($port || port(8144)),
+        Listen => 5,
+        Reuse => 1
+    )
+        or die "Can't create listening socket: $!\n";
 
-	while (my $client = $server->accept()) {
-		$client->autoflush(1);
-		print $client "* OK fake imap server ready" . CRLF;
+    while (my $client = $server->accept()) {
+        $client->autoflush(1);
+        print $client "* OK fake imap server ready" . CRLF;
 
-		while (<$client>) {
-			my $tag = '';
+        while (<$client>) {
+            my $tag = '';
 
-			$tag = $1 if m/^(\S+)/;
-			s/^(\S+)\s+//;
+            $tag = $1 if m/^(\S+)/;
+            s/^(\S+)\s+//;
 
-			if (/^logout/i) {
-				print $client $tag . ' OK logout ok' . CRLF;
-			} elsif (/^login /i) {
-				print $client $tag . ' OK login ok' . CRLF;
-			} else {
-				print $client $tag . ' ERR unknown command' . CRLF;
-			}
-		}
+            if (/^logout/i) {
+                print $client $tag . ' OK logout ok' . CRLF;
+            } elsif (/^login /i) {
+                print $client $tag . ' OK login ok' . CRLF;
+            } else {
+                print $client $tag . ' ERR unknown command' . CRLF;
+            }
+        }
 
-		close $client;
-	}
+        close $client;
+    }
 }
 
 ###############################################################################

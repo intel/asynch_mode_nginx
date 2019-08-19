@@ -26,7 +26,7 @@ eval { require IO::Compress::Gzip; };
 plan(skip_all => "IO::Compress::Gzip not found") if $@;
 
 my $t = Test::Nginx->new()->has(qw/http gunzip proxy gzip_static rewrite/)
-	->plan(13);
+    ->plan(13);
 
 $t->write_file_expand('nginx.conf', <<'EOF');
 

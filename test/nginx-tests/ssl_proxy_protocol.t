@@ -30,8 +30,8 @@ plan(skip_all => 'IO::Socket::SSL not installed') if $@;
 eval { IO::Socket::SSL::SSL_VERIFY_NONE(); };
 plan(skip_all => 'IO::Socket::SSL too old') if $@;
 
-my $t = Test::Nginx->new()->has(qw/http http_ssl access ipv6 realip/)
-	->has_daemon('openssl');
+my $t = Test::Nginx->new()->has(qw/http http_ssl access realip/)
+    ->has_daemon('openssl');
 
 $t->write_file_expand('nginx.conf', <<'EOF')->plan(18);
 
@@ -44,11 +44,12 @@ events {
 
 http {
     %%TEST_GLOBALS_HTTP%%
+    %%TEST_GLOBALS_HTTPS%%
 
     log_format pp '$remote_addr $request';
 
     server {
-        listen       127.0.0.1:8080 proxy_protocol ssl asynch;
+        listen       127.0.0.1:8080 proxy_protocol ssl;
         server_name  localhost;
 
         ssl_certificate_key localhost.key;
@@ -77,7 +78,7 @@ EOF
 
 $t->write_file('openssl.conf', <<EOF);
 [ req ]
-default_bits = 2048
+default_bits = 1024
 encrypt_key = no
 distinguished_name = req_distinguished_name
 [ req_distinguished_name ]
@@ -86,11 +87,11 @@ EOF
 my $d = $t->testdir();
 
 foreach my $name ('localhost') {
-	system('openssl req -x509 -new '
-		. "-config '$d/openssl.conf' -subj '/CN=$name/' "
-		. "-out '$d/$name.crt' -keyout '$d/$name.key' "
-		. ">>$d/openssl.out 2>&1") == 0
-	or die "Can't create certificate for $name: $!\n";
+    system('openssl req -x509 -new '
+        . "-config $d/openssl.conf -subj /CN=$name/ "
+        . "-out $d/$name.crt -keyout $d/$name.key "
+        . ">>$d/openssl.out 2>&1") == 0
+    or die "Can't create certificate for $name: $!\n";
 }
 
 $t->write_file('t1', 'SEE-THIS');
@@ -150,16 +151,28 @@ like($log, qr!^2001:DB8::1 GET /pp_6!mi, 'tcp6 access log');
 ###############################################################################
 
 sub pp_get {
-	my ($url, $proxy) = @_;
+    my ($url, $proxy) = @_;
 
-	my $s = http($proxy, start => 1);
+    my $s = http($proxy, start => 1);
 
-	IO::Socket::SSL->start_SSL($s,
-		SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_NONE(),
-		SSL_error_trap => sub { die $_[1] }
-	);
+    eval {
+        local $SIG{ALRM} = sub { die "timeout\n" };
+        local $SIG{PIPE} = sub { die "sigpipe\n" };
+        alarm(5);
+        IO::Socket::SSL->start_SSL($s,
+            SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_NONE(),
+            SSL_error_trap => sub { die $_[1] }
+        );
+        alarm(0);
+    };
+    alarm(0);
 
-	return http(<<EOF, socket => $s);
+    if ($@) {
+        log_in("died: $@");
+        return undef;
+    }
+
+    return http(<<EOF, socket => $s);
 GET $url HTTP/1.0
 Host: localhost
 

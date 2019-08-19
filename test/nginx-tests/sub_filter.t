@@ -1,7 +1,8 @@
 #!/usr/bin/perl
 
-# (C) Maxim Dounin
 # Copyright (C) Intel, Inc.
+# (C) Maxim Dounin
+
 # Tests for sub filter.
 
 ###############################################################################
@@ -22,7 +23,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http rewrite sub proxy/)->plan(30)
-	->write_file_expand('nginx.conf', <<'EOF');
+    ->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -140,12 +141,12 @@ like(http_get('/single/many?b=CA'), qr/CB/, 'single many end');
 
 like(http_get('/var/string?a=foo&b=Xfoo'), qr/_replaced/, 'complex string');
 like(http_get('/var/string?a=foo&b=XFOO'), qr/_replaced/,
-	'complex string caseless');
+    'complex string caseless');
 like(http_get('/var/string?a=abcdefghijklmnopq&b=Xabcdefghijklmnopq'),
-	qr/_replaced/, 'complex string long');
+    qr/_replaced/, 'complex string long');
 
 like(http_get('/var/replacement?a=ee&b=aaab'), qr/aee_replaced/,
-	'complex replacement');
+    'complex replacement');
 
 unlike(http_get('/foo.html'), qr/(Last-Modified|ETag)/, 'no last modified');
 like(http_get('/lm/foo.html'), qr/Last-Modified/, 'last modified');

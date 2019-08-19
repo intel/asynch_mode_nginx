@@ -32,7 +32,7 @@ eval { require IO::Socket::UNIX; };
 plan(skip_all => 'IO::Socket::UNIX not installed') if $@;
 
 my $t = Test::Nginx->new()->has(qw/http fastcgi unix/)->plan(6)
-	->write_file_expand('nginx.conf', <<'EOF');
+    ->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -74,8 +74,8 @@ $t->run();
 # wait for unix socket to appear
 
 for (1 .. 50) {
-	last if -S $path;
-	select undef, undef, undef, 0.1;
+    last if -S $path;
+    select undef, undef, undef, 0.1;
 }
 
 ###############################################################################
@@ -93,28 +93,28 @@ like(http_get("/var?b=unix:$path"), qr/SEE-THIS/, 'fastcgi with variables');
 ###############################################################################
 
 sub fastcgi_daemon {
-	my $socket = FCGI::OpenSocket(shift, 5);
-	my $request = FCGI::Request(\*STDIN, \*STDOUT, \*STDERR, \%ENV,
-		$socket);
+    my $socket = FCGI::OpenSocket(shift, 5);
+    my $request = FCGI::Request(\*STDIN, \*STDOUT, \*STDERR, \%ENV,
+        $socket);
 
-	my $count;
-	while( $request->Accept() >= 0 ) {
-		$count++;
+    my $count;
+    while( $request->Accept() >= 0 ) {
+        $count++;
 
-		if ($ENV{REQUEST_URI} eq '/stderr') {
-			warn "sample stderr text" x 512;
-		}
+        if ($ENV{REQUEST_URI} eq '/stderr') {
+            warn "sample stderr text" x 512;
+        }
 
-		print <<EOF;
+        print <<EOF;
 Location: http://localhost/redirect
 Content-Type: text/html
 
 SEE-THIS
 $count
 EOF
-	}
+    }
 
-	FCGI::CloseSocket($socket);
+    FCGI::CloseSocket($socket);
 }
 
 ###############################################################################

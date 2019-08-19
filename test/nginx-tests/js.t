@@ -3,7 +3,7 @@
 # Copyright (C) Intel, Inc.
 # (C) Roman Arutyunyan
 
-# Tests for http JavaScript module.
+# Tests for http njs module.
 
 ###############################################################################
 
@@ -23,7 +23,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http rewrite/)
-	->write_file_expand('nginx.conf', <<'EOF');
+    ->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -45,12 +45,17 @@ http {
     js_set $test_iarg    test_iarg;
     js_set $test_var     test_var;
     js_set $test_log     test_log;
+    js_set $test_except  test_except;
 
     js_include test.js;
 
     server {
         listen       127.0.0.1:8080;
         server_name  localhost;
+
+        location /njs {
+            js_content test_njs;
+        }
 
         location /req_method {
             return 200 $test_method;
@@ -92,6 +97,14 @@ http {
             return 200 $test_log;
         }
 
+        location /req_except {
+            return 200 $test_except;
+        }
+
+        location /req_empty {
+            js_content content_empty;
+        }
+
         location /res_status {
             js_content status;
         }
@@ -115,12 +128,20 @@ http {
         location /res_ihdr {
             js_content ihdr;
         }
+
+        location /res_except {
+            js_content content_except;
+        }
     }
 }
 
 EOF
 
 $t->write_file('test.js', <<EOF);
+    function test_njs(req, res) {
+        res.return(200, njs.version);
+    }
+
     function test_method(req, res) {
         return 'method=' + req.method;
     }
@@ -142,8 +163,7 @@ $t->write_file('test.js', <<EOF);
     }
 
     function test_ihdr(req, res) {
-        var s;
-        s = '';
+        var s = '', h;
         for (h in req.headers) {
             if (h.substr(0, 3) == 'foo') {
                 s += req.headers[h];
@@ -157,8 +177,7 @@ $t->write_file('test.js', <<EOF);
     }
 
     function test_iarg(req, res) {
-        var s;
-        s = '';
+        var s = '', a;
         for (a in req.args) {
             if (a.substr(0, 3) == 'foo') {
                 s += req.args[a];
@@ -173,6 +192,11 @@ $t->write_file('test.js', <<EOF);
 
     function test_log(req, res) {
         req.log("SEE-THIS");
+    }
+
+    function test_except(req, res) {
+        var fs = require('fs');
+        fs.readFileSync();
     }
 
     function status(req, res) {
@@ -234,7 +258,7 @@ $t->write_file('test.js', <<EOF);
         res.headers['a'] = req.args.a;
         res.headers['b'] = req.args.b;
 
-        s = '';
+        var s = '', h;
         for (h in res.headers) {
             s += res.headers[h];
         }
@@ -243,9 +267,17 @@ $t->write_file('test.js', <<EOF);
         res.send(s);
         res.finish();
     }
+
+    function content_except(req, res) {
+        JSON.parse({}.a.a);
+    }
+
+    function content_empty(req, res) {
+    }
+
 EOF
 
-$t->try_run('no njs available')->plan(20);
+$t->try_run('no njs available')->plan(23);
 
 ###############################################################################
 
@@ -257,39 +289,45 @@ like(http_get_hdr('/req_hdr'), qr/hdr=12345/, 'req.headers');
 like(http_get_ihdr('/req_ihdr'), qr/12345barz/, 'req.headers iteration');
 like(http_get('/req_arg?foO=12345'), qr/arg=12345/, 'req.args');
 like(http_get('/req_iarg?foo=12345&foo2=bar&nn=22&foo-3=z'), qr/12345barz/,
-	'req.args iteration');
+    'req.args iteration');
 like(http_get('/req_var'), qr/variable=127.0.0.1/, 'req.variables');
 like(http_get('/req_log'), qr/200 OK/, 'req.log');
 
 like(http_get('/res_status'), qr/204 No Content/, 'res.status');
 like(http_get('/res_ctype'), qr/Content-Type: application\/foo/,
-	'res.contentType');
+    'res.contentType');
 like(http_get('/res_clen'), qr/Content-Length: 5/, 'res.contentLength');
 like(http_get('/res_send?foo=12345&n=11&foo-2=bar&ndd=&foo-3=z'),
-	qr/n=foo, v=12 n=foo-2, v=ba n=foo-3, v=z/, 'res.send');
+    qr/n=foo, v=12 n=foo-2, v=ba n=foo-3, v=z/, 'res.send');
 like(http_get('/res_hdr?foo=12345'), qr/Foo: 12345/, 'res.headers');
 like(http_get('/res_hdr?foo=123&bar=copy'), qr/Bar: 123/, 'res.headers get');
 like(http_get('/res_hdr?bar=empty'), qr/Bar: \x0d/, 'res.headers empty');
 like(http_get('/res_ihdr?a=12&b=34'), qr/^1234$/m, 'res.headers iteration');
 
-TODO: {
-local $TODO = 'zero size buf in writer';
+http_get('/req_except');
+http_get('/res_except');
 
 like(http_get('/res_ihdr'), qr/\x0d\x0a?\x0d\x0a?$/m, 'res.send zero');
 
-$t->todo_alerts();
-
+TODO: {
+local $TODO = 'not yet'
+        unless http_get('/njs') =~ /^([.0-9]+)$/m && $1 ge '0.2.1';
+like(http_get('/req_empty'), qr/500 Internal Server Error/, 'empty handler');
 }
 
 $t->stop();
 
 ok(index($t->read_file('error.log'), 'SEE-THIS') > 0, 'log js');
+ok(index($t->read_file('error.log'), 'at fs.readFileSync') > 0,
+   'js_set backtrace');
+ok(index($t->read_file('error.log'), 'at JSON.parse') > 0,
+   'js_content backtrace');
 
 ###############################################################################
 
 sub http_get_hdr {
-	my ($url, %extra) = @_;
-	return http(<<EOF, %extra);
+    my ($url, %extra) = @_;
+    return http(<<EOF, %extra);
 GET $url HTTP/1.0
 FoO: 12345
 
@@ -297,8 +335,8 @@ EOF
 }
 
 sub http_get_ihdr {
-	my ($url, %extra) = @_;
-	return http(<<EOF, %extra);
+    my ($url, %extra) = @_;
+    return http(<<EOF, %extra);
 GET $url HTTP/1.0
 foo: 12345
 Host: localhost

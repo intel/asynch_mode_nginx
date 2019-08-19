@@ -26,9 +26,10 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/stream stream_ssl stream_return sni/)
-	->has_daemon('openssl');
+    ->has_daemon('openssl');
 
 $t->write_file_expand('nginx.conf', <<'EOF');
+user root;
 
 %%TEST_GLOBALS%%
 
@@ -39,6 +40,7 @@ events {
 
 stream {
     proxy_ssl on;
+    proxy_ssl_asynch on;
     proxy_ssl_session_reuse off;
 
     server {
@@ -51,6 +53,7 @@ stream {
     }
 
     server {
+        %%TEST_GLOBALS_HTTPS%%
         ssl_certificate_key localhost.key;
         ssl_certificate localhost.crt;
 
@@ -63,7 +66,7 @@ EOF
 
 $t->write_file('openssl.conf', <<EOF);
 [ req ]
-default_bits = 2048
+default_bits = 1024
 encrypt_key = no
 distinguished_name = req_distinguished_name
 [ req_distinguished_name ]
@@ -72,14 +75,14 @@ EOF
 my $d = $t->testdir();
 
 foreach my $name ('localhost') {
-	system('openssl req -x509 -new '
-		. "-config '$d/openssl.conf' -subj '/CN=$name/' "
-		. "-out '$d/$name.crt' -keyout '$d/$name.key' "
-		. ">>$d/openssl.out 2>&1") == 0
-		or die "Can't create certificate for $name: $!\n";
+    system('openssl req -x509 -new '
+        . "-config $d/openssl.conf -subj /CN=$name/ "
+        . "-out $d/$name.crt -keyout $d/$name.key "
+        . ">>$d/openssl.out 2>&1") == 0
+        or die "Can't create certificate for $name: $!\n";
 }
 
-$t->try_run('no stream return')->plan(2);
+$t->run()->plan(2);
 
 ###############################################################################
 

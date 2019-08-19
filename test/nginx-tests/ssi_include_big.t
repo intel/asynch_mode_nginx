@@ -38,9 +38,9 @@ http {
 
     output_buffers  2 512;
     ssi on;
-    #gzip on;
-    qatzip on;
-    qatzip_min_length 0;
+
+    %%GZIP_ENABLE%%
+    %%QATZIP_ENABLE%%
 
     server {
         listen       127.0.0.1:8080;
@@ -61,13 +61,13 @@ $t->write_file('c1.html', 'X' x 1023);
 $t->write_file('c2.html', 'X' x 1024);
 $t->write_file('c3.html', 'X' x 1025);
 $t->write_file('test1.html', '<!--#include virtual="/proxy/blah" -->'
-	. '<!--#include virtual="/c1.html" -->');
+    . '<!--#include virtual="/c1.html" -->');
 $t->write_file('test2.html', '<!--#include virtual="/proxy/blah" -->'
-	. '<!--#include virtual="/c2.html" -->');
+    . '<!--#include virtual="/c2.html" -->');
 $t->write_file('test3.html', '<!--#include virtual="/proxy/blah" -->'
-	. '<!--#include virtual="/c3.html" -->');
+    . '<!--#include virtual="/c3.html" -->');
 $t->write_file('test4.html', '<!--#include virtual="/proxy/blah" -->'
-	. ('X' x 1025));
+    . ('X' x 1025));
 
 $t->run();
 

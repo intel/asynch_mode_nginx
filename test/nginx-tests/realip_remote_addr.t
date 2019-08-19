@@ -59,7 +59,7 @@ $t->write_file('1', '');
 $t->run();
 
 plan(skip_all => 'no 127.0.0.1 on host')
-	if http_get('/') !~ /X-IP: 127.0.0.1/m;
+    if http_get('/') !~ /X-IP: 127.0.0.1/m;
 
 $t->plan(4);
 
@@ -69,19 +69,13 @@ like(http_get('/1'), qr/X-Real-IP: 127.0.0.1/m, 'request');
 like(http_get('/'), qr/X-Real-IP: 127.0.0.1/m, 'request redirect');
 
 like(http_xff('/1', '192.0.2.1'), qr/X-Real-IP: 127.0.0.1/m, 'realip');
-
-TODO: {
-local $TODO = 'not yet' unless $t->has_version('1.11.5');
-
 like(http_xff('/', '192.0.2.1'), qr/X-Real-IP: 127.0.0.1/m, 'realip redirect');
-
-}
 
 ###############################################################################
 
 sub http_xff {
-	my ($uri, $xff) = @_;
-	return http(<<EOF);
+    my ($uri, $xff) = @_;
+    return http(<<EOF);
 GET $uri HTTP/1.0
 Host: localhost
 X-Forwarded-For: $xff

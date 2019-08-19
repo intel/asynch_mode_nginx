@@ -1,8 +1,9 @@
 #!/usr/bin/perl
 
+# Copyright (C) Intel, Inc.
 # (C) Andrey Zelenkov
 # (C) Nginx, Inc.
-# Copyright (C) Intel, Inc.
+
 # Tests for stub status module.
 
 ###############################################################################
@@ -147,14 +148,14 @@ like($r, qr/X-Waiting: 0/, 'no stub - var waiting');
 ###############################################################################
 
 sub get_body {
-	my ($r) = @_;
-	$r =~ /.*?\x0d\x0a?\x0d\x0a?(.*)/ms;
-	return $1;
+    my ($r) = @_;
+    $r =~ /.*?\x0d\x0a?\x0d\x0a?(.*)/ms;
+    return $1;
 }
 
 sub http_post {
-	my ($url) = @_;
-	return http(<<EOF);
+    my ($url) = @_;
+    return http(<<EOF);
 POST $url HTTP/1.0
 Host: localhost
 
@@ -162,26 +163,26 @@ EOF
 }
 
 sub status {
-	my ($url) = @_;
-	my $r = http_get($url);
+    my ($url) = @_;
+    my $r = http_get($url);
 
-	$r =~ /
-		Active\ connections:\ +(\d+)
-		\s+server\ accepts\ handled\ requests
-		\s+(\d+)\ +(\d+)\ +(\d+)
-		\s+Reading:\ +(\d+)
-		\s+Writing:\ +(\d+)
-		\s+Waiting:\ +(\d+)
-	/sx;
+    $r =~ /
+        Active\ connections:\ +(\d+)
+        \s+server\ accepts\ handled\ requests
+        \s+(\d+)\ +(\d+)\ +(\d+)
+        \s+Reading:\ +(\d+)
+        \s+Writing:\ +(\d+)
+        \s+Waiting:\ +(\d+)
+    /sx;
 
-	return ('active' => $1,
-		'accepts' => $2,
-		'handled' => $3,
-		'requests' => $4,
-		'reading' => $5,
-		'writing' => $6,
-		'waiting' => $7,
-	);
+    return ('active' => $1,
+        'accepts' => $2,
+        'handled' => $3,
+        'requests' => $4,
+        'reading' => $5,
+        'writing' => $6,
+        'waiting' => $7,
+    );
 }
 
 ###############################################################################

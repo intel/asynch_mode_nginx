@@ -1,9 +1,10 @@
 #!/usr/bin/perl
 
+# Copyright (C) Intel, Inc.
 # (C) Andrey Zelenkov
 # (C) Sergey Kandaurov
 # (C) Nginx, Inc.
-# Copyright (C) Intel, Inc.
+
 # Stream tests for tcp_nodelay.
 
 ###############################################################################
@@ -64,56 +65,56 @@ my $str = '1234567890' x 10 . 'F';
 my $length = length($str);
 
 is(stream('127.0.0.1:' . port(8081))->io($str, length => $length), $str,
-	'tcp_nodelay off');
+    'tcp_nodelay off');
 is(stream('127.0.0.1:' . port(8082))->io($str, length => $length), $str,
-	'tcp_nodelay on');
+    'tcp_nodelay on');
 
 ###############################################################################
 
 sub stream_daemon {
-	my $server = IO::Socket::INET->new(
-		Proto => 'tcp',
-		LocalAddr => '127.0.0.1:' . port(8080),
-		Listen => 5,
-		Reuse => 1
-	)
-		or die "Can't create listening socket: $!\n";
+    my $server = IO::Socket::INET->new(
+        Proto => 'tcp',
+        LocalAddr => '127.0.0.1:' . port(8080),
+        Listen => 5,
+        Reuse => 1
+    )
+        or die "Can't create listening socket: $!\n";
 
-	my $sel = IO::Select->new($server);
+    my $sel = IO::Select->new($server);
 
-	local $SIG{PIPE} = 'IGNORE';
+    local $SIG{PIPE} = 'IGNORE';
 
-	while (my @ready = $sel->can_read) {
-		foreach my $fh (@ready) {
-			if ($server == $fh) {
-				my $new = $fh->accept;
-				$new->autoflush(1);
-				$sel->add($new);
+    while (my @ready = $sel->can_read) {
+        foreach my $fh (@ready) {
+            if ($server == $fh) {
+                my $new = $fh->accept;
+                $new->autoflush(1);
+                $sel->add($new);
 
-			} elsif (stream_handle_client($fh)) {
-				$sel->remove($fh);
-				$fh->close;
-			}
-		}
-	}
+            } elsif (stream_handle_client($fh)) {
+                $sel->remove($fh);
+                $fh->close;
+            }
+        }
+    }
 }
 
 sub stream_handle_client {
-	my ($client) = @_;
+    my ($client) = @_;
 
-	log2c("(new connection $client)");
+    log2c("(new connection $client)");
 
-	$client->sysread(my $buffer, 65536) or return 1;
+    $client->sysread(my $buffer, 65536) or return 1;
 
-	log2i("$client $buffer");
+    log2i("$client $buffer");
 
-	my $close = $buffer =~ /F/;
+    my $close = $buffer =~ /F/;
 
-	log2o("$client $buffer");
+    log2o("$client $buffer");
 
-	$client->syswrite($buffer);
+    $client->syswrite($buffer);
 
-	return $close;
+    return $close;
 }
 
 sub log2i { Test::Nginx::log_core('|| <<', @_); }

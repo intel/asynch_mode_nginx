@@ -101,72 +101,72 @@ $t->run();
 ###############################################################################
 
 like(http_get_body('/', '0123456789'),
-	qr/X-Body: 0123456789\x0d?$/ms, 'body');
+    qr/X-Body: 0123456789\x0d?$/ms, 'body');
 
 like(http_get_body('/', '0123456789' x 128),
-	qr/X-Body: (0123456789){128}\x0d?$/ms, 'body in two buffers');
+    qr/X-Body: (0123456789){128}\x0d?$/ms, 'body in two buffers');
 
 like(http_get_body('/', '0123456789' x 512),
-	qr/X-Body-File/ms, 'body in file');
+    qr/X-Body-File/ms, 'body in file');
 
 like(read_body_file(http_get_body('/b', '0123456789' x 512)),
-	qr/^(0123456789){512}$/s, 'body in file only');
+    qr/^(0123456789){512}$/s, 'body in file only');
 
 like(http_get_body('/single', '0123456789' x 128),
-	qr/X-Body: (0123456789){128}\x0d?$/ms, 'body in single buffer');
+    qr/X-Body: (0123456789){128}\x0d?$/ms, 'body in single buffer');
 
 # pipelined requests
 
 like(http_get_body('/', '0123456789', '0123456789' x 128, '0123456789' x 512,
-	'foobar'), qr/X-Body: foobar\x0d?$/ms, 'chunked body pipelined');
+    'foobar'), qr/X-Body: foobar\x0d?$/ms, 'chunked body pipelined');
 like(http_get_body('/', '0123456789' x 128, '0123456789' x 512, '0123456789',
-	'foobar'), qr/X-Body: foobar\x0d?$/ms, 'chunked body pipelined 2');
+    'foobar'), qr/X-Body: foobar\x0d?$/ms, 'chunked body pipelined 2');
 
 like(http_get_body('/discard', '0123456789', '0123456789' x 128,
-	'0123456789' x 512, 'foobar'), qr/(TEST.*){4}/ms,
-	'chunked body discard');
+    '0123456789' x 512, 'foobar'), qr/(TEST.*){4}/ms,
+    'chunked body discard');
 like(http_get_body('/discard', '0123456789' x 128, '0123456789' x 512,
-	'0123456789', 'foobar'), qr/(TEST.*){4}/ms,
-	'chunked body discard 2');
+    '0123456789', 'foobar'), qr/(TEST.*){4}/ms,
+    'chunked body discard 2');
 
 # proxy_next_upstream
 
 like(http_get_body('/next', '0123456789'),
-	qr/X-Body: 0123456789\x0d?$/ms, 'body chunked next upstream');
+    qr/X-Body: 0123456789\x0d?$/ms, 'body chunked next upstream');
 
 ###############################################################################
 
 sub read_body_file {
-	my ($r) = @_;
-	return '' unless $r =~ m/X-Body-File: (.*)/;
-	open FILE, $1
-		or return "$!";
-	local $/;
-	my $content = <FILE>;
-	close FILE;
-	return $content;
+    my ($r) = @_;
+    return '' unless $r =~ m/X-Body-File: (.*)/;
+    open FILE, $1
+        or return "$!";
+    local $/;
+    my $content = <FILE>;
+    close FILE;
+    return $content;
 }
 
 sub http_get_body {
-	my $uri = shift;
-	my $last = pop;
-	return http( join '', (map {
-		my $body = $_;
-		"GET $uri HTTP/1.1" . CRLF
-		. "Host: localhost" . CRLF
-		. "Transfer-Encoding: chunked" . CRLF . CRLF
-		. sprintf("%x", length $body) . CRLF
-		. $body . CRLF
-		. "0" . CRLF . CRLF
-	} @_),
-		"GET $uri HTTP/1.1" . CRLF
-		. "Host: localhost" . CRLF
-		. "Connection: close" . CRLF
-		. "Transfer-Encoding: chunked" . CRLF . CRLF
-		. sprintf("%x", length $last) . CRLF
-		. $last . CRLF
-		. "0" . CRLF . CRLF
-	);
+    my $uri = shift;
+    my $last = pop;
+    return http( join '', (map {
+        my $body = $_;
+        "GET $uri HTTP/1.1" . CRLF
+        . "Host: localhost" . CRLF
+        . "Transfer-Encoding: chunked" . CRLF . CRLF
+        . sprintf("%x", length $body) . CRLF
+        . $body . CRLF
+        . "0" . CRLF . CRLF
+    } @_),
+        "GET $uri HTTP/1.1" . CRLF
+        . "Host: localhost" . CRLF
+        . "Connection: close" . CRLF
+        . "Transfer-Encoding: chunked" . CRLF . CRLF
+        . sprintf("%x", length $last) . CRLF
+        . $last . CRLF
+        . "0" . CRLF . CRLF
+    );
 }
 
 ###############################################################################

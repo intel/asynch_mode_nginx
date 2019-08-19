@@ -1,8 +1,9 @@
 #!/usr/bin/perl
 
+# Copyright (C) Intel, Inc.
 # (C) Andrey Zelenkov
 # (C) Nginx, Inc.
-# Copyright (C) Intel, Inc.
+
 # Tests for userid filter module.
 
 ###############################################################################
@@ -56,6 +57,7 @@ http {
         userid on;
 
         location / {
+            error_log %%TESTDIR%%/error.log debug;
             error_log %%TESTDIR%%/error_reset.log info;
         }
 
@@ -176,7 +178,7 @@ my $r = http_get('/expires_time');
 my ($t1) = $r =~ /X-Msec: (\d+)/;
 is(expires2timegm(cookie($r, 'expires')), $t1 + 100, 'expires time');
 is(get_cookie('/expires_max', 'expires'), 'Thu, 31-Dec-37 23:55:55 GMT',
-	'expires max');
+    'expires max');
 is(get_cookie('/expires_off', 'expires'), undef, 'expires off');
 
 # redefinition
@@ -218,55 +220,55 @@ send_uid('/?log', cookie($r, 'uid'));
 $t->stop();
 
 like($t->read_file('error_reset.log'),
-	'/userid cookie "uid=\w+" was reset/m', 'uid reset variable log');
+    '/userid cookie "uid=\w+" was reset/m', 'uid reset variable log');
 
 ###############################################################################
 
 sub cookie {
-	my ($r, $key) = @_;
-	my %cookie;
+    my ($r, $key) = @_;
+    my %cookie;
 
-	$r =~ /(Set-Cookie:[^\x0d]*).*\x0d\x0a?\x0d/ms;
-	if ($1) {
-		%cookie = $1 =~ /(\w+)=([^;]+)/g;
-	}
+    $r =~ /(Set-Cookie:[^\x0d]*).*\x0d\x0a?\x0d/ms;
+    if ($1) {
+        %cookie = $1 =~ /(\w+)=([^;]+)/g;
+    }
 
-	return $cookie{$key} if defined $key;
-	return %cookie;
+    return $cookie{$key} if defined $key;
+    return %cookie;
 }
 
 sub get_cookie {
-	my ($url, $key) = @_;
-	return cookie(http_get($url), $key);
+    my ($url, $key) = @_;
+    return cookie(http_get($url), $key);
 }
 
 sub expires2timegm {
-	my ($e) = @_;
-	my %months = (Jan => 0, Feb => 1, Mar => 2, Apr => 3, May =>4, Jun => 5,
-		Jul => 6, Aug => 7, Sep => 8, Oct => 9, Nov => 10, Dec => 11);
+    my ($e) = @_;
+    my %months = (Jan => 0, Feb => 1, Mar => 2, Apr => 3, May =>4, Jun => 5,
+        Jul => 6, Aug => 7, Sep => 8, Oct => 9, Nov => 10, Dec => 11);
 
-	my ($w, $date, $time) = split(" ", $e);
-	my ($day, $month, $year) = split("-", $date);
-	my ($hour, $min, $sec) = split(":", $time);
+    my ($w, $date, $time) = split(" ", $e);
+    my ($day, $month, $year) = split("-", $date);
+    my ($hour, $min, $sec) = split(":", $time);
 
-	return timegm($sec, $min, $hour, $day, $months{$month}, $year);
+    return timegm($sec, $min, $hour, $day, $months{$month}, $year);
 }
 
 sub uid_set {
-	my ($r) = @_;
-	my ($uid) = $r =~ /X-Set: uid=(.*)\n/m;
-	return $uid;
+    my ($r) = @_;
+    my ($uid) = $r =~ /X-Set: uid=(.*)\n/m;
+    return $uid;
 }
 
 sub uid_got {
-	my ($r) = @_;
-	my ($uid) = $r =~ /X-Got: uid=(.*)\n/m;
-	return $uid;
+    my ($r) = @_;
+    my ($uid) = $r =~ /X-Got: uid=(.*)\n/m;
+    return $uid;
 }
 
 sub send_uid {
-	my ($url, $uid) = @_;
-	return http(<<EOF);
+    my ($url, $uid) = @_;
+    return http(<<EOF);
 GET $url HTTP/1.0
 Host: localhost
 Cookie: uid=$uid

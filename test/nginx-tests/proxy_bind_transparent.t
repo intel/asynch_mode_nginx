@@ -26,10 +26,10 @@ select STDOUT; $| = 1;
 plan(skip_all => 'win32') if $^O eq 'MSWin32';
 plan(skip_all => 'must be root') if $> != 0;
 plan(skip_all => '127.0.0.2 local address required')
-	unless defined IO::Socket::INET->new( LocalAddr => '127.0.0.2' );
+    unless defined IO::Socket::INET->new( LocalAddr => '127.0.0.2' );
 
 my $t = Test::Nginx->new()->has(qw/http proxy/)
-	->write_file_expand('nginx.conf', <<'EOF');
+    ->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -57,15 +57,14 @@ http {
         server_name     localhost;
 
         location / {
-            add_header   X-IP $remote_addr;
+            add_header   X-IP $remote_addr always;
         }
     }
 }
 
 EOF
 
-$t->write_file('index.html', '');
-$t->try_run('no proxy_bind transparent')->plan(1);
+$t->run()->plan(1);
 
 ###############################################################################
 

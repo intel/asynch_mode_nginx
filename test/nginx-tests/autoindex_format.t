@@ -25,7 +25,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http autoindex symlink/)->plan(37)
-	->write_file_expand('nginx.conf', <<'EOF');
+    ->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -87,9 +87,9 @@ $mtime = qr/mtime="\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ"/;
 
 like($r, qr!Content-Type: text/xml; charset=utf-8!, 'xml content type');
 like($r, qr!<file(\s+\w+="[^=]*?")+\s*>test-file</file>!,
-	'xml file format');
+    'xml file format');
 like($r, qr!<directory(\s+\w+="[^=]*?")+\s*>test-dir</directory>!,
-	'xml dir format');
+    'xml dir format');
 
 ($data) = $r =~ qr!<file\s+(.*?)>test-file</file>!;
 like($data, $mtime, 'xml file mtime');
@@ -122,22 +122,22 @@ my $kv = qr!\s*$string\s*:\s*($string|$number)\s*!;
 like($r, qr!Content-Type: application/json!, 'json content type');
 like($r, qr!{$kv(,$kv)*}!, 'json format');
 
-($data) = $r =~ qr!({[^}]*?"name"\s*:\s*"test-file".*?})!;
+($data) = $r =~ qr!(\{[^}]*?"name"\s*:\s*"test-file".*?})!;
 like($data, qr!"type"\s*:\s*"file"!, 'json file');
 like($data, $mtime, 'json file mtime');
 like($data, qr!"size"\s*:\s*42!, 'json file size');
 
-($data) = $r =~ qr!({[^}]*?"name"\s*:\s*"test-file-link".*?})!;
+($data) = $r =~ qr!(\{[^}]*?"name"\s*:\s*"test-file-link".*?})!;
 like($data, qr!"type"\s*:\s*"file"!, 'json file link');
 like($data, $mtime, 'json file link mtime');
 like($data, qr!"size"\s*:\s*42!, 'json file link size');
 
-($data) = $r =~ qr!({[^}]*?"name"\s*:\s*"test-dir".*?})!;
+($data) = $r =~ qr!(\{[^}]*?"name"\s*:\s*"test-dir".*?})!;
 like($data, qr!"type"\s*:\s*"directory"!, 'json dir');
 like($data, $mtime, 'json dir mtime');
 unlike($data, qr!"size"\s*:\s*$number!, 'json dir size');
 
-($data) = $r =~ qr!({[^}]*?"name"\s*:\s*"test-dir-link".*?})!;
+($data) = $r =~ qr!(\{[^}]*?"name"\s*:\s*"test-dir-link".*?})!;
 like($data, qr!"type"\s*:\s*"directory"!, 'json dir link');
 like($data, $mtime, 'json dir link mtime');
 unlike($data, qr!"size"\s*:\s*$number!, 'json dir link size');
@@ -147,9 +147,9 @@ like($r, qr!"name"\s*:\s*"test-\\\"-double"!, 'json double');
 like($r, qr!"name"\s*:\s*"test-<>-angle"!, 'json angle');
 
 like(http_get_body('/jsonp/test-dir/?callback=foo'),
-	qr/^\s*foo\s*\(\s*\[\s*\]\s*\)\s*;\s*$/ms, 'jsonp callback');
+    qr/^\s*foo\s*\(\s*\[\s*\]\s*\)\s*;\s*$/ms, 'jsonp callback');
 like(http_get_body('/jsonp/test-dir/?callback='),
-	qr/^\s*\[\s*\s*\]\s*$/ms, 'jsonp callback empty');
+    qr/^\s*\[\s*\s*\]\s*$/ms, 'jsonp callback empty');
 
 # utf8 tests
 
@@ -164,13 +164,13 @@ like($r, qr!test-utf8-(\xd1\x84){45}"!ms, 'json utf8 long');
 ###############################################################################
 
 sub http_get_body {
-	my ($uri) = @_;
+    my ($uri) = @_;
 
-	return undef if !defined $uri;
+    return undef if !defined $uri;
 
-	http_get($uri) =~ /(.*?)\x0d\x0a?\x0d\x0a?(.*)/ms;
+    http_get($uri) =~ /(.*?)\x0d\x0a?\x0d\x0a?(.*)/ms;
 
-	return $2;
+    return $2;
 }
 
 ###############################################################################

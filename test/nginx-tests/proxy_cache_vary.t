@@ -23,7 +23,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http proxy cache gzip rewrite/)
-	->plan(42)->write_file_expand('nginx.conf', <<'EOF');
+    ->plan(42)->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -71,10 +71,9 @@ http {
         listen       127.0.0.1:8081;
         server_name  localhost;
 
-        #gzip on;
-        #gzip_min_length 0;
-        qatzip on;
-        qatzip_min_length 0;
+        %%GZIP_ENABLE%%
+        %%GZIP_MIN_LENGTH_0%%
+        %%QATZIP_ENABLE%%
         gzip_http_version 1.0;
         gzip_vary on;
 
@@ -254,8 +253,8 @@ like(get('/', 'bar,foo'), qr/HIT/ms, 'normalize order');
 ###############################################################################
 
 sub get {
-	my ($url, $extra) = @_;
-	return http(<<EOF);
+    my ($url, $extra) = @_;
+    return http(<<EOF);
 GET $url HTTP/1.1
 Host: localhost
 Connection: close

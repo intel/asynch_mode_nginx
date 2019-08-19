@@ -1,8 +1,9 @@
 #!/usr/bin/perl
 
+# Copyright (C) Intel, Inc.
 # (C) Sergey Kandaurov
 # (C) Nginx, Inc.
-# Copyright (C) Intel, Inc.
+
 # Tests for stream realip module, server side proxy protocol.
 
 ###############################################################################
@@ -26,8 +27,8 @@ use Test::Nginx::Stream qw/ stream /;
 select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
-my $t = Test::Nginx->new()->has(qw/stream stream_return stream_realip ipv6/)
-	->write_file_expand('nginx.conf', <<'EOF');
+my $t = Test::Nginx->new()->has(qw/stream stream_return stream_realip/)
+    ->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -82,85 +83,85 @@ stream {
 EOF
 
 $t->run_daemon(\&stream_daemon);
-$t->try_run('no stream proxy_protocol and/or inet6 support')->plan(8);
+$t->try_run('no inet6 support')->plan(8);
 $t->waitforsocket('127.0.0.1:' . port(8081));
 
 ###############################################################################
 
 is(pp_get(8083, "PROXY TCP4 192.0.2.1 192.0.2.2 1234 5678${CRLF}"),
-	'192.0.2.1:1234', 'server');
+    '192.0.2.1:1234', 'server');
 
 is(stream('127.0.0.1:' . port(8084))->read(), ':', 'server off');
 
 is(pp_get(8085, "PROXY TCP4 192.0.2.1 192.0.2.2 1234 5678${CRLF}close"),
-	'close', 'server payload');
+    'close', 'server payload');
 
 like(pp_get(8086, "PROXY TCP4 192.0.2.1 192.0.2.2 1234 5678${CRLF}"),
-	qr/^(\Q127.0.0.1:\E\d+):\s+\1$/, 'server ipv6 realip - no match');
+    qr/^(\Q127.0.0.1:\E\d+):\s+\1$/, 'server ipv6 realip - no match');
 
 like(pp_get(8087, "PROXY TCP4 192.0.2.1 192.0.2.2 1234 5678${CRLF}"),
-	qr/\Q192.0.2.1:1234:\E\s+\Q::1:\E\d+/, 'server ipv6 realip');
+    qr/\Q192.0.2.1:1234:\E\s+\Q::1:\E\d+/, 'server ipv6 realip');
 
 like(pp_get(8088, "PROXY TCP4 192.0.2.1 192.0.2.2 1234 5678${CRLF}"),
-	qr/\Q192.0.2.1:1234:\E\s+\Q127.0.0.1:\E\d+/, 'server ipv4 realip');
+    qr/\Q192.0.2.1:1234:\E\s+\Q127.0.0.1:\E\d+/, 'server ipv4 realip');
 
 like(pp_get(8089, "PROXY TCP4 192.0.2.1 192.0.2.2 1234 5678${CRLF}"),
-	qr/^(::1:\d+):\s+\1$/, 'server ipv4 realip - no match');
+    qr/^(::1:\d+):\s+\1$/, 'server ipv4 realip - no match');
 
 like(pp_get(8088, "PROXY UNKNOWN TCP4 192.0.2.1 192.0.2.2 1234 5678${CRLF}"),
-	qr/^(\Q127.0.0.1:\E\d+):\s+\1$/, 'server unknown');
+    qr/^(\Q127.0.0.1:\E\d+):\s+\1$/, 'server unknown');
 
 ###############################################################################
 
 sub pp_get {
-	my ($port, $proxy) = @_;
-	stream(PeerPort => port($port))->io($proxy);
+    my ($port, $proxy) = @_;
+    stream(PeerPort => port($port))->io($proxy);
 }
 
 ###############################################################################
 
 sub stream_daemon {
-	my $server = IO::Socket::INET->new(
-		Proto => 'tcp',
-		LocalAddr => '127.0.0.1:' . port(8081),
-		Listen => 5,
-		Reuse => 1
-	)
-		or die "Can't create listening socket: $!\n";
+    my $server = IO::Socket::INET->new(
+        Proto => 'tcp',
+        LocalAddr => '127.0.0.1:' . port(8081),
+        Listen => 5,
+        Reuse => 1
+    )
+        or die "Can't create listening socket: $!\n";
 
-	my $sel = IO::Select->new($server);
+    my $sel = IO::Select->new($server);
 
-	local $SIG{PIPE} = 'IGNORE';
+    local $SIG{PIPE} = 'IGNORE';
 
-	while (my @ready = $sel->can_read) {
-		foreach my $fh (@ready) {
-			if ($server == $fh) {
-				my $new = $fh->accept;
-				$new->autoflush(1);
-				$sel->add($new);
+    while (my @ready = $sel->can_read) {
+        foreach my $fh (@ready) {
+            if ($server == $fh) {
+                my $new = $fh->accept;
+                $new->autoflush(1);
+                $sel->add($new);
 
-			} elsif (stream_handle_client($fh)) {
-				$sel->remove($fh);
-				$fh->close;
-			}
-		}
-	}
+            } elsif (stream_handle_client($fh)) {
+                $sel->remove($fh);
+                $fh->close;
+            }
+        }
+    }
 }
 
 sub stream_handle_client {
-	my ($client) = @_;
+    my ($client) = @_;
 
-	log2c("(new connection $client)");
+    log2c("(new connection $client)");
 
-	$client->sysread(my $buffer, 65536) or return 1;
+    $client->sysread(my $buffer, 65536) or return 1;
 
-	log2i("$client $buffer");
+    log2i("$client $buffer");
 
-	log2o("$client $buffer");
+    log2o("$client $buffer");
 
-	$client->syswrite($buffer);
+    $client->syswrite($buffer);
 
-	return $buffer =~ /close/;
+    return $buffer =~ /close/;
 }
 
 sub log2i { Test::Nginx::log_core('|| <<', @_); }

@@ -1,8 +1,9 @@
 #!/usr/bin/perl
 
+# Copyright (C) Intel, Inc.
 # (C) Sergey Kandaurov
 # (C) Nginx, Inc.
-# Copyright (C) Intel, Inc.
+
 # Tests for stream ssl module.
 
 ###############################################################################
@@ -26,16 +27,20 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 eval {
-	require Net::SSLeay;
-	Net::SSLeay::load_error_strings();
-	Net::SSLeay::SSLeay_add_ssl_algorithms();
-	Net::SSLeay::randomize();
+    require Net::SSLeay;
+    Net::SSLeay::load_error_strings();
+    Net::SSLeay::SSLeay_add_ssl_algorithms();
+    Net::SSLeay::randomize();
 };
 plan(skip_all => 'Net::SSLeay not installed') if $@;
+
+plan(skip_all => 'win32') if $^O eq 'MSWin32';
 
 my $t = Test::Nginx->new()->has(qw/stream stream_ssl/)->has_daemon('openssl');
 
 $t->plan(7)->write_file_expand('nginx.conf', <<'EOF');
+
+user root;
 
 %%TEST_GLOBALS%%
 
@@ -50,7 +55,7 @@ stream {
     ssl_session_tickets off;
 
     # inherited by server "inherits"
-    ssl_password_file password_http;
+    ssl_password_file password_stream;
 
     server {
         listen      127.0.0.1:8080 ssl;
@@ -94,7 +99,7 @@ EOF
 
 $t->write_file('openssl.conf', <<EOF);
 [ req ]
-default_bits = 2048
+default_bits = 1024
 encrypt_key = no
 distinguished_name = req_distinguished_name
 [ req_distinguished_name ]
@@ -104,15 +109,15 @@ my $d = $t->testdir();
 mkfifo("$d/password_fifo", 0700);
 
 foreach my $name ('localhost', 'inherits') {
-	system("openssl genrsa -out '$d/$name.key' -passout pass:$name "
-		. "-aes128 2048 >>$d/openssl.out 2>&1") == 0
-		or die "Can't create private key: $!\n";
-	system('openssl req -x509 -new '
-		. "-config '$d/openssl.conf' -subj '/CN=$name/' "
-		. "-out '$d/$name.crt' "
-		. "-key '$d/$name.key' -passin pass:$name"
-		. ">>$d/openssl.out 2>&1") == 0
-		or die "Can't create certificate for $name: $!\n";
+    system("openssl genrsa -out $d/$name.key -passout pass:$name "
+        . "-aes128 1024 >>$d/openssl.out 2>&1") == 0
+        or die "Can't create private key: $!\n";
+    system('openssl req -x509 -new '
+        . "-config $d/openssl.conf -subj /CN=$name/ "
+        . "-out $d/$name.crt "
+        . "-key $d/$name.key -passin pass:$name"
+        . ">>$d/openssl.out 2>&1") == 0
+        or die "Can't create certificate for $name: $!\n";
 }
 
 
@@ -120,12 +125,19 @@ my $ctx = Net::SSLeay::CTX_new() or die("Failed to create SSL_CTX $!");
 
 $t->write_file('password', 'localhost');
 $t->write_file('password_many', "wrong$CRLF" . "localhost$CRLF");
-$t->write_file('password_http', 'inherits');
+$t->write_file('password_stream', 'inherits');
 
-fork() || exec("echo localhost > $d/password_fifo");
+my $p = fork();
+exec("echo localhost > $d/password_fifo") if $p == 0;
 
 $t->run_daemon(\&http_daemon);
-$t->run();
+
+eval {
+    open OLDERR, ">&", \*STDERR; close STDERR;
+    $t->run();
+    open STDERR, ">&", \*OLDERR;
+};
+kill 'INT', $p if $@;
 
 $t->waitforsocket('127.0.0.1:' . port(8081));
 
@@ -174,50 +186,50 @@ like(Net::SSLeay::dump_peer_certificate($ssl), qr/CN=inherits/, 'CN inner');
 ###############################################################################
 
 sub get_ssl_socket {
-	my ($port, $ses) = @_;
-	my $s;
+    my ($port, $ses) = @_;
+    my $s;
 
-	my $dest_ip = inet_aton('127.0.0.1');
-	my $dest_serv_params = sockaddr_in($port, $dest_ip);
+    my $dest_ip = inet_aton('127.0.0.1');
+    my $dest_serv_params = sockaddr_in($port, $dest_ip);
 
-	socket($s, &AF_INET, &SOCK_STREAM, 0) or die "socket: $!";
-	connect($s, $dest_serv_params) or die "connect: $!";
+    socket($s, &AF_INET, &SOCK_STREAM, 0) or die "socket: $!";
+    connect($s, $dest_serv_params) or die "connect: $!";
 
-	my $ssl = Net::SSLeay::new($ctx) or die("Failed to create SSL $!");
-	Net::SSLeay::set_session($ssl, $ses) if defined $ses;
-	Net::SSLeay::set_fd( $ssl, fileno($s));
-	Net::SSLeay::connect($ssl) or die("ssl connect");
-	return ($s, $ssl);
+    my $ssl = Net::SSLeay::new($ctx) or die("Failed to create SSL $!");
+    Net::SSLeay::set_session($ssl, $ses) if defined $ses;
+    Net::SSLeay::set_fd($ssl, fileno($s));
+    Net::SSLeay::connect($ssl) or die("ssl connect");
+    return ($s, $ssl);
 }
 
 ###############################################################################
 
 sub http_daemon {
-	my $server = IO::Socket::INET->new(
-		Proto => 'tcp',
-		LocalHost => '127.0.0.1:' . port(8081),
-		Listen => 5,
-		Reuse => 1
-	)
-		or die "Can't create listening socket: $!\n";
+    my $server = IO::Socket::INET->new(
+        Proto => 'tcp',
+        LocalHost => '127.0.0.1:' . port(8081),
+        Listen => 5,
+        Reuse => 1
+    )
+        or die "Can't create listening socket: $!\n";
 
-	local $SIG{PIPE} = 'IGNORE';
+    local $SIG{PIPE} = 'IGNORE';
 
-	while (my $client = $server->accept()) {
-		$client->autoflush(1);
+    while (my $client = $server->accept()) {
+        $client->autoflush(1);
 
-		while (<$client>) {
-			last if (/^\x0d?\x0a?$/);
-		}
+        while (<$client>) {
+            last if (/^\x0d?\x0a?$/);
+        }
 
-		print $client <<EOF;
+        print $client <<EOF;
 HTTP/1.1 200 OK
 Connection: close
 
 EOF
 
-		close $client;
-	}
+        close $client;
+    }
 }
 
 ###############################################################################

@@ -22,7 +22,7 @@ use Test::Nginx;
 select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
-my $t = Test::Nginx->new()->has(qw/http --with-debug ipv6 proxy/);
+my $t = Test::Nginx->new()->has(qw/http --with-debug proxy/);
 
 $t->write_file_expand('nginx.conf', <<'EOF');
 
@@ -69,6 +69,6 @@ select undef, undef, undef, 0.1;
 like($t->read_file('debug1.log'), qr/\[debug\]/, 'debug_connection file 1');
 like($t->read_file('debug2.log'), qr/\[debug\]/, 'debug_connection file 2');
 is($t->read_file('debug1.log'), $t->read_file('debug2.log'),
-	'debug_connection file1 file2 match');
+    'debug_connection file1 file2 match');
 
 ###############################################################################

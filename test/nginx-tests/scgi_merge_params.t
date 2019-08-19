@@ -26,7 +26,7 @@ eval { require SCGI; };
 plan(skip_all => 'SCGI not installed') if $@;
 
 my $t = Test::Nginx->new()->has(qw/http scgi cache/)->plan(9)
-	->write_file_expand('nginx.conf', <<'EOF');
+    ->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -77,31 +77,31 @@ $t->run()->waitforsocket('127.0.0.1:' . port(8081));
 ###############################################################################
 
 like(http_get_ims('/'), qr/ims=;/,
-	'if-modified-since cleared with cache');
+    'if-modified-since cleared with cache');
 like(http_get_ims('/'), qr/iums=;/,
-	'if-unmodified-since cleared with cache');
+    'if-unmodified-since cleared with cache');
 like(http_get_ims('/'), qr/blah=blah;/,
-	'custom params with cache');
+    'custom params with cache');
 
 like(http_get_ims('/no/'), qr/ims=blah;/,
-	'if-modified-since preserved without cache');
+    'if-modified-since preserved without cache');
 like(http_get_ims('/no/'), qr/iums=blah;/,
-	'if-unmodified-since preserved without cache');
+    'if-unmodified-since preserved without cache');
 like(http_get_ims('/'), qr/blah=blah;/,
-	'custom params without cache');
+    'custom params without cache');
 
 like(http_get_ims('/custom/'), qr/ims=;/,
-	'if-modified-since cleared with cache custom');
+    'if-modified-since cleared with cache custom');
 like(http_get_ims('/custom/'), qr/iums=;/,
-	'if-unmodified-since cleared with cache custom');
+    'if-unmodified-since cleared with cache custom');
 like(http_get_ims('/custom/'), qr/blah=custom;/,
-	'custom params with cache custom');
+    'custom params with cache custom');
 
 ###############################################################################
 
 sub http_get_ims {
-	my ($url) = @_;
-	return http(<<EOF);
+    my ($url) = @_;
+    return http(<<EOF);
 GET $url HTTP/1.0
 Host: localhost
 Connection: close
@@ -114,31 +114,31 @@ EOF
 ###############################################################################
 
 sub scgi_daemon {
-	my $server = IO::Socket::INET->new(
-		Proto => 'tcp',
-		LocalHost => '127.0.0.1:' . port(8081),
-		Listen => 5,
-		Reuse => 1
-	)
-		or die "Can't create listening socket: $!\n";
+    my $server = IO::Socket::INET->new(
+        Proto => 'tcp',
+        LocalHost => '127.0.0.1:' . port(8081),
+        Listen => 5,
+        Reuse => 1
+    )
+        or die "Can't create listening socket: $!\n";
 
-	my $scgi = SCGI->new($server, blocking => 1);
+    my $scgi = SCGI->new($server, blocking => 1);
 
-	while (my $request = $scgi->accept()) {
-		eval { $request->read_env(); };
-		next if $@;
+    while (my $request = $scgi->accept()) {
+        eval { $request->read_env(); };
+        next if $@;
 
-		my $ims = $request->env->{HTTP_IF_MODIFIED_SINCE} || '';
-		my $iums = $request->env->{HTTP_IF_UNMODIFIED_SINCE} || '';
-		my $blah = $request->env->{HTTP_X_BLAH} || '';
+        my $ims = $request->env->{HTTP_IF_MODIFIED_SINCE} || '';
+        my $iums = $request->env->{HTTP_IF_UNMODIFIED_SINCE} || '';
+        my $blah = $request->env->{HTTP_X_BLAH} || '';
 
-		$request->connection()->print(<<EOF);
+        $request->connection()->print(<<EOF);
 Location: http://localhost/redirect
 Content-Type: text/html
 
 ims=$ims;iums=$iums;blah=$blah;
 EOF
-	}
+    }
 }
 
 ###############################################################################

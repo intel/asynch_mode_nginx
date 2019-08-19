@@ -1,7 +1,8 @@
 #!/usr/bin/perl
 
-# (C) Maxim Dounin
 # Copyright (C) Intel, Inc.
+# (C) Maxim Dounin
+
 # Tests for upstream ip_hash balancer.
 
 ###############################################################################
@@ -24,7 +25,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http proxy upstream_ip_hash realip rewrite/)
-	->write_file_expand('nginx.conf', <<'EOF')->run();
+    ->write_file_expand('nginx.conf', <<'EOF')->run();
 
 %%TEST_GLOBALS%%
 
@@ -49,6 +50,11 @@ http {
         server 127.0.0.1:8083;
     }
 
+    upstream s {
+        ip_hash;
+        server 127.0.0.1:8081;
+    }
+
     server {
         listen       127.0.0.1:8080;
         server_name  localhost;
@@ -61,6 +67,9 @@ http {
         }
         location /u2 {
             proxy_pass http://u2;
+        }
+        location /s {
+            proxy_pass http://s;
         }
     }
 
@@ -80,9 +89,9 @@ http {
 EOF
 
 plan(skip_all => 'no 127.0.0.1 on host')
-	if http_get('/') !~ /X-IP: 127.0.0.1/m;
+    if http_get('/') !~ /X-IP: 127.0.0.1/m;
 
-$t->plan(2);
+$t->plan(3);
 
 ###############################################################################
 
@@ -90,25 +99,26 @@ my @ports = my ($port1, $port2, $port3) = (port(8081), port(8082), port(8083));
 
 is(many('/', 30), "$port1: 15, $port2: 15", 'ip_hash');
 is(many('/u2', 30), "$port1: 10, $port2: 10, $port3: 10", 'ip_hash 3 peers');
+is(many('/s', 30), "$port1: 30", 'ip_hash single peer');
 
 ###############################################################################
 
 sub many {
-	my ($uri, $count) = @_;
-	my %ports;
+    my ($uri, $count) = @_;
+    my %ports;
 
-	for my $i (1 .. $count) {
-		my $req = "GET $uri HTTP/1.0" . CRLF
-			. "X-Real-IP: 127.0.$i.2" . CRLF . CRLF;
+    for my $i (1 .. $count) {
+        my $req = "GET $uri HTTP/1.0" . CRLF
+            . "X-Real-IP: 127.0.$i.2" . CRLF . CRLF;
 
-		if (http($req) =~ /X-Port: (\d+)/) {
-			$ports{$1} = 0 unless defined $ports{$1};
-			$ports{$1}++;
-		}
-	}
+        if (http($req) =~ /X-Port: (\d+)/) {
+            $ports{$1} = 0 unless defined $ports{$1};
+            $ports{$1}++;
+        }
+    }
 
-	my @keys = map { my $p = $_; grep { $p == $_ } keys %ports } @ports;
-	return join ', ', map { $_ . ": " . $ports{$_} } @keys;
+    my @keys = map { my $p = $_; grep { $p == $_ } keys %ports } @ports;
+    return join ', ', map { $_ . ": " . $ports{$_} } @keys;
 }
 
 ###############################################################################

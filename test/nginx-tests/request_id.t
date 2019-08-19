@@ -24,7 +24,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http rewrite ssi/)
-	->write_file_expand('nginx.conf', <<'EOF');
+    ->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -62,7 +62,7 @@ EOF
 
 $t->write_file('index.html', '');
 $t->write_file('add.html', '<!--#include virtual="/body" -->');
-$t->try_run('no request_id variable support')->plan(12);
+$t->run()->plan(12);
 
 ###############################################################################
 
@@ -77,7 +77,7 @@ isnt($id1, $id2, 'different id');
 # same request
 
 ($id1, $id2) = http_get('/body')
-	=~ qr/^X-Request-Id: (.*?)\x0d.*\x0d\x0a(.*)/ms;
+    =~ qr/^X-Request-Id: (.*?)\x0d.*\x0d\x0a(.*)/ms;
 
 like($id1, qr/^[a-z0-9]{32}$/, 'format id 1 - same');
 like($id2, qr/^[a-z0-9]{32}$/, 'format id 2 - same');
@@ -87,7 +87,7 @@ is($id1, $id2, 'equal id - same');
 # subrequest
 
 ($id1, $id2) = http_get('/add.html')
-	=~ qr/^X-Request-Id: (.*?)\x0d.*\x0d\x0a(.*)/ms;
+    =~ qr/^X-Request-Id: (.*?)\x0d.*\x0d\x0a(.*)/ms;
 
 like($id1, qr/^[a-z0-9]{32}$/, 'format id 1 - sub');
 like($id2, qr/^[a-z0-9]{32}$/, 'format id 2 - sub');

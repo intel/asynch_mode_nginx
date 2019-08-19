@@ -23,8 +23,8 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http proxy cache image_filter limit_req/)
-	->has(qw/rewrite/)->plan(3)
-	->write_file_expand('nginx.conf', <<'EOF');
+    ->has(qw/rewrite/)->plan(3)
+    ->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -147,6 +147,6 @@ like(http_get('/time.log'), qr!/t3:.*, [1-9]\.!, 'upstream response time');
 # "readv() failed (9: Bad file descriptor) while reading upstream"
 
 $t->todo_alerts() if $t->read_file('nginx.conf') =~ /aio_write on/
-	and $t->read_file('nginx.conf') =~ /aio threads/;
+    and $t->read_file('nginx.conf') =~ /aio threads/;
 
 ###############################################################################

@@ -26,7 +26,7 @@ eval { require IO::Compress::Gzip; };
 plan(skip_all => "IO::Compress::Gzip not found") if $@;
 
 my $t = Test::Nginx->new()->has(qw/http perl gzip/)->plan(2)
-	->write_file_expand('nginx.conf', <<'EOF');
+    ->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -42,9 +42,9 @@ http {
         listen       127.0.0.1:8080;
         server_name  localhost;
 
-        #gzip on;
-        qatzip on;
-        qatzip_min_length 0;
+        %%GZIP_ENABLE%%
+        %%QATZIP_ENABLE%%
+
         gzip_types text/plain;
 
         location / {

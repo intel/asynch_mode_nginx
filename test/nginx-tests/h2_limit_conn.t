@@ -25,7 +25,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http http_v2 limit_conn/)->plan(4)
-	->write_file_expand('nginx.conf', <<'EOF');
+    ->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -74,8 +74,8 @@ is($frame->{headers}->{':status'}, 503, 'limit_conn rejected');
 $s->h2_settings(0, 0x4 => 2**16);
 
 $s->read(all => [
-	{ sid => $sid, fin => 1 },
-	{ sid => $sid2, fin => 1 }
+    { sid => $sid, fin => 1 },
+    { sid => $sid2, fin => 1 }
 ]);
 
 # limit_conn + client's RST_STREAM

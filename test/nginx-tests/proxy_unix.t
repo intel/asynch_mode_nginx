@@ -77,8 +77,8 @@ $t->run();
 # wait for unix socket to appear
 
 for (1 .. 50) {
-	last if -S $path;
-	select undef, undef, undef, 0.1;
+    last if -S $path;
+    select undef, undef, undef, 0.1;
 }
 
 ###############################################################################
@@ -95,62 +95,62 @@ like(http_get('/u'), qr/SEE-THIS/, 'proxy implicit upstream');
 ###############################################################################
 
 sub http_daemon {
-	my $server = IO::Socket::UNIX->new(
-		Proto => 'tcp',
-		Local => shift,
-		Listen => 5,
-		Reuse => 1
-	)
-		or die "Can't create listening socket: $!\n";
+    my $server = IO::Socket::UNIX->new(
+        Proto => 'tcp',
+        Local => shift,
+        Listen => 5,
+        Reuse => 1
+    )
+        or die "Can't create listening socket: $!\n";
 
-	local $SIG{PIPE} = 'IGNORE';
+    local $SIG{PIPE} = 'IGNORE';
 
-	while (my $client = $server->accept()) {
-		$client->autoflush(1);
+    while (my $client = $server->accept()) {
+        $client->autoflush(1);
 
-		my $headers = '';
-		my $uri = '';
+        my $headers = '';
+        my $uri = '';
 
-		while (<$client>) {
-			$headers .= $_;
-			last if (/^\x0d?\x0a?$/);
-		}
+        while (<$client>) {
+            $headers .= $_;
+            last if (/^\x0d?\x0a?$/);
+        }
 
-		$uri = $1 if $headers =~ /^\S+\s+([^ ]+)\s+HTTP/i;
+        $uri = $1 if $headers =~ /^\S+\s+([^ ]+)\s+HTTP/i;
 
-		if (grep { $uri eq $_ } ('/', '/u')) {
-			print $client <<'EOF';
+        if (grep { $uri eq $_ } ('/', '/u')) {
+            print $client <<'EOF';
 HTTP/1.1 200 OK
 Connection: close
 
 EOF
-			print $client "TEST-OK-IF-YOU-SEE-THIS"
-				unless $headers =~ /^HEAD/i;
+            print $client "TEST-OK-IF-YOU-SEE-THIS"
+                unless $headers =~ /^HEAD/i;
 
-		} elsif ($uri eq '/multi') {
+        } elsif ($uri eq '/multi') {
 
-			print $client <<"EOF";
+            print $client <<"EOF";
 HTTP/1.1 200 OK
 Connection: close
 
 TEST-OK-IF-YOU-SEE-THIS
 EOF
 
-			select undef, undef, undef, 0.1;
-			print $client 'AND-THIS';
+            select undef, undef, undef, 0.1;
+            print $client 'AND-THIS';
 
-		} else {
+        } else {
 
-			print $client <<"EOF";
+            print $client <<"EOF";
 HTTP/1.1 404 Not Found
 Connection: close
 
 Oops, '$uri' not found
 EOF
-		}
+        }
 
-		close $client;
-	}
+        close $client;
+    }
 }
 
 ###############################################################################

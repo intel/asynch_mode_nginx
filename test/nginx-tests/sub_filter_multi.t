@@ -1,8 +1,9 @@
 #!/usr/bin/perl
 
+# Copyright (C) Intel, Inc.
 # (C) Dmitry Volyntsev
 # (C) Nginx, Inc.
-# Copyright (C) Intel, Inc.
+
 # Tests for multiple patterns in sub filter.
 
 ###############################################################################
@@ -292,15 +293,15 @@ like(http_get('/multi3?a=aadbbaacbb'), qr/-\+/, 'exact match');
 like(http_get('/multi?a=AABYYZAAB'), qr/\+-\+/, 'case insensivity 1');
 like(http_get('/case?a=aabyyzaab'), qr/\+-\+/, 'case insensivity 2');
 like(http_get('/case2?a=abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'),
-	qr/\+\+/, 'case insensivity 3');
+    qr/\+\+/, 'case insensivity 3');
 like(http_get('/case3?a=abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'),
-	qr/\+\+/, 'case insensivity 4');
+    qr/\+\+/, 'case insensivity 4');
 
 like(http_get('/minimal?a=AAabcdefghBxBabCxCcdDDefEEghFF'),
-	qr/AA\+-\*!B_B\+C_C-DD\*EE!FF/, 'minimal match');
+    qr/AA\+-\*!B_B\+C_C-DD\*EE!FF/, 'minimal match');
 
 like(http_get('/utf8?a=ТЕКСТ模様ТЕКСТ2पैटर्नТЕКСТ3паттерн'),
-	qr/ТЕКСТзамена1ТЕКСТ2замена2ТЕКСТ3replaced/, 'utf8 match');
+    qr/ТЕКСТзамена1ТЕКСТ2замена2ТЕКСТ3replaced/, 'utf8 match');
 
 like(http_get('/once?a=aabyyzaab'), qr/\+-aab/, 'once 1');
 like(http_get('/once?a=yyzaabyyz'), qr/-\+yyz/, 'once 2');
@@ -309,72 +310,72 @@ like(http_get('/once?a=yyzyyzaabaabyyz'), qr/-yyz\+aabyyz/, 'once 3');
 like(http_get('/table/inheritance?a=foofoo'), qr/barbar/, 'table inheritance');
 
 like(http_get('/var/replacement/multi?a=A&b=B&c=aabyyzaab'),
-	qr/A_replacedB_replacedA_replaced/, 'complex multiple replace');
+    qr/A_replacedB_replacedA_replaced/, 'complex multiple replace');
 
 like(http_get('/crossbuf/match1/huge1.html'), qr/\+{6000}/,
-	'crossbuf match 1 (simple match len 8)');
+    'crossbuf match 1 (simple match len 8)');
 like(http_get('/crossbuf/match2/huge2.html'), qr/\+{5000}/,
-	'crossbuf match 2 (simple match len 9)');
+    'crossbuf match 2 (simple match len 9)');
 like(http_get('/crossbuf/match3/huge3.html'), qr/\+{4000}/,
-	'crossbuf match 3 (simple match len 10)');
+    'crossbuf match 3 (simple match len 10)');
 like(http_get('/crossbuf/match4/huge4.html'), qr/\+{4000}/,
-	'crossbuf match 4 (simple match len 11)');
+    'crossbuf match 4 (simple match len 11)');
 
 like(http_get('/crossbuf/match3/huge5-01.html'), qr/(\+A){4000}/,
-	'crossbuf match 5.1');
+    'crossbuf match 5.1');
 like(http_get('/crossbuf/match3/huge5-02.html'), qr/(\+ABCDEFGHIJ){4000}/,
-	'crossbuf match 5.2');
+    'crossbuf match 5.2');
 like(http_get('/crossbuf/match3/huge5-03.html'), qr/(\+ABCDEFGHIJK){4000}/,
-	'crossbuf match 5.3');
+    'crossbuf match 5.3');
 like(http_get('/crossbuf/match3/huge5-04.html'), qr/(\+ABCDEFGHIJKL){4000}/,
-	'crossbuf match 5.4');
+    'crossbuf match 5.4');
 
 like(http_get('/crossbuf/match5-01/huge6-01.html'), qr/(\+A-){3000}/,
-	'crossbuf match 6.1 (multiple replace)');
+    'crossbuf match 6.1 (multiple replace)');
 like(http_get('/crossbuf/match5-02/huge6-02.html'), qr/(\+A-){3000}/,
-	'crossbuf match 6.2 (multiple replace)');
+    'crossbuf match 6.2 (multiple replace)');
 
 like(http_get('/crossbuf/match6/huge7-01.html'), qr/(\+-){3000}/,
-	'crossbuf match 7.1 (multiple replace)');
+    'crossbuf match 7.1 (multiple replace)');
 like(http_get('/crossbuf/match6/huge7-02.html'), qr/(\+A-){3000}/,
-	'crossbuf match 7.2 (multiple replace)');
+    'crossbuf match 7.2 (multiple replace)');
 like(http_get('/crossbuf/match6/huge7-03.html'), qr/(\+ABCDEFGHIJ-){3000}/,
-	'crossbuf match 7.3 (multiple replace)');
+    'crossbuf match 7.3 (multiple replace)');
 like(http_get('/crossbuf/match6/huge7-04.html'), qr/(\+ABCDEFGHIJK-){3000}/,
-	'crossbuf match 7.4 (multiple replace)');
+    'crossbuf match 7.4 (multiple replace)');
 like(http_get('/crossbuf/match6/huge7-05.html'), qr/(\+ABCDEFGHIJKL-){3000}/,
-	'crossbuf match 7.5 (multiple replace)');
+    'crossbuf match 7.5 (multiple replace)');
 
 like(http_get('/crossbuf/superlong/match1/huge8.html'), qr/(ABC\+XYZ){1000}/,
-	'crossbuf superlong match 1');
+    'crossbuf superlong match 1');
 like(http_get('/crossbuf/superlong/match2/huge9.html'), qr/(ABC\+-){1000}/,
-	'crossbuf superlong match 2 (multiple replace)');
+    'crossbuf superlong match 2 (multiple replace)');
 like(http_get('/crossbuf/superlong/match3/huge10-01.html'), qr/(\+ABC-){1000}/,
-	'crossbuf superlong match 3.1 (multiple replace)');
+    'crossbuf superlong match 3.1 (multiple replace)');
 like(http_get('/crossbuf/superlong/match3/huge10-02.html'), qr/(-ABC\+){1000}/,
-	'crossbuf superlong match 3.2 (multiple replace)');
+    'crossbuf superlong match 3.2 (multiple replace)');
 like(http_get('/crossbuf/superlong/match4/huge11.html'), qr/(-A\*Z\+){1000}/,
-	'crossbuf superlong match 4 (1 byte search pattern)');
+    'crossbuf superlong match 4 (1 byte search pattern)');
 
 SKIP: {
 skip 'long tests', 8 unless $ENV{TEST_NGINX_UNSAFE};
 
 like(http_get('/shortbuf/match1?a=' . 'abpatternyzA' x 3),
-	qr/(\+A){3}/, 'shortbuf match 1.1');
+    qr/(\+A){3}/, 'shortbuf match 1.1');
 like(http_get('/shortbuf/match1?a=' . 'abpatternyzABCD' x 3),
-	qr/(\+ABCD){3}/, 'shortbuf match 1.2');
+    qr/(\+ABCD){3}/, 'shortbuf match 1.2');
 like(http_get('/shortbuf/match1?a=' . 'abpatternyzABCDE' x 3),
-	qr/(\+ABCDE){3}/, 'shortbuf match 1.3');
+    qr/(\+ABCDE){3}/, 'shortbuf match 1.3');
 like(http_get('/shortbuf/match2?a=' . 'abpatternyzAabpaernyzB' x 2),
-	qr/(\+A-B){2}/, 'shortbuf match 2.1 (multiple replace)');
+    qr/(\+A-B){2}/, 'shortbuf match 2.1 (multiple replace)');
 like(http_get('/shortbuf/match2?a=' . 'abpatternyzAabpaernyz' x 2),
-	qr/(\+A-){2}/, 'shortbuf match 2.2 (multiple replace)');
+    qr/(\+A-){2}/, 'shortbuf match 2.2 (multiple replace)');
 like(http_get('/shortbuf/match3?a=' . 'abpatternyzA_' x 3),
-	qr/(\+A\*){3}/, 'shortbuf match 3 (1 byte search pattern)');
+    qr/(\+A\*){3}/, 'shortbuf match 3 (1 byte search pattern)');
 like(http_get('/shortbuf/match4?a=' . 'pattABCDEFGHI' x 3),
-	qr/(\+ABCDEFGHI){3}/, 'shortbuf match 4');
+    qr/(\+ABCDEFGHI){3}/, 'shortbuf match 4');
 like(http_get('/shortbuf/match5?a=abpatternyzABCDE' . 'abpatternyABCDE' x 2),
-	qr/\+ABCDE(-\*nyABCDE){2}/, 'shortbuf match 5');
+    qr/\+ABCDE(-\*nyABCDE){2}/, 'shortbuf match 5');
 }
 
 ###############################################################################

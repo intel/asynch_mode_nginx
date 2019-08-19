@@ -1,8 +1,9 @@
 #!/usr/bin/perl
 
+# Copyright (C) Intel, Inc.
 # (C) Sergey Kandaurov
 # (C) Nginx, Inc.
-# Copyright (C) Intel, Inc.
+
 # Tests for slice filter with sub filter.
 
 # A response is sent using chunked encoding.
@@ -71,15 +72,10 @@ $t->run();
 
 my $r;
 
-TODO: {
-local $TODO = 'not yet' unless $t->has_version('1.11.5');
-
 # range filter in subrequests (subrequest_ranges)
 
 $r = get('/t', 'Range: bytes=2-4');
 unlike($r, qr/\x0d\x0a?0\x0d\x0a?\x0d\x0a?\w/, 'only final chunk');
-
-}
 
 TODO: {
 local $TODO = 'not yet';
@@ -95,8 +91,8 @@ is(Test::Nginx::http_content($r), '34', 'range request - correct content');
 ###############################################################################
 
 sub get {
-	my ($url, $extra) = @_;
-	return http(<<EOF);
+    my ($url, $extra) = @_;
+    return http(<<EOF);
 GET $url HTTP/1.1
 Host: localhost
 Connection: close

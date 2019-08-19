@@ -30,7 +30,7 @@ eval { IO::Socket::SSL::SSL_VERIFY_NONE(); };
 plan(skip_all => 'IO::Socket::SSL too old') if $@;
 
 my $t = Test::Nginx->new()->has(qw/http http_ssl http_v2 rewrite/)
-	->has_daemon('openssl')->plan(8);
+    ->has_daemon('openssl')->plan(8);
 
 $t->write_file_expand('nginx.conf', <<'EOF');
 
@@ -43,9 +43,10 @@ events {
 
 http {
     %%TEST_GLOBALS_HTTP%%
+    %%TEST_GLOBALS_HTTPS%%
 
     server {
-        listen       127.0.0.1:8080 http2 ssl asynch;
+        listen       127.0.0.1:8080 http2 ssl;
         server_name  localhost;
 
         ssl_certificate_key localhost.key;
@@ -70,7 +71,7 @@ EOF
 
 $t->write_file('openssl.conf', <<EOF);
 [ req ]
-default_bits = 2048
+default_bits = 1024
 encrypt_key = no
 distinguished_name = req_distinguished_name
 [ req_distinguished_name ]
@@ -79,11 +80,11 @@ EOF
 my $d = $t->testdir();
 
 foreach my $name ('localhost') {
-	system('openssl req -x509 -new '
-		. "-config '$d/openssl.conf' -subj '/CN=$name/' "
-		. "-out '$d/$name.crt' -keyout '$d/$name.key' "
-		. ">>$d/openssl.out 2>&1") == 0
-		or die "Can't create certificate for $name: $!\n";
+    system('openssl req -x509 -new '
+        . "-config $d/openssl.conf -subj /CN=$name/ "
+        . "-out $d/$name.crt -keyout $d/$name.key "
+        . ">>$d/openssl.out 2>&1") == 0
+        or die "Can't create certificate for $name: $!\n";
 }
 
 open OLDERR, ">&", \*STDERR; close STDERR;
@@ -95,9 +96,9 @@ open STDERR, ">&", \*OLDERR;
 my ($s, $sid, $frames, $frame);
 
 my $has_npn = eval { Test::Nginx::HTTP2::new_socket(port(8080), SSL => 1,
-	npn => 'h2')->next_proto_negotiated() };
+    npn => 'h2')->next_proto_negotiated() };
 my $has_alpn = eval { Test::Nginx::HTTP2::new_socket(port(8080), SSL => 1,
-	alpn => 'h2')->alpn_selected() };
+    alpn => 'h2')->alpn_selected() };
 
 # SSL/TLS connection, NPN
 

@@ -26,8 +26,8 @@ eval { require Cache::Memcached; };
 plan(skip_all => 'Cache::Memcached not installed') if $@;
 
 my $t = Test::Nginx->new()->has(qw/http memcached upstream_keepalive rewrite/)
-	->has_daemon('memcached')->plan(1)
-	->write_file_expand('nginx.conf', <<'EOF');
+    ->has_daemon('memcached')->plan(1)
+    ->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -63,20 +63,20 @@ my $memhelp = `memcached -h`;
 my @memopts1 = ();
 
 if ($memhelp =~ /repcached/) {
-	# repcached patches adds additional listen socket memcached
-	# that should be different too
+    # repcached patches adds additional listen socket memcached
+    # that should be different too
 
-	push @memopts1, '-X', port(8082);
+    push @memopts1, '-X', port(8082);
 }
 if ($memhelp =~ /-U/) {
-	# UDP ports no longer off by default in memcached 1.2.7+
+    # UDP ports no longer off by default in memcached 1.2.7+
 
-	push @memopts1, '-U', '0';
+    push @memopts1, '-U', '0';
 }
 if ($memhelp =~ /-t/) {
-	# for connection stats consistency in threaded memcached 1.3+
+    # for connection stats consistency in threaded memcached 1.3+
 
-	push @memopts1, '-t', '1';
+    push @memopts1, '-t', '1';
 }
 
 $t->run_daemon('memcached', '-u', 'root', '-l', '127.0.0.1', '-p', port(8081), @memopts1);
@@ -84,12 +84,12 @@ $t->run_daemon('memcached', '-u', 'root', '-l', '127.0.0.1', '-p', port(8081), @
 $t->run();
 
 $t->waitforsocket('127.0.0.1:' . port(8081))
-	or die "Unable to start memcached";
+    or die "Unable to start memcached";
 
 ###############################################################################
 
 my $memd1 = Cache::Memcached->new(servers => [ '127.0.0.1:' . port(8081) ],
-	connect_timeout => 1.0);
+    connect_timeout => 1.0);
 
 # It's possible that stale events occur, i.e. read event handler called
 # for just saved upstream connection without any data available for
@@ -113,10 +113,10 @@ $memd1->set('/big', 'X' x 20480);
 my $total = $memd1->stats()->{total}->{total_connections};
 
 for (1 .. 100) {
-	http_get('/big');
+    http_get('/big');
 }
 
 cmp_ok($memd1->stats()->{total}->{total_connections}, '<=', $total + 2,
-	'only one connection per worker used');
+    'only one connection per worker used');
 
 ###############################################################################

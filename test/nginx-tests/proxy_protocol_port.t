@@ -25,8 +25,8 @@ use Test::Nginx;
 select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
-my $t = Test::Nginx->new()->has(qw/http ipv6 realip/)
-	->write_file_expand('nginx.conf', <<'EOF');
+my $t = Test::Nginx->new()->has(qw/http realip/)
+    ->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -65,7 +65,7 @@ http {
 EOF
 
 $t->write_file('t', 'SEE-THIS');
-$t->try_run('no proxy_protocol_port')->plan(8);
+$t->run()->plan(8);
 
 ###############################################################################
 
@@ -100,8 +100,8 @@ is($log, 123, 'pp port log');
 ###############################################################################
 
 sub pp_get {
-	my ($url, $proxy) = @_;
-	return http($proxy . <<EOF);
+    my ($url, $proxy) = @_;
+    return http($proxy . <<EOF);
 GET $url HTTP/1.0
 Host: localhost
 

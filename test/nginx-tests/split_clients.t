@@ -70,17 +70,17 @@ like(many('/', 20), qr/first: 12, second: 2, third: 6/, 'split');
 ###############################################################################
 
 sub many {
-	my ($uri, $count) = @_;
-	my %dist;
+    my ($uri, $count) = @_;
+    my %dist;
 
-	for (1 .. $count) {
-		if (http_get($uri) =~ /(first|second|third)/) {
-			$dist{$1} = 0 unless defined $dist{$1};
-			$dist{$1}++;
-		}
-	}
+    for (1 .. $count) {
+        if (http_get($uri) =~ /(first|second|third)/) {
+            $dist{$1} = 0 unless defined $dist{$1};
+            $dist{$1}++;
+        }
+    }
 
-	return join ', ', map { $_ . ": " . $dist{$_} } sort keys %dist;
+    return join ', ', map { $_ . ": " . $dist{$_} } sort keys %dist;
 }
 
 ###############################################################################

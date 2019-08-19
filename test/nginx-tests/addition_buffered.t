@@ -1,8 +1,9 @@
 #!/usr/bin/perl
 
+# Copyright (C) Intel, Inc.
 # (C) Sergey Kandaurov
 # (C) Nginx, Inc.
-# Copyright (C) Intel, Inc.
+
 # Tests for addition module with buffered data from other filters.
 
 # In particular, sub filter may have a partial match buffered.
@@ -62,11 +63,6 @@ $t->run();
 
 # if data is buffered, there should be no interleaved data in output
 
-TODO: {
-local $TODO = 'not yet' unless $t->has_version('1.11.5');
-
 like(http_get('/proxy/body.html'), qr/^XXXXXafter$/m, 'request');
-
-}
 
 ###############################################################################

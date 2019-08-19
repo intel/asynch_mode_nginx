@@ -1,7 +1,8 @@
 #!/usr/bin/perl
 
-# (C) Maxim Dounin
 # Copyright (C) Intel, Inc.
+# (C) Maxim Dounin
+
 # Tests for nginx xslt filter module.
 
 ###############################################################################
@@ -110,7 +111,7 @@ $t->run();
 like(http_get("/x1"), qr!200 OK.*test xslt result!ms, 'simple');
 like(http_get("/x1"), qr!200 OK.*Content-Type: text/html!ms, 'content type');
 like(http_get("/x2"), qr!200 OK.*param1=value1.*param2=data.*param3=value3!ms,
-	'params');
+    'params');
 like(http_get("/x3"), qr!200 OK.*data=test entity!ms, 'entities');
 like(http_get("/x4"), qr!200 OK.*data=other data!ms, 'several stylesheets');
 

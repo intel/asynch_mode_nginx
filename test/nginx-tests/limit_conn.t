@@ -107,8 +107,8 @@ $s = http_get('/custom/w', start => 1);
 like(http_get('/custom'), qr/^HTTP\/1.. 501 /, 'limit_conn_status');
 
 like($t->read_file('error.log'),
-	qr/\[info\].*limiting connections by zone "custom"/,
-	'limit_conn_log_level');
+    qr/\[info\].*limiting connections by zone "custom"/,
+    'limit_conn_log_level');
 
 # limited after unlimited
 

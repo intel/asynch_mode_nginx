@@ -27,7 +27,7 @@ plan(skip_all => 'FCGI not installed') if $@;
 plan(skip_all => 'win32') if $^O eq 'MSWin32';
 
 my $t = Test::Nginx->new()->has(qw/http fastcgi cache/)->plan(5)
-	->write_file_expand('nginx.conf', <<'EOF');
+    ->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -70,7 +70,7 @@ unlike(http_head('/'), qr/SEE-THIS/, 'no data in cached HEAD');
 
 SKIP: {
 skip 'broken with header crossing buffer boundary', 2
-	unless $ENV{TEST_NGINX_UNSAFE};
+    unless $ENV{TEST_NGINX_UNSAFE};
 
 like(http_get('/stderr'), qr/SEE-THIS.*^2$/ms, 'large stderr handled');
 like(http_get('/stderr'), qr/SEE-THIS.*^2$/ms, 'large stderr cached');
@@ -80,28 +80,28 @@ like(http_get('/stderr'), qr/SEE-THIS.*^2$/ms, 'large stderr cached');
 ###############################################################################
 
 sub fastcgi_daemon {
-	my $socket = FCGI::OpenSocket('127.0.0.1:' . port(8081), 5);
-	my $request = FCGI::Request(\*STDIN, \*STDOUT, \*STDERR, \%ENV,
-		$socket);
+    my $socket = FCGI::OpenSocket('127.0.0.1:' . port(8081), 5);
+    my $request = FCGI::Request(\*STDIN, \*STDOUT, \*STDERR, \%ENV,
+        $socket);
 
-	my $count;
-	while( $request->Accept() >= 0 ) {
-		$count++;
+    my $count;
+    while( $request->Accept() >= 0 ) {
+        $count++;
 
-		if ($ENV{REQUEST_URI} eq '/stderr') {
-			warn "sample stderr text" x 512;
-		}
+        if ($ENV{REQUEST_URI} eq '/stderr') {
+            warn "sample stderr text" x 512;
+        }
 
-		print <<EOF;
+        print <<EOF;
 Location: http://localhost/redirect
 Content-Type: text/html
 
 SEE-THIS
 $count
 EOF
-	}
+    }
 
-	FCGI::CloseSocket($socket);
+    FCGI::CloseSocket($socket);
 }
 
 ###############################################################################

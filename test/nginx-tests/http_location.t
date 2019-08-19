@@ -23,7 +23,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http rewrite/)->plan(14)
-	->write_file_expand('nginx.conf', <<'EOF');
+    ->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -116,11 +116,11 @@ like(http_get('/foo/'), qr!X-Location: /foo/ exact!, '/foo/ exact');
 like(http_get('/foo/bar'), qr!X-Location: /foo/ prefix!, '/foo/ prefix');
 
 SKIP: {
-	skip 'caseless os', 1
-		if $^O eq 'MSWin32' or $^O eq 'darwin';
+    skip 'caseless os', 1
+        if $^O eq 'MSWin32' or $^O eq 'darwin';
 
-	like(http_get('/CASEFULL/'), qr/X-Location: root/,
-		'casefull regex do not match wrong case');
+    like(http_get('/CASEFULL/'), qr/X-Location: root/,
+        'casefull regex do not match wrong case');
 }
 
 # on case-insensitive systems a request to "/UPPERCASE" might fail,

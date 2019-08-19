@@ -62,7 +62,7 @@ http {
 EOF
 
 $t->write_file('inmemory.html',
-	'<!--#include virtual="/" set="one" --><!--#echo var="one" -->');
+    '<!--#include virtual="/" set="one" --><!--#echo var="one" -->');
 
 $t->run_daemon(\&http_chunked_daemon);
 $t->run()->waitforsocket('127.0.0.1:' . port(8081));
@@ -76,24 +76,24 @@ like(http_get('/inmemory.html'), qr/\x0d\x0aSEE-THIS$/s, 'chunked inmemory');
 ###############################################################################
 
 sub http_chunked_daemon {
-	my $server = IO::Socket::INET->new(
-		Proto => 'tcp',
-		LocalAddr => '127.0.0.1:' . port(8081),
-		Listen => 5,
-		Reuse => 1
-	)
-		or die "Can't create listening socket: $!\n";
+    my $server = IO::Socket::INET->new(
+        Proto => 'tcp',
+        LocalAddr => '127.0.0.1:' . port(8081),
+        Listen => 5,
+        Reuse => 1
+    )
+        or die "Can't create listening socket: $!\n";
 
-	local $SIG{PIPE} = 'IGNORE';
+    local $SIG{PIPE} = 'IGNORE';
 
-	while (my $client = $server->accept()) {
-		$client->autoflush(1);
+    while (my $client = $server->accept()) {
+        $client->autoflush(1);
 
-		while (<$client>) {
-			last if (/^\x0d?\x0a?$/);
-		}
+        while (<$client>) {
+            last if (/^\x0d?\x0a?$/);
+        }
 
-		print $client <<'EOF';
+        print $client <<'EOF';
 HTTP/1.1 200 OK
 Connection: close
 Transfer-Encoding: chunked
@@ -105,8 +105,8 @@ SEE-THIS
 
 EOF
 
-		close $client;
-	}
+        close $client;
+    }
 }
 
 ###############################################################################

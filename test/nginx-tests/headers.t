@@ -24,8 +24,8 @@ use Test::Nginx;
 select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
-my $t = Test::Nginx->new()->has(qw/http/)->plan(27)
-	->write_file_expand('nginx.conf', <<'EOF');
+my $t = Test::Nginx->new()->has(qw/http proxy/)->plan(28)
+    ->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -83,6 +83,10 @@ http {
 
         location /modified {
             expires modified 2048;
+
+            location /modified/proxy {
+                proxy_pass http://127.0.0.1:8081/modified;
+            }
         }
 
         location /var {
@@ -96,6 +100,13 @@ http {
                 expires modified $arg_e;
             }
         }
+    }
+
+    server {
+        listen       127.0.0.1:8081;
+        server_name  localhost;
+
+        add_header   Last-Modified "Mon, 28 Sep 1970 06:00:00 GMT";
     }
 }
 
@@ -145,6 +156,11 @@ like(http_get('/negative'), qr/no-cache/, 'expires negative');
 like(http_get('/daily'), qr/Expires:.*:33 GMT/, 'expires daily');
 like(http_get('/modified'), qr/max-age=204./, 'expires modified');
 
+# "expires modified" with proxy
+
+like(http_get('/modified/proxy'), qr/Expires: Mon, 28 Sep 1970 06:34:08 GMT/,
+    'expires modified proxy');
+
 # expires with variables
 
 like(http_get('/var?e=epoch'), qr/Expires:.*1970/, 'expires var epoch');
@@ -155,13 +171,13 @@ like(http_get('/var_inner?e=2048'), qr/max-age=2048/, 'expires var inner');
 like(http_get('/var?e=-2048'), qr/no-cache/, 'expires var negative');
 like(http_get('/var?e=@33s'), qr/Expires:.*:33 GMT/, 'expires var daily');
 like(http_get('/var_modified?e=2048'), qr/max-age=204./,
-	'expires var modified');
+    'expires var modified');
 
 # some invalid cases
 
 unlike(http_get('/var'), qr/Expires/, 'expires var empty');
 unlike(http_get('/var?e=bad'), qr/Expires/, 'expires var bad');
 unlike(http_get('/var_modified?e=epoch'), qr/Expires/,
-	'expires var modified epoch');
+    'expires var modified epoch');
 
 ###############################################################################

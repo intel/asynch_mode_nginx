@@ -27,8 +27,8 @@ use Test::Nginx::HTTP2;
 select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
-my $t = Test::Nginx->new()->has(qw/http http_v2 proxy rewrite/)->plan(92)
-	->write_file_expand('nginx.conf', <<'EOF');
+my $t = Test::Nginx->new()->has(qw/http http_v2 proxy rewrite/)->plan(93)
+    ->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -111,17 +111,12 @@ http {
 EOF
 
 $t->run_daemon(\&http_daemon);
-
-open OLDERR, ">&", \*STDERR; close STDERR;
-$t->run();
-open STDERR, ">&", \*OLDERR;
-
-$t->waitforsocket('127.0.0.1:' . port(8083));
+$t->run()->waitforsocket('127.0.0.1:' . port(8083));
 
 # file size is slightly beyond initial window size: 2**16 + 80 bytes
 
 $t->write_file('t1.html',
-	join('', map { sprintf "X%04dXXX", $_ } (1 .. 8202)));
+    join('', map { sprintf "X%04dXXX", $_ } (1 .. 8202)));
 
 $t->write_file('t2.html', 'SEE-THIS');
 
@@ -131,10 +126,10 @@ $t->write_file('t2.html', 'SEE-THIS');
 
 my $s = Test::Nginx::HTTP2->new();
 my $sid = $s->new_stream({ headers => [
-	{ name => ':method', value => 'GET', mode => 0 },
-	{ name => ':scheme', value => 'http', mode => 0 },
-	{ name => ':path', value => '/', mode => 0 },
-	{ name => ':authority', value => 'localhost', mode => 1 }]});
+    { name => ':method', value => 'GET', mode => 0 },
+    { name => ':scheme', value => 'http', mode => 0 },
+    { name => ':path', value => '/', mode => 0 },
+    { name => ':authority', value => 'localhost', mode => 1 }]});
 my $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
 my ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
@@ -144,10 +139,10 @@ is($frame->{headers}->{':status'}, 200, 'indexed header field');
 
 $s = Test::Nginx::HTTP2->new();
 $sid = $s->new_stream({ headers => [
-	{ name => ':method', value => 'GET', mode => 1, huff => 0 },
-	{ name => ':scheme', value => 'http', mode => 1, huff => 0 },
-	{ name => ':path', value => '/', mode => 1, huff => 0 },
-	{ name => ':authority', value => 'localhost', mode => 1, huff => 0 }]});
+    { name => ':method', value => 'GET', mode => 1, huff => 0 },
+    { name => ':scheme', value => 'http', mode => 1, huff => 0 },
+    { name => ':path', value => '/', mode => 1, huff => 0 },
+    { name => ':authority', value => 'localhost', mode => 1, huff => 0 }]});
 $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
@@ -155,10 +150,10 @@ is($frame->{headers}->{':status'}, 200, 'literal with indexing');
 
 $s = Test::Nginx::HTTP2->new();
 $sid = $s->new_stream({ headers => [
-	{ name => ':method', value => 'GET', mode => 1, huff => 1 },
-	{ name => ':scheme', value => 'http', mode => 1, huff => 1 },
-	{ name => ':path', value => '/', mode => 1, huff => 1 },
-	{ name => ':authority', value => 'localhost', mode => 1, huff => 1 }]});
+    { name => ':method', value => 'GET', mode => 1, huff => 1 },
+    { name => ':scheme', value => 'http', mode => 1, huff => 1 },
+    { name => ':path', value => '/', mode => 1, huff => 1 },
+    { name => ':authority', value => 'localhost', mode => 1, huff => 1 }]});
 $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
@@ -168,10 +163,10 @@ is($frame->{headers}->{':status'}, 200, 'literal with indexing - huffman');
 
 $s = Test::Nginx::HTTP2->new();
 $sid = $s->new_stream({ headers => [
-	{ name => ':method', value => 'GET', mode => 2, huff => 0 },
-	{ name => ':scheme', value => 'http', mode => 2, huff => 0 },
-	{ name => ':path', value => '/', mode => 2, huff => 0 },
-	{ name => ':authority', value => 'localhost', mode => 2, huff => 0 }]});
+    { name => ':method', value => 'GET', mode => 2, huff => 0 },
+    { name => ':scheme', value => 'http', mode => 2, huff => 0 },
+    { name => ':path', value => '/', mode => 2, huff => 0 },
+    { name => ':authority', value => 'localhost', mode => 2, huff => 0 }]});
 $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
@@ -179,10 +174,10 @@ is($frame->{headers}->{':status'}, 200, 'literal with indexing - new');
 
 $s = Test::Nginx::HTTP2->new();
 $sid = $s->new_stream({ headers => [
-	{ name => ':method', value => 'GET', mode => 2, huff => 1 },
-	{ name => ':scheme', value => 'http', mode => 2, huff => 1 },
-	{ name => ':path', value => '/', mode => 2, huff => 1 },
-	{ name => ':authority', value => 'localhost', mode => 2, huff => 1 }]});
+    { name => ':method', value => 'GET', mode => 2, huff => 1 },
+    { name => ':scheme', value => 'http', mode => 2, huff => 1 },
+    { name => ':path', value => '/', mode => 2, huff => 1 },
+    { name => ':authority', value => 'localhost', mode => 2, huff => 1 }]});
 $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
@@ -192,10 +187,10 @@ is($frame->{headers}->{':status'}, 200, 'literal with indexing - new huffman');
 
 $s = Test::Nginx::HTTP2->new();
 $sid = $s->new_stream({ headers => [
-	{ name => ':method', value => 'GET', mode => 3, huff => 0 },
-	{ name => ':scheme', value => 'http', mode => 3, huff => 0 },
-	{ name => ':path', value => '/', mode => 3, huff => 0 },
-	{ name => ':authority', value => 'localhost', mode => 3, huff => 0 }]});
+    { name => ':method', value => 'GET', mode => 3, huff => 0 },
+    { name => ':scheme', value => 'http', mode => 3, huff => 0 },
+    { name => ':path', value => '/', mode => 3, huff => 0 },
+    { name => ':authority', value => 'localhost', mode => 3, huff => 0 }]});
 $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
@@ -203,10 +198,10 @@ is($frame->{headers}->{':status'}, 200, 'literal without indexing');
 
 $s = Test::Nginx::HTTP2->new();
 $sid = $s->new_stream({ headers => [
-	{ name => ':method', value => 'GET', mode => 3, huff => 1 },
-	{ name => ':scheme', value => 'http', mode => 3, huff => 1 },
-	{ name => ':path', value => '/', mode => 3, huff => 1 },
-	{ name => ':authority', value => 'localhost', mode => 3, huff => 1 }]});
+    { name => ':method', value => 'GET', mode => 3, huff => 1 },
+    { name => ':scheme', value => 'http', mode => 3, huff => 1 },
+    { name => ':path', value => '/', mode => 3, huff => 1 },
+    { name => ':authority', value => 'localhost', mode => 3, huff => 1 }]});
 $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
@@ -214,27 +209,27 @@ is($frame->{headers}->{':status'}, 200, 'literal without indexing - huffman');
 
 $s = Test::Nginx::HTTP2->new();
 $sid = $s->new_stream({ headers => [
-	{ name => ':method', value => 'GET', mode => 3, huff => 0 },
-	{ name => ':scheme', value => 'http', mode => 3, huff => 0 },
-	{ name => ':path', value => '/', mode => 3, huff => 0 },
-	{ name => ':authority', value => 'localhost', mode => 3, huff => 0 },
-	{ name => 'referer', value => 'foo', mode => 3, huff => 0 }]});
+    { name => ':method', value => 'GET', mode => 3, huff => 0 },
+    { name => ':scheme', value => 'http', mode => 3, huff => 0 },
+    { name => ':path', value => '/', mode => 3, huff => 0 },
+    { name => ':authority', value => 'localhost', mode => 3, huff => 0 },
+    { name => 'referer', value => 'foo', mode => 3, huff => 0 }]});
 $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
 is($frame->{headers}->{':status'}, 200,
-	'literal without indexing - multibyte index');
+    'literal without indexing - multibyte index');
 is($frame->{headers}->{'x-referer'}, 'foo',
-	'literal without indexing - multibyte index value');
+    'literal without indexing - multibyte index value');
 
 # 6.2.2. Literal Header Field without Indexing -- New Name
 
 $s = Test::Nginx::HTTP2->new();
 $sid = $s->new_stream({ headers => [
-	{ name => ':method', value => 'GET', mode => 4, huff => 0 },
-	{ name => ':scheme', value => 'http', mode => 4, huff => 0 },
-	{ name => ':path', value => '/', mode => 4, huff => 0 },
-	{ name => ':authority', value => 'localhost', mode => 4, huff => 0 }]});
+    { name => ':method', value => 'GET', mode => 4, huff => 0 },
+    { name => ':scheme', value => 'http', mode => 4, huff => 0 },
+    { name => ':path', value => '/', mode => 4, huff => 0 },
+    { name => ':authority', value => 'localhost', mode => 4, huff => 0 }]});
 $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
@@ -242,24 +237,24 @@ is($frame->{headers}->{':status'}, 200, 'literal without indexing - new');
 
 $s = Test::Nginx::HTTP2->new();
 $sid = $s->new_stream({ headers => [
-	{ name => ':method', value => 'GET', mode => 4, huff => 1 },
-	{ name => ':scheme', value => 'http', mode => 4, huff => 1 },
-	{ name => ':path', value => '/', mode => 4, huff => 1 },
-	{ name => ':authority', value => 'localhost', mode => 4, huff => 1 }]});
+    { name => ':method', value => 'GET', mode => 4, huff => 1 },
+    { name => ':scheme', value => 'http', mode => 4, huff => 1 },
+    { name => ':path', value => '/', mode => 4, huff => 1 },
+    { name => ':authority', value => 'localhost', mode => 4, huff => 1 }]});
 $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
 is($frame->{headers}->{':status'}, 200,
-	'literal without indexing - new huffman');
+    'literal without indexing - new huffman');
 
 # 6.2.3. Literal Header Field Never Indexed
 
 $s = Test::Nginx::HTTP2->new();
 $sid = $s->new_stream({ headers => [
-	{ name => ':method', value => 'GET', mode => 5, huff => 0 },
-	{ name => ':scheme', value => 'http', mode => 5, huff => 0 },
-	{ name => ':path', value => '/', mode => 5, huff => 0 },
-	{ name => ':authority', value => 'localhost', mode => 5, huff => 0 }]});
+    { name => ':method', value => 'GET', mode => 5, huff => 0 },
+    { name => ':scheme', value => 'http', mode => 5, huff => 0 },
+    { name => ':path', value => '/', mode => 5, huff => 0 },
+    { name => ':authority', value => 'localhost', mode => 5, huff => 0 }]});
 $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
@@ -267,10 +262,10 @@ is($frame->{headers}->{':status'}, 200, 'literal never indexed');
 
 $s = Test::Nginx::HTTP2->new();
 $sid = $s->new_stream({ headers => [
-	{ name => ':method', value => 'GET', mode => 5, huff => 1 },
-	{ name => ':scheme', value => 'http', mode => 5, huff => 1 },
-	{ name => ':path', value => '/', mode => 5, huff => 1 },
-	{ name => ':authority', value => 'localhost', mode => 5, huff => 1 }]});
+    { name => ':method', value => 'GET', mode => 5, huff => 1 },
+    { name => ':scheme', value => 'http', mode => 5, huff => 1 },
+    { name => ':path', value => '/', mode => 5, huff => 1 },
+    { name => ':authority', value => 'localhost', mode => 5, huff => 1 }]});
 $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
@@ -278,27 +273,27 @@ is($frame->{headers}->{':status'}, 200, 'literal never indexed - huffman');
 
 $s = Test::Nginx::HTTP2->new();
 $sid = $s->new_stream({ headers => [
-	{ name => ':method', value => 'GET', mode => 5, huff => 0 },
-	{ name => ':scheme', value => 'http', mode => 5, huff => 0 },
-	{ name => ':path', value => '/', mode => 5, huff => 0 },
-	{ name => ':authority', value => 'localhost', mode => 5, huff => 0 },
-	{ name => 'referer', value => 'foo', mode => 5, huff => 0 }]});
+    { name => ':method', value => 'GET', mode => 5, huff => 0 },
+    { name => ':scheme', value => 'http', mode => 5, huff => 0 },
+    { name => ':path', value => '/', mode => 5, huff => 0 },
+    { name => ':authority', value => 'localhost', mode => 5, huff => 0 },
+    { name => 'referer', value => 'foo', mode => 5, huff => 0 }]});
 $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
 is($frame->{headers}->{':status'}, 200,
-	'literal never indexed - multibyte index');
+    'literal never indexed - multibyte index');
 is($frame->{headers}->{'x-referer'}, 'foo',
-	'literal never indexed - multibyte index value');
+    'literal never indexed - multibyte index value');
 
 # 6.2.3. Literal Header Field Never Indexed -- New Name
 
 $s = Test::Nginx::HTTP2->new();
 $sid = $s->new_stream({ headers => [
-	{ name => ':method', value => 'GET', mode => 6, huff => 0 },
-	{ name => ':scheme', value => 'http', mode => 6, huff => 0 },
-	{ name => ':path', value => '/', mode => 6, huff => 0 },
-	{ name => ':authority', value => 'localhost', mode => 6, huff => 0 }]});
+    { name => ':method', value => 'GET', mode => 6, huff => 0 },
+    { name => ':scheme', value => 'http', mode => 6, huff => 0 },
+    { name => ':path', value => '/', mode => 6, huff => 0 },
+    { name => ':authority', value => 'localhost', mode => 6, huff => 0 }]});
 $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
@@ -306,10 +301,10 @@ is($frame->{headers}->{':status'}, 200, 'literal never indexed - new');
 
 $s = Test::Nginx::HTTP2->new();
 $sid = $s->new_stream({ headers => [
-	{ name => ':method', value => 'GET', mode => 6, huff => 1 },
-	{ name => ':scheme', value => 'http', mode => 6, huff => 1 },
-	{ name => ':path', value => '/', mode => 6, huff => 1 },
-	{ name => ':authority', value => 'localhost', mode => 6, huff => 1 }]});
+    { name => ':method', value => 'GET', mode => 6, huff => 1 },
+    { name => ':scheme', value => 'http', mode => 6, huff => 1 },
+    { name => ':path', value => '/', mode => 6, huff => 1 },
+    { name => ':authority', value => 'localhost', mode => 6, huff => 1 }]});
 $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
@@ -319,22 +314,22 @@ is($frame->{headers}->{':status'}, 200, 'literal never indexed - new huffman');
 
 $s = Test::Nginx::HTTP2->new();
 $sid = $s->new_stream({ headers => [
-	{ name => ':method', value => 'GET', mode => 0 },
-	{ name => ':scheme', value => 'http', mode => 0 },
-	{ name => ':path', value => '/', mode => 0 },
-	{ name => ':authority', value => 'localhost', mode => 1 },
-	{ name => 'referer', value => 'foo', mode => 1 }]});
+    { name => ':method', value => 'GET', mode => 0 },
+    { name => ':scheme', value => 'http', mode => 0 },
+    { name => ':path', value => '/', mode => 0 },
+    { name => ':authority', value => 'localhost', mode => 1 },
+    { name => 'referer', value => 'foo', mode => 1 }]});
 $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
 is($frame->{headers}->{'x-referer'}, 'foo', 'value with indexing - new');
 
 $sid = $s->new_stream({ headers => [
-	{ name => ':method', value => 'GET', mode => 0 },
-	{ name => ':scheme', value => 'http', mode => 0 },
-	{ name => ':path', value => '/', mode => 0 },
-	{ name => ':authority', value => 'localhost', mode => 0 },
-	{ name => 'referer', value => 'foo', mode => 0 }]});
+    { name => ':method', value => 'GET', mode => 0 },
+    { name => ':scheme', value => 'http', mode => 0 },
+    { name => ':path', value => '/', mode => 0 },
+    { name => ':authority', value => 'localhost', mode => 0 },
+    { name => 'referer', value => 'foo', mode => 0 }]});
 $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
@@ -342,11 +337,11 @@ is($frame->{headers}->{'x-referer'}, 'foo', 'value with indexing - indexed');
 
 $s = Test::Nginx::HTTP2->new();
 $sid = $s->new_stream({ headers => [
-	{ name => ':method', value => 'GET', mode => 0 },
-	{ name => ':scheme', value => 'http', mode => 0 },
-	{ name => ':path', value => '/', mode => 0 },
-	{ name => ':authority', value => 'localhost', mode => 1 },
-	{ name => 'x-foo', value => 'X-Bar', mode => 2 }]});
+    { name => ':method', value => 'GET', mode => 0 },
+    { name => ':scheme', value => 'http', mode => 0 },
+    { name => ':path', value => '/', mode => 0 },
+    { name => ':authority', value => 'localhost', mode => 1 },
+    { name => 'x-foo', value => 'X-Bar', mode => 2 }]});
 $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
@@ -355,11 +350,11 @@ is($frame->{headers}->{'x-sent-foo'}, 'X-Bar', 'name with indexing - new');
 # reuse literal with multibyte indexing - reused name
 
 $sid = $s->new_stream({ headers => [
-	{ name => ':method', value => 'GET', mode => 0 },
-	{ name => ':scheme', value => 'http', mode => 0 },
-	{ name => ':path', value => '/', mode => 0 },
-	{ name => ':authority', value => 'localhost', mode => 0 },
-	{ name => 'x-foo', value => 'X-Bar', mode => 0 }]});
+    { name => ':method', value => 'GET', mode => 0 },
+    { name => ':scheme', value => 'http', mode => 0 },
+    { name => ':path', value => '/', mode => 0 },
+    { name => ':authority', value => 'localhost', mode => 0 },
+    { name => 'x-foo', value => 'X-Bar', mode => 0 }]});
 $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
@@ -368,26 +363,26 @@ is($frame->{headers}->{'x-sent-foo'}, 'X-Bar', 'name with indexing - indexed');
 # reuse literal with multibyte indexing - reused name only
 
 $sid = $s->new_stream({ headers => [
-	{ name => ':method', value => 'GET', mode => 0 },
-	{ name => ':scheme', value => 'http', mode => 0 },
-	{ name => ':path', value => '/', mode => 0 },
-	{ name => ':authority', value => 'localhost', mode => 0 },
-	{ name => 'x-foo', value => 'X-Baz', mode => 1 }]});
+    { name => ':method', value => 'GET', mode => 0 },
+    { name => ':scheme', value => 'http', mode => 0 },
+    { name => ':path', value => '/', mode => 0 },
+    { name => ':authority', value => 'localhost', mode => 0 },
+    { name => 'x-foo', value => 'X-Baz', mode => 1 }]});
 $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
 is($frame->{headers}->{'x-sent-foo'}, 'X-Baz',
-	'name with indexing - indexed name');
+    'name with indexing - indexed name');
 
 # response header field with characters not suitable for huffman encoding
 
 $s = Test::Nginx::HTTP2->new();
 $sid = $s->new_stream({ headers => [
-	{ name => ':method', value => 'GET', mode => 0 },
-	{ name => ':scheme', value => 'http', mode => 0 },
-	{ name => ':path', value => '/', mode => 0 },
-	{ name => ':authority', value => 'localhost', mode => 1 },
-	{ name => 'x-foo', value => '{{{{{', mode => 2 }]});
+    { name => ':method', value => 'GET', mode => 0 },
+    { name => ':scheme', value => 'http', mode => 0 },
+    { name => ':path', value => '/', mode => 0 },
+    { name => ':authority', value => 'localhost', mode => 1 },
+    { name => 'x-foo', value => '{{{{{', mode => 2 }]});
 $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
@@ -399,11 +394,11 @@ like($s->{headers}, qr/\Q{{{{{/, 'rare chars - no huffman encoding');
 
 $s = Test::Nginx::HTTP2->new();
 $sid = $s->new_stream({ headers => [
-	{ name => ':method', value => 'GET', mode => 0 },
-	{ name => ':scheme', value => 'http', mode => 0 },
-	{ name => ':path', value => '/', mode => 0 },
-	{ name => ':authority', value => 'localhost', mode => 1 },
-	{ name => 'x-foo', value => 'aaaaa', mode => 2 }]});
+    { name => ':method', value => 'GET', mode => 0 },
+    { name => ':scheme', value => 'http', mode => 0 },
+    { name => ':path', value => '/', mode => 0 },
+    { name => ':authority', value => 'localhost', mode => 1 },
+    { name => 'x-foo', value => 'aaaaa', mode => 2 }]});
 $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
@@ -417,11 +412,11 @@ my $field = pack "C*", ((map { 97 } (1 .. 862)), 1 .. 9, 11, 12, 14 .. 255);
 
 $s = Test::Nginx::HTTP2->new();
 $sid = $s->new_stream({ headers => [
-	{ name => ':method', value => 'GET', mode => 0 },
-	{ name => ':scheme', value => 'http', mode => 0 },
-	{ name => ':path', value => '/', mode => 0 },
-	{ name => ':authority', value => 'localhost', mode => 1 },
-	{ name => 'x-foo', value => $field, mode => 2 }]});
+    { name => ':method', value => 'GET', mode => 0 },
+    { name => ':scheme', value => 'http', mode => 0 },
+    { name => ':path', value => '/', mode => 0 },
+    { name => ':authority', value => 'localhost', mode => 1 },
+    { name => 'x-foo', value => $field, mode => 2 }]});
 $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
@@ -436,31 +431,31 @@ unlike($s->{headers}, qr/abcde/, 'all chars - huffman encoding');
 
 $s = Test::Nginx::HTTP2->new();
 $sid = $s->new_stream({ headers => [
-	{ name => ':method', value => 'GET', mode => 0 },
-	{ name => ':scheme', value => 'http', mode => 0 },
-	{ name => ':path', value => '/', mode => 0 },
-	{ name => ':authority', value => 'localhost', mode => 1 },
-	{ name => 'referer', value => 'foo', mode => 1 },
-	{ name => 'x-foo', value => 'X-Bar', mode => 2 }]});
+    { name => ':method', value => 'GET', mode => 0 },
+    { name => ':scheme', value => 'http', mode => 0 },
+    { name => ':path', value => '/', mode => 0 },
+    { name => ':authority', value => 'localhost', mode => 1 },
+    { name => 'referer', value => 'foo', mode => 1 },
+    { name => 'x-foo', value => 'X-Bar', mode => 2 }]});
 $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
 $sid = $s->new_stream({ table_size => 61, headers => [
-	{ name => ':method', value => 'GET', mode => 0 },
-	{ name => ':scheme', value => 'http', mode => 0 },
-	{ name => ':path', value => '/', mode => 0 },
-	{ name => 'x-foo', value => 'X-Bar', mode => 0 },
-	{ name => ':authority', value => 'localhost', mode => 1 }]});
+    { name => ':method', value => 'GET', mode => 0 },
+    { name => ':scheme', value => 'http', mode => 0 },
+    { name => ':path', value => '/', mode => 0 },
+    { name => 'x-foo', value => 'X-Bar', mode => 0 },
+    { name => ':authority', value => 'localhost', mode => 1 }]});
 $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
 isnt($frame, undef, 'updated table size - remaining index');
 
 $sid = $s->new_stream({ headers => [
-	{ name => ':method', value => 'GET', mode => 0 },
-	{ name => ':scheme', value => 'http', mode => 0 },
-	{ name => ':path', value => '/', mode => 0 },
-	{ name => ':authority', value => 'localhost', mode => 1 },
-	{ name => 'referer', value => 'foo', mode => 0 }]});
+    { name => ':method', value => 'GET', mode => 0 },
+    { name => ':scheme', value => 'http', mode => 0 },
+    { name => ':path', value => '/', mode => 0 },
+    { name => ':authority', value => 'localhost', mode => 1 },
+    { name => 'referer', value => 'foo', mode => 0 }]});
 $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
@@ -492,11 +487,11 @@ is($frame->{code}, 9, 'invalid index - GOAWAY COMPRESSION_ERROR');
 
 $s = Test::Nginx::HTTP2->new();
 $sid = $s->new_stream({ headers => [
-	{ name => ':method', value => 'GET', mode => 0 },
-	{ name => ':scheme', value => 'http', mode => 0 },
-	{ name => ':path', value => '/', mode => 0 },
-	{ name => ':authority', value => 'localhost', mode => 1 },
-	{ name => '', value => '', mode => 0 }]});
+    { name => ':method', value => 'GET', mode => 0 },
+    { name => ':scheme', value => 'http', mode => 0 },
+    { name => ':path', value => '/', mode => 0 },
+    { name => ':authority', value => 'localhost', mode => 1 },
+    { name => '', value => '', mode => 0 }]});
 $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
 ok($frame, 'zero index - GOAWAY');
@@ -506,11 +501,11 @@ is($frame->{code}, 9, 'zero index - GOAWAY COMPRESSION_ERROR');
 
 $s = Test::Nginx::HTTP2->new();
 $sid = $s->new_stream({ table_size => 4097, headers => [
-	{ name => ':method', value => 'GET', mode => 0 },
-	{ name => ':scheme', value => 'http', mode => 0 },
-	{ name => ':path', value => '/', mode => 0 },
-	{ name => 'x-foo', value => 'X-Bar', mode => 0 },
-	{ name => ':authority', value => 'localhost', mode => 1 }]});
+    { name => ':method', value => 'GET', mode => 0 },
+    { name => ':scheme', value => 'http', mode => 0 },
+    { name => ':path', value => '/', mode => 0 },
+    { name => 'x-foo', value => 'X-Bar', mode => 0 },
+    { name => ':authority', value => 'localhost', mode => 1 }]});
 $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq "GOAWAY" } @$frames;
@@ -526,21 +521,21 @@ is($frame->{code}, 9, 'invalid table size - GOAWAY COMPRESSION_ERROR');
 
 $s = Test::Nginx::HTTP2->new();
 $sid = $s->new_stream({ headers => [
-	{ name => ':method', value => 'GET', mode => 0 },
-	{ name => ':scheme', value => 'http', mode => 0 },
-	{ name => ':path', value => '/cookie', mode => 2 },
-	{ name => ':authority', value => 'localhost', mode => 1 },
-	{ name => 'cookie', value => 'a=b', mode => 2},
-	{ name => 'cookie', value => 'c=d', mode => 2}]});
+    { name => ':method', value => 'GET', mode => 0 },
+    { name => ':scheme', value => 'http', mode => 0 },
+    { name => ':path', value => '/cookie', mode => 2 },
+    { name => ':authority', value => 'localhost', mode => 1 },
+    { name => 'cookie', value => 'a=b', mode => 2},
+    { name => 'cookie', value => 'c=d', mode => 2}]});
 $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
 is($frame->{headers}->{'x-cookie-a'}, 'b',
-	'multiple request header fields - cookie');
+    'multiple request header fields - cookie');
 is($frame->{headers}->{'x-cookie-c'}, 'd',
-	'multiple request header fields - cookie 2');
+    'multiple request header fields - cookie 2');
 is($frame->{headers}->{'x-cookie'}, 'a=b; c=d',
-	'multiple request header fields - semi-colon');
+    'multiple request header fields - semi-colon');
 
 # request header field with multiple values to HTTP backend
 
@@ -552,23 +547,23 @@ is($frame->{headers}->{'x-cookie'}, 'a=b; c=d',
 
 $s = Test::Nginx::HTTP2->new();
 $sid = $s->new_stream({ headers => [
-	{ name => ':method', value => 'GET', mode => 0 },
-	{ name => ':scheme', value => 'http', mode => 0 },
-	{ name => ':path', value => '/proxy/cookie', mode => 2 },
-	{ name => ':authority', value => 'localhost', mode => 1 },
-	{ name => 'cookie', value => 'a=b', mode => 2 },
-	{ name => 'cookie', value => 'c=d', mode => 2 }]});
+    { name => ':method', value => 'GET', mode => 0 },
+    { name => ':scheme', value => 'http', mode => 0 },
+    { name => ':path', value => '/proxy/cookie', mode => 2 },
+    { name => ':authority', value => 'localhost', mode => 1 },
+    { name => 'cookie', value => 'a=b', mode => 2 },
+    { name => 'cookie', value => 'c=d', mode => 2 }]});
 $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
 is($frame->{headers}->{'x-sent-cookie'}, 'a=b; c=d',
-	'multiple request header fields proxied - semi-colon');
+    'multiple request header fields proxied - semi-colon');
 is($frame->{headers}->{'x-sent-cookie2'}, '',
-	'multiple request header fields proxied - dublicate cookie');
+    'multiple request header fields proxied - dublicate cookie');
 is($frame->{headers}->{'x-sent-cookie-a'}, 'b',
-	'multiple request header fields proxied - cookie 1');
+    'multiple request header fields proxied - cookie 1');
 is($frame->{headers}->{'x-sent-cookie-c'}, 'd',
-	'multiple request header fields proxied - cookie 2');
+    'multiple request header fields proxied - cookie 2');
 
 # response header field with multiple values
 
@@ -578,9 +573,9 @@ $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
 is($frame->{headers}->{'set-cookie'}[0], 'a=b',
-	'multiple response header fields - cookie');
+    'multiple response header fields - cookie');
 is($frame->{headers}->{'set-cookie'}[1], 'c=d',
-	'multiple response header fields - cookie 2');
+    'multiple response header fields - cookie 2');
 
 # response header field with multiple values from HTTP backend
 
@@ -590,13 +585,13 @@ $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
 is($frame->{headers}->{'set-cookie'}[0], 'a=b',
-	'multiple response header proxied - cookie');
+    'multiple response header proxied - cookie');
 is($frame->{headers}->{'set-cookie'}[1], 'c=d',
-	'multiple response header proxied - cookie 2');
+    'multiple response header proxied - cookie 2');
 is($frame->{headers}->{'x-uc-a'}, 'b',
-	'multiple response header proxied - upstream cookie');
+    'multiple response header proxied - upstream cookie');
 is($frame->{headers}->{'x-uc-c'}, 'd',
-	'multiple response header proxied - upstream cookie 2');
+    'multiple response header proxied - upstream cookie 2');
 
 # CONTINUATION in response
 # put three long header fields (not less than SETTINGS_MAX_FRAME_SIZE/2)
@@ -607,14 +602,15 @@ $sid = $s->new_stream({ path => '/continuation?h=' . 'x' x 2**13 });
 
 $frames = $s->read(all => [{ sid => $sid, fin => 0x4 }]);
 my @data = grep { $_->{type} =~ "HEADERS|CONTINUATION" } @$frames;
-is(@{$data[-1]->{headers}{'x-longheader'}}, 3,
-	'response CONTINUATION - headers');
-is($data[-1]->{headers}{'x-longheader'}[0], 'x' x 2**13,
-	'response CONTINUATION - header 1');
-is($data[-1]->{headers}{'x-longheader'}[1], 'x' x 2**13,
-	'response CONTINUATION - header 2');
-is($data[-1]->{headers}{'x-longheader'}[2], 'x' x 2**13,
-	'response CONTINUATION - header 3');
+my $data = $data[-1];
+is(@{$data->{headers}{'x-longheader'}}, 3,
+    'response CONTINUATION - headers');
+is($data->{headers}{'x-longheader'}[0], 'x' x 2**13,
+    'response CONTINUATION - header 1');
+is($data->{headers}{'x-longheader'}[1], 'x' x 2**13,
+    'response CONTINUATION - header 2');
+is($data->{headers}{'x-longheader'}[2], 'x' x 2**13,
+    'response CONTINUATION - header 3');
 @data = sort { $a <=> $b } map { $_->{length} } @data;
 cmp_ok($data[-1], '<=', 2**14, 'response CONTINUATION - max frame size');
 
@@ -625,14 +621,15 @@ $sid = $s->new_stream({ path => '/continuation/204?h=' . 'x' x 2**13 });
 
 $frames = $s->read(all => [{ sid => $sid, fin => 0x4 }]);
 @data = grep { $_->{type} =~ "HEADERS|CONTINUATION" } @$frames;
-is(@{$data[-1]->{headers}{'x-longheader'}}, 3,
-	'no body CONTINUATION - headers');
-is($data[-1]->{headers}{'x-longheader'}[0], 'x' x 2**13,
-	'no body CONTINUATION - header 1');
-is($data[-1]->{headers}{'x-longheader'}[1], 'x' x 2**13,
-	'no body CONTINUATION - header 2');
-is($data[-1]->{headers}{'x-longheader'}[2], 'x' x 2**13,
-	'no body CONTINUATION - header 3');
+$data = $data[-1];
+is(@{$data->{headers}{'x-longheader'}}, 3,
+    'no body CONTINUATION - headers');
+is($data->{headers}{'x-longheader'}[0], 'x' x 2**13,
+    'no body CONTINUATION - header 1');
+is($data->{headers}{'x-longheader'}[1], 'x' x 2**13,
+    'no body CONTINUATION - header 2');
+is($data->{headers}{'x-longheader'}[2], 'x' x 2**13,
+    'no body CONTINUATION - header 3');
 @data = sort { $a <=> $b } map { $_->{length} } @data;
 cmp_ok($data[-1], '<=', 2**14, 'no body CONTINUATION - max frame size');
 
@@ -659,12 +656,9 @@ ok($frame, 'response header - parts');
 
 SKIP: {
 skip 'response header failed', 1 unless $frame;
-skip 'broken sendfile', 1 if $^O eq 'freebsd' and
-	$Config{osvers} =~ '11.0-release' and
-	$t->read_file('nginx.conf') =~ /sendfile on/;
 
 is(length join('', @{$frame->{headers}->{'x-longheader'}}), 98304,
-	'response header - headers');
+    'response header - headers');
 
 }
 
@@ -675,32 +669,39 @@ $sid = $s->new_stream({ path => '/continuation?h=' . 'x' x 2**15 });
 $frames = $s->read(all => [{ sid => $sid, fin => 0x4 }]);
 
 @data = grep { $_->{type} =~ "HEADERS|CONTINUATION" } @$frames;
+ok(@data, 'response header split');
+
+SKIP: {
+skip 'response header split failed', 2 unless @data;
+
 my ($lengths) = sort { $b <=> $a } map { $_->{length} } @data;
 cmp_ok($lengths, '<=', 16384, 'response header split - max size');
 
-is(length join('', @{@$frames[-1]->{headers}->{'x-longheader'}}), 98304,
-	'response header split - headers');
+is(length join('', @{$data[-1]->{headers}->{'x-longheader'}}), 98304,
+    'response header split - headers');
+
+}
 
 # max_field_size - header field name
 
 $s = Test::Nginx::HTTP2->new(port(8084));
 $sid = $s->new_stream({ headers => [
-	{ name => ':method', value => 'GET', mode => 0 },
-	{ name => ':scheme', value => 'http', mode => 0 },
-	{ name => ':path', value => '/t2.html', mode => 1 },
-	{ name => ':authority', value => 'localhost', mode => 1 },
-	{ name => 'longname10' x 2 . 'x', value => 'value', mode => 2 }]});
+    { name => ':method', value => 'GET', mode => 0 },
+    { name => ':scheme', value => 'http', mode => 0 },
+    { name => ':path', value => '/t2.html', mode => 1 },
+    { name => ':authority', value => 'localhost', mode => 1 },
+    { name => 'longname10' x 2 . 'x', value => 'value', mode => 2 }]});
 $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq 'DATA' } @$frames;
 ok($frame, 'field name size less');
 
 $sid = $s->new_stream({ headers => [
-	{ name => ':method', value => 'GET', mode => 0 },
-	{ name => ':scheme', value => 'http', mode => 0 },
-	{ name => ':path', value => '/t2.html', mode => 1 },
-	{ name => ':authority', value => 'localhost', mode => 1 },
-	{ name => 'longname10' x 2 . 'x', value => 'value', mode => 2 }]});
+    { name => ':method', value => 'GET', mode => 0 },
+    { name => ':scheme', value => 'http', mode => 0 },
+    { name => ':path', value => '/t2.html', mode => 1 },
+    { name => ':authority', value => 'localhost', mode => 1 },
+    { name => 'longname10' x 2 . 'x', value => 'value', mode => 2 }]});
 $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq 'DATA' } @$frames;
@@ -708,11 +709,11 @@ ok($frame, 'field name size second');
 
 $s = Test::Nginx::HTTP2->new(port(8084));
 $sid = $s->new_stream({ headers => [
-	{ name => ':method', value => 'GET', mode => 0 },
-	{ name => ':scheme', value => 'http', mode => 0 },
-	{ name => ':path', value => '/t2.html', mode => 1 },
-	{ name => ':authority', value => 'localhost', mode => 1 },
-	{ name => 'longname10' x 2 . 'xx', value => 'value', mode => 2 }]});
+    { name => ':method', value => 'GET', mode => 0 },
+    { name => ':scheme', value => 'http', mode => 0 },
+    { name => ':path', value => '/t2.html', mode => 1 },
+    { name => ':authority', value => 'localhost', mode => 1 },
+    { name => 'longname10' x 2 . 'xx', value => 'value', mode => 2 }]});
 $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq 'DATA' } @$frames;
@@ -720,11 +721,11 @@ ok($frame, 'field name size equal');
 
 $s = Test::Nginx::HTTP2->new(port(8084));
 $sid = $s->new_stream({ headers => [
-	{ name => ':method', value => 'GET', mode => 0 },
-	{ name => ':scheme', value => 'http', mode => 0 },
-	{ name => ':path', value => '/t2.html', mode => 1 },
-	{ name => ':authority', value => 'localhost', mode => 1 },
-	{ name => 'longname10' x 2 . 'xxx', value => 'value', mode => 2 }]});
+    { name => ':method', value => 'GET', mode => 0 },
+    { name => ':scheme', value => 'http', mode => 0 },
+    { name => ':path', value => '/t2.html', mode => 1 },
+    { name => ':authority', value => 'localhost', mode => 1 },
+    { name => 'longname10' x 2 . 'xxx', value => 'value', mode => 2 }]});
 $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq 'DATA' } @$frames;
@@ -734,11 +735,11 @@ is($frame, undef, 'field name size greater');
 
 $s = Test::Nginx::HTTP2->new(port(8084));
 $sid = $s->new_stream({ headers => [
-	{ name => ':method', value => 'GET', mode => 0 },
-	{ name => ':scheme', value => 'http', mode => 0 },
-	{ name => ':path', value => '/t2.html', mode => 1 },
-	{ name => ':authority', value => 'localhost', mode => 1 },
-	{ name => 'name', value => 'valu5' x 4 . 'x', mode => 2 }]});
+    { name => ':method', value => 'GET', mode => 0 },
+    { name => ':scheme', value => 'http', mode => 0 },
+    { name => ':path', value => '/t2.html', mode => 1 },
+    { name => ':authority', value => 'localhost', mode => 1 },
+    { name => 'name', value => 'valu5' x 4 . 'x', mode => 2 }]});
 $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq 'DATA' } @$frames;
@@ -746,11 +747,11 @@ ok($frame, 'field value size less');
 
 $s = Test::Nginx::HTTP2->new(port(8084));
 $sid = $s->new_stream({ headers => [
-	{ name => ':method', value => 'GET', mode => 0 },
-	{ name => ':scheme', value => 'http', mode => 0 },
-	{ name => ':path', value => '/t2.html', mode => 1 },
-	{ name => ':authority', value => 'localhost', mode => 1 },
-	{ name => 'name', value => 'valu5' x 4 . 'xx', mode => 2 }]});
+    { name => ':method', value => 'GET', mode => 0 },
+    { name => ':scheme', value => 'http', mode => 0 },
+    { name => ':path', value => '/t2.html', mode => 1 },
+    { name => ':authority', value => 'localhost', mode => 1 },
+    { name => 'name', value => 'valu5' x 4 . 'xx', mode => 2 }]});
 $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq 'DATA' } @$frames;
@@ -758,11 +759,11 @@ ok($frame, 'field value size equal');
 
 $s = Test::Nginx::HTTP2->new(port(8084));
 $sid = $s->new_stream({ headers => [
-	{ name => ':method', value => 'GET', mode => 0 },
-	{ name => ':scheme', value => 'http', mode => 0 },
-	{ name => ':path', value => '/t2.html', mode => 1 },
-	{ name => ':authority', value => 'localhost', mode => 1 },
-	{ name => 'name', value => 'valu5' x 4 . 'xxx', mode => 2 }]});
+    { name => ':method', value => 'GET', mode => 0 },
+    { name => ':scheme', value => 'http', mode => 0 },
+    { name => ':path', value => '/t2.html', mode => 1 },
+    { name => ':authority', value => 'localhost', mode => 1 },
+    { name => 'name', value => 'valu5' x 4 . 'xxx', mode => 2 }]});
 $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq 'DATA' } @$frames;
@@ -772,22 +773,22 @@ is($frame, undef, 'field value size greater');
 
 $s = Test::Nginx::HTTP2->new(port(8085));
 $sid = $s->new_stream({ headers => [
-	{ name => ':method', value => 'GET', mode => 0 },
-	{ name => ':scheme', value => 'http', mode => 0 },
-	{ name => ':path', value => '/t2.html', mode => 1 },
-	{ name => ':authority', value => 'localhost', mode => 1 },
-	{ name => 'longname9', value => 'x', mode => 2 }]});
+    { name => ':method', value => 'GET', mode => 0 },
+    { name => ':scheme', value => 'http', mode => 0 },
+    { name => ':path', value => '/t2.html', mode => 1 },
+    { name => ':authority', value => 'localhost', mode => 1 },
+    { name => 'longname9', value => 'x', mode => 2 }]});
 $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq 'DATA' } @$frames;
 ok($frame, 'header size less');
 
 $sid = $s->new_stream({ headers => [
-	{ name => ':method', value => 'GET', mode => 0 },
-	{ name => ':scheme', value => 'http', mode => 0 },
-	{ name => ':path', value => '/t2.html', mode => 1 },
-	{ name => ':authority', value => 'localhost', mode => 1 },
-	{ name => 'longname9', value => 'x', mode => 2 }]});
+    { name => ':method', value => 'GET', mode => 0 },
+    { name => ':scheme', value => 'http', mode => 0 },
+    { name => ':path', value => '/t2.html', mode => 1 },
+    { name => ':authority', value => 'localhost', mode => 1 },
+    { name => 'longname9', value => 'x', mode => 2 }]});
 $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq 'DATA' } @$frames;
@@ -795,11 +796,11 @@ ok($frame, 'header size second');
 
 $s = Test::Nginx::HTTP2->new(port(8085));
 $sid = $s->new_stream({ headers => [
-	{ name => ':method', value => 'GET', mode => 0 },
-	{ name => ':scheme', value => 'http', mode => 0 },
-	{ name => ':path', value => '/t2.html', mode => 1 },
-	{ name => ':authority', value => 'localhost', mode => 1 },
-	{ name => 'longname9', value => 'xx', mode => 2 }]});
+    { name => ':method', value => 'GET', mode => 0 },
+    { name => ':scheme', value => 'http', mode => 0 },
+    { name => ':path', value => '/t2.html', mode => 1 },
+    { name => ':authority', value => 'localhost', mode => 1 },
+    { name => 'longname9', value => 'xx', mode => 2 }]});
 $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq 'DATA' } @$frames;
@@ -807,11 +808,11 @@ ok($frame, 'header size equal');
 
 $s = Test::Nginx::HTTP2->new(port(8085));
 $sid = $s->new_stream({ headers => [
-	{ name => ':method', value => 'GET', mode => 0 },
-	{ name => ':scheme', value => 'http', mode => 0 },
-	{ name => ':path', value => '/t2.html', mode => 1 },
-	{ name => ':authority', value => 'localhost', mode => 1 },
-	{ name => 'longname9', value => 'xxx', mode => 2 }]});
+    { name => ':method', value => 'GET', mode => 0 },
+    { name => ':scheme', value => 'http', mode => 0 },
+    { name => ':path', value => '/t2.html', mode => 1 },
+    { name => ':authority', value => 'localhost', mode => 1 },
+    { name => 'longname9', value => 'xxx', mode => 2 }]});
 $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq 'DATA' } @$frames;
@@ -822,34 +823,34 @@ is($frame, undef, 'header size greater');
 
 $s = Test::Nginx::HTTP2->new(port(8085));
 $sid = $s->new_stream({ headers => [
-	{ name => ':method', value => 'GET', mode => 0 },
-	{ name => ':scheme', value => 'http', mode => 0 },
-	{ name => ':path', value => '/t2.html', mode => 1 },
-	{ name => ':authority', value => 'localhost', mode => 1 },
-	{ name => 'longname9', value => 'x', mode => 2 }]});
+    { name => ':method', value => 'GET', mode => 0 },
+    { name => ':scheme', value => 'http', mode => 0 },
+    { name => ':path', value => '/t2.html', mode => 1 },
+    { name => ':authority', value => 'localhost', mode => 1 },
+    { name => 'longname9', value => 'x', mode => 2 }]});
 $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq 'DATA' } @$frames;
 ok($frame, 'header size new index');
 
 $sid = $s->new_stream({ headers => [
-	{ name => ':method', value => 'GET', mode => 0 },
-	{ name => ':scheme', value => 'http', mode => 0 },
-	{ name => ':path', value => '/t2.html', mode => 1 },
-	{ name => ':authority', value => 'localhost', mode => 1 },
-	{ name => 'longname9', value => 'x', mode => 0 }]});
+    { name => ':method', value => 'GET', mode => 0 },
+    { name => ':scheme', value => 'http', mode => 0 },
+    { name => ':path', value => '/t2.html', mode => 1 },
+    { name => ':authority', value => 'localhost', mode => 1 },
+    { name => 'longname9', value => 'x', mode => 0 }]});
 $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq 'DATA' } @$frames;
 ok($frame, 'header size indexed');
 
 $sid = $s->new_stream({ headers => [
-	{ name => ':method', value => 'GET', mode => 0 },
-	{ name => ':scheme', value => 'http', mode => 0 },
-	{ name => ':path', value => '/t2.html', mode => 1 },
-	{ name => ':authority', value => 'localhost', mode => 1 },
-	{ name => 'longname9', value => 'x', mode => 0 },
-	{ name => 'longname9', value => 'x', mode => 0 }]});
+    { name => ':method', value => 'GET', mode => 0 },
+    { name => ':scheme', value => 'http', mode => 0 },
+    { name => ':path', value => '/t2.html', mode => 1 },
+    { name => ':authority', value => 'localhost', mode => 1 },
+    { name => 'longname9', value => 'x', mode => 0 },
+    { name => 'longname9', value => 'x', mode => 0 }]});
 $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq 'GOAWAY' } @$frames;
@@ -859,49 +860,49 @@ is($frame->{code}, 0xb, 'header size indexed greater');
 
 $s = Test::Nginx::HTTP2->new();
 $s->read(all => [{ sid => $s->new_stream({ headers => [
-	{ name => ':method', value => 'GET', mode => 0 },
-	{ name => ':scheme', value => 'http', mode => 0 },
-	{ name => ':path', value => '/', mode => 0 },
-	{ name => ':authority', value => '', mode => 0 },
-	{ name => 'x' x 2016, value => 'x' x 2048, mode => 2 }]}), fin => 1 }]);
+    { name => ':method', value => 'GET', mode => 0 },
+    { name => ':scheme', value => 'http', mode => 0 },
+    { name => ':path', value => '/', mode => 0 },
+    { name => ':authority', value => '', mode => 0 },
+    { name => 'x' x 2016, value => 'x' x 2048, mode => 2 }]}), fin => 1 }]);
 $frames = $s->read(all => [{ sid => $s->new_stream({ headers => [
-	{ name => ':method', value => 'GET', mode => 0 },
-	{ name => ':scheme', value => 'http', mode => 0 },
-	{ name => ':path', value => '/', mode => 0 },
-	{ name => ':authority', value => '', mode => 0 },
-	{ name => 'x' x 2016, value => 'x' x 2048, mode => 0 }]}), fin => 1 }]);
+    { name => ':method', value => 'GET', mode => 0 },
+    { name => ':scheme', value => 'http', mode => 0 },
+    { name => ':path', value => '/', mode => 0 },
+    { name => ':authority', value => '', mode => 0 },
+    { name => 'x' x 2016, value => 'x' x 2048, mode => 0 }]}), fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
 ok($frame, 'HPACK table boundary');
 
 $s->read(all => [{ sid => $s->new_stream({ headers => [
-	{ name => ':method', value => 'GET', mode => 0 },
-	{ name => ':scheme', value => 'http', mode => 0 },
-	{ name => ':path', value => '/', mode => 0 },
-	{ name => ':authority', value => '', mode => 0 },
-	{ name => 'x' x 33, value => 'x' x 4031, mode => 2 }]}), fin => 1 }]);
+    { name => ':method', value => 'GET', mode => 0 },
+    { name => ':scheme', value => 'http', mode => 0 },
+    { name => ':path', value => '/', mode => 0 },
+    { name => ':authority', value => '', mode => 0 },
+    { name => 'x' x 33, value => 'x' x 4031, mode => 2 }]}), fin => 1 }]);
 $frames = $s->read(all => [{ sid => $s->new_stream({ headers => [
-	{ name => ':method', value => 'GET', mode => 0 },
-	{ name => ':scheme', value => 'http', mode => 0 },
-	{ name => ':path', value => '/', mode => 0 },
-	{ name => ':authority', value => '', mode => 0 },
-	{ name => 'x' x 33, value => 'x' x 4031, mode => 0 }]}), fin => 1 }]);
+    { name => ':method', value => 'GET', mode => 0 },
+    { name => ':scheme', value => 'http', mode => 0 },
+    { name => ':path', value => '/', mode => 0 },
+    { name => ':authority', value => '', mode => 0 },
+    { name => 'x' x 33, value => 'x' x 4031, mode => 0 }]}), fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
 ok($frame, 'HPACK table boundary - header field name');
 
 $s->read(all => [{ sid => $s->new_stream({ headers => [
-	{ name => ':method', value => 'GET', mode => 0 },
-	{ name => ':scheme', value => 'http', mode => 0 },
-	{ name => ':path', value => '/', mode => 0 },
-	{ name => ':authority', value => '', mode => 0 },
-	{ name => 'x', value => 'x' x 64, mode => 2 }]}), fin => 1 }]);
+    { name => ':method', value => 'GET', mode => 0 },
+    { name => ':scheme', value => 'http', mode => 0 },
+    { name => ':path', value => '/', mode => 0 },
+    { name => ':authority', value => '', mode => 0 },
+    { name => 'x', value => 'x' x 64, mode => 2 }]}), fin => 1 }]);
 $frames = $s->read(all => [{ sid => $s->new_stream({ headers => [
-	{ name => ':method', value => 'GET', mode => 0 },
-	{ name => ':scheme', value => 'http', mode => 0 },
-	{ name => ':path', value => '/', mode => 0 },
-	{ name => ':authority', value => '', mode => 0 },
-	{ name => 'x', value => 'x' x 64, mode => 0 }]}), fin => 1 }]);
+    { name => ':method', value => 'GET', mode => 0 },
+    { name => ':scheme', value => 'http', mode => 0 },
+    { name => ':path', value => '/', mode => 0 },
+    { name => ':authority', value => '', mode => 0 },
+    { name => 'x', value => 'x' x 64, mode => 0 }]}), fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
 ok($frame, 'HPACK table boundary - header field value');
@@ -914,11 +915,11 @@ ok($frame, 'HPACK table boundary - header field value');
 
 $s = Test::Nginx::HTTP2->new();
 $sid = $s->new_stream({ headers => [
-	{ name => ':method', value => 'GET', mode => 0 },
-	{ name => ':scheme', value => 'http', mode => 0 },
-	{ name => ':path', value => '/proxy2/', mode => 1 },
-	{ name => ':authority', value => 'localhost', mode => 1 },
-	{ name => 'x-foo', value => "x-bar\r\nreferer:see-this", mode => 2 }]});
+    { name => ':method', value => 'GET', mode => 0 },
+    { name => ':scheme', value => 'http', mode => 0 },
+    { name => ':path', value => '/proxy2/', mode => 1 },
+    { name => ':authority', value => 'localhost', mode => 1 },
+    { name => 'x-foo', value => "x-bar\r\nreferer:see-this", mode => 2 }]});
 $frames = $s->read(all => [{ type => 'RST_STREAM' }]);
 
 # 10.3.  Intermediary Encapsulation Attacks
@@ -942,12 +943,12 @@ is($frame->{code}, 1, 'newline in request header - RST_STREAM code');
 
 $s = Test::Nginx::HTTP2->new();
 $sid = $s->new_stream({ headers => [
-	{ name => ':method', value => 'GET', mode => 0 },
-	{ name => ':scheme', value => 'http', mode => 0 },
-	{ name => ':path', value => '/', mode => 0 },
-	{ name => ':authority', value => 'localhost', mode => 1 },
-	{ name => 'x_foo', value => "x-bar", mode => 2 },
-	{ name => 'referer', value => "see-this", mode => 1 }]});
+    { name => ':method', value => 'GET', mode => 0 },
+    { name => ':scheme', value => 'http', mode => 0 },
+    { name => ':path', value => '/', mode => 0 },
+    { name => ':authority', value => 'localhost', mode => 1 },
+    { name => 'x_foo', value => "x-bar", mode => 2 },
+    { name => 'referer', value => "see-this", mode => 1 }]});
 $frames = $s->read(all => [{ type => 'HEADERS' }]);
 
 ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
@@ -955,29 +956,24 @@ is($frame->{headers}->{'x-referer'}, 'see-this', 'after invalid header name');
 
 # missing mandatory request header ':scheme'
 
-TODO: {
-local $TODO = 'not yet';
-
 $s = Test::Nginx::HTTP2->new();
 $sid = $s->new_stream({ headers => [
-	{ name => ':method', value => 'GET', mode => 0 },
-	{ name => ':path', value => '/', mode => 0 },
-	{ name => ':authority', value => 'localhost', mode => 1 }]});
+    { name => ':method', value => 'GET', mode => 0 },
+    { name => ':path', value => '/', mode => 0 },
+    { name => ':authority', value => 'localhost', mode => 1 }]});
 $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
 is($frame->{headers}->{':status'}, 400, 'incomplete headers');
 
-}
-
 # empty request header ':authority'
 
 $s = Test::Nginx::HTTP2->new();
 $sid = $s->new_stream({ headers => [
-	{ name => ':method', value => 'GET', mode => 0 },
-	{ name => ':scheme', value => 'http', mode => 0 },
-	{ name => ':path', value => '/', mode => 0 },
-	{ name => ':authority', value => '', mode => 0 }]});
+    { name => ':method', value => 'GET', mode => 0 },
+    { name => ':scheme', value => 'http', mode => 0 },
+    { name => ':path', value => '/', mode => 0 },
+    { name => ':authority', value => '', mode => 0 }]});
 $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
@@ -986,49 +982,49 @@ is($frame->{headers}->{':status'}, 400, 'empty authority');
 # client sent invalid :path header
 
 $sid = $s->new_stream({ path => 't1.html' });
-$frames = $s->read(all => [{ type => 'RST_STREAM' }]);
+$frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
-($frame) = grep { $_->{type} eq "RST_STREAM" } @$frames;
-is($frame->{code}, 1, 'invalid path');
+($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
+is($frame->{headers}->{':status'}, 400, 'invalid path');
 
 ###############################################################################
 
 sub http_daemon {
-	my $server = IO::Socket::INET->new(
-		Proto => 'tcp',
-		LocalHost => '127.0.0.1',
-		LocalPort => port(8083),
-		Listen => 5,
-		Reuse => 1
-	)
-		or die "Can't create listening socket: $!\n";
+    my $server = IO::Socket::INET->new(
+        Proto => 'tcp',
+        LocalHost => '127.0.0.1',
+        LocalPort => port(8083),
+        Listen => 5,
+        Reuse => 1
+    )
+        or die "Can't create listening socket: $!\n";
 
-	local $SIG{PIPE} = 'IGNORE';
+    local $SIG{PIPE} = 'IGNORE';
 
-	while (my $client = $server->accept()) {
-		$client->autoflush(1);
+    while (my $client = $server->accept()) {
+        $client->autoflush(1);
 
-		my $headers = '';
-		my $uri = '';
+        my $headers = '';
+        my $uri = '';
 
-		while (<$client>) {
-			$headers .= $_;
-			last if (/^\x0d?\x0a?$/);
-		}
+        while (<$client>) {
+            $headers .= $_;
+            last if (/^\x0d?\x0a?$/);
+        }
 
-		next if $headers eq '';
-		$uri = $1 if $headers =~ /^\S+\s+([^ ]+)\s+HTTP/i;
+        next if $headers eq '';
+        $uri = $1 if $headers =~ /^\S+\s+([^ ]+)\s+HTTP/i;
 
-		if ($uri eq '/cookie') {
+        if ($uri eq '/cookie') {
 
-			my ($cookie, $cookie2) = $headers =~ /Cookie: (.+)/ig;
-			$cookie2 = '' unless defined $cookie2;
+            my ($cookie, $cookie2) = $headers =~ /Cookie: (.+)/ig;
+            $cookie2 = '' unless defined $cookie2;
 
-			my ($cookie_a, $cookie_c) = ('', '');
-			$cookie_a = $1 if $headers =~ /X-Cookie-a: (.+)/i;
-			$cookie_c = $1 if $headers =~ /X-Cookie-c: (.+)/i;
+            my ($cookie_a, $cookie_c) = ('', '');
+            $cookie_a = $1 if $headers =~ /X-Cookie-a: (.+)/i;
+            $cookie_c = $1 if $headers =~ /X-Cookie-c: (.+)/i;
 
-			print $client <<EOF;
+            print $client <<EOF;
 HTTP/1.1 200 OK
 Connection: close
 X-Sent-Cookie: $cookie
@@ -1038,9 +1034,9 @@ X-Sent-Cookie-c: $cookie_c
 
 EOF
 
-		} elsif ($uri eq '/set-cookie') {
+        } elsif ($uri eq '/set-cookie') {
 
-			print $client <<EOF;
+            print $client <<EOF;
 HTTP/1.1 200 OK
 Connection: close
 Set-Cookie: a=b
@@ -1048,11 +1044,11 @@ Set-Cookie: c=d
 
 EOF
 
-		}
+        }
 
-	} continue {
-		close $client;
-	}
+    } continue {
+        close $client;
+    }
 }
 
 ###############################################################################

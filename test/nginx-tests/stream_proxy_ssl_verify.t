@@ -27,6 +27,8 @@ my $t = Test::Nginx->new()->has(qw/stream stream_ssl/)->has_daemon('openssl');
 
 $t->write_file_expand('nginx.conf', <<'EOF')->plan(6);
 
+user root;
+
 %%TEST_GLOBALS%%
 
 daemon off;
@@ -141,12 +143,14 @@ EOF
 my $d = $t->testdir();
 
 foreach my $name ('1.example.com', '2.example.com') {
-	system('openssl req -x509 -new '
-		. "-config '$d/openssl.$name.conf' "
-		. "-out '$d/$name.crt' -keyout '$d/$name.key' "
-		. ">>$d/openssl.out 2>&1") == 0
-		or die "Can't create certificate for $name: $!\n";
+    system('openssl req -x509 -new '
+        . "-config $d/openssl.$name.conf "
+        . "-out $d/$name.crt -keyout $d/$name.key "
+        . ">>$d/openssl.out 2>&1") == 0
+        or die "Can't create certificate for $name: $!\n";
 }
+
+sleep 1 if $^O eq 'MSWin32';
 
 $t->write_file('index.html', '');
 
@@ -175,46 +179,46 @@ unlike(get('/', '127.0.0.1:' . port(8085)), qr/200 OK/, 'untrusted');
 ###############################################################################
 
 sub get {
-	my ($uri, $peer) = @_;
+    my ($uri, $peer) = @_;
 
-	my $s = IO::Socket::INET->new(
-		Proto => 'tcp',
-		PeerAddr => $peer
-	)
-		or die "Can't connect to nginx: $!\n";
+    my $s = IO::Socket::INET->new(
+        Proto => 'tcp',
+        PeerAddr => $peer
+    )
+        or die "Can't connect to nginx: $!\n";
 
-	my $r = http_get($uri, socket => $s);
-	return defined $r ? $r : '';
+    my $r = http_get($uri, socket => $s);
+    return defined $r ? $r : '';
 }
 
 ###############################################################################
 
 sub http_daemon {
-	my $server = IO::Socket::INET->new(
-		Proto => 'tcp',
-		LocalHost => '127.0.0.1:' . port(8088),
-		Listen => 5,
-		Reuse => 1
-	)
-		or die "Can't create listening socket: $!\n";
+    my $server = IO::Socket::INET->new(
+        Proto => 'tcp',
+        LocalHost => '127.0.0.1:' . port(8088),
+        Listen => 5,
+        Reuse => 1
+    )
+        or die "Can't create listening socket: $!\n";
 
-	local $SIG{PIPE} = 'IGNORE';
+    local $SIG{PIPE} = 'IGNORE';
 
-	while (my $client = $server->accept()) {
-		$client->autoflush(1);
+    while (my $client = $server->accept()) {
+        $client->autoflush(1);
 
-		while (<$client>) {
-			last if (/^\x0d?\x0a?$/);
-		}
+        while (<$client>) {
+            last if (/^\x0d?\x0a?$/);
+        }
 
-		print $client <<EOF;
+        print $client <<EOF;
 HTTP/1.1 200 OK
 Connection: close
 
 EOF
 
-		close $client;
-	}
+        close $client;
+    }
 }
 
 ###############################################################################
