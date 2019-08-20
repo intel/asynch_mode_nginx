@@ -1869,6 +1869,7 @@ ngx_http_add_addrs6(ngx_conf_t *cf, ngx_http_port_t *hport,
         addrs6[i].conf.default_server = addr[i].default_server;
 #if (NGX_HTTP_SSL)
         addrs6[i].conf.ssl = addr[i].opt.ssl;
+        addrs6[i].conf.asynch = addr[i].opt.asynch;
 #endif
 #if (NGX_HTTP_V2)
         addrs6[i].conf.http2 = addr[i].opt.http2;
