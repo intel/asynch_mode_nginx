@@ -1065,6 +1065,8 @@ ngx_http_qatzip_merge_conf(ngx_conf_t *cf, void *parent, void *child)
         conf->enable = 1;
         conf->sw_fallback_enable = 0;
     } else {
+        ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                "You must set \"qatzip_sw\" to only\\failover\\no in nginx.conf");
         return NGX_CONF_ERROR;
     }
 
