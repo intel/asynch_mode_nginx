@@ -48,7 +48,7 @@ http {
         ssl_session_cache shared:cache1:1m;
 
         location / {
-            return 200 $ssl_server_name:$ssl_session_reused;
+            return 200 $ssl_server_name:$ssl_session_reused:$ssl_protocol;
         }
     }
 
@@ -106,11 +106,9 @@ eval {
 };
 plan(skip_all => 'Net::SSLeay with OpenSSL SNI support required') if $@;
 
-$t->plan(6);
-
 $t->write_file('openssl.conf', <<EOF);
 [ req ]
-default_bits = 1024
+default_bits = 2048
 encrypt_key = no
 distinguished_name = req_distinguished_name
 [ req_distinguished_name ]
@@ -132,6 +130,12 @@ $t->write_file('ticket2.key', '2' x 48);
 sleep 60;
 $t->run();
 sleep 60;
+plan(skip_all => 'no TLS 1.3 sessions')
+    if get('default', port(8080), get_ssl_context()) =~ /TLSv1.3/
+    && ($Net::SSLeay::VERSION < 1.88 || $IO::Socket::SSL::VERSION < 2.061);
+
+$t->plan(6);
+
 ###############################################################################
 
 # check that everything works fine with default server
@@ -180,7 +184,7 @@ sub get_ssl_socket {
     eval {
         local $SIG{ALRM} = sub { die "timeout\n" };
         local $SIG{PIPE} = sub { die "sigpipe\n" };
-        alarm(5);
+        alarm(8);
         $s = IO::Socket::SSL->new(
             Proto => 'tcp',
             PeerAddr => '127.0.0.1',

@@ -36,3 +36,13 @@ export  QATZIP_ENABLE="
 qatzip_sw no;
 qatzip_min_length 0;
 "
+
+export PROXY_ASYNCH_ENABLE="
+proxy_ssl_asynch on;
+"
+
+export PROXY_ASYNCH_DISABLE="
+proxy_ssl_asynch off;
+"
+
+export SSL_ASYNCH=" asynch"

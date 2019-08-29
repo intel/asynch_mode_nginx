@@ -72,7 +72,7 @@ EOF
 
 $t->write_file('openssl.conf', <<EOF);
 [ req ]
-default_bits = 1024
+default_bits = 2048
 encrypt_key = no
 distinguished_name = req_distinguished_name
 [ req_distinguished_name ]
@@ -82,7 +82,7 @@ my $d = $t->testdir();
 
 system("openssl ecparam -genkey -out $d/ec.key -name prime256v1 "
     . ">>$d/openssl.out 2>&1") == 0 or die "Can't create EC pem: $!\n";
-system("openssl genrsa -out $d/rsa.key 1024 >>$d/openssl.out 2>&1") == 0
+system("openssl genrsa -out $d/rsa.key 2048 >>$d/openssl.out 2>&1") == 0
         or die "Can't create RSA pem: $!\n";
 
 foreach my $name ('ec', 'rsa') {
@@ -123,7 +123,7 @@ sub get_ssl_socket {
     eval {
         local $SIG{ALRM} = sub { die "timeout\n" };
         local $SIG{PIPE} = sub { die "sigpipe\n" };
-        alarm(5);
+        alarm(8);
         $s = IO::Socket::INET->new('127.0.0.1:' . port(8080));
         alarm(0);
     };

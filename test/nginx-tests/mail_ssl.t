@@ -61,14 +61,14 @@ mail {
 
     server {
         listen             127.0.0.1:8143;
-        listen             127.0.0.1:8145 ssl asynch;
+        listen             127.0.0.1:8145 ssl %%SSL_ASYNCH%%;
         protocol           imap;
 
         ssl_session_cache  builtin;
     }
 
     server {
-        listen             127.0.0.1:8146 ssl asynch;
+        listen             127.0.0.1:8146 ssl %%SSL_ASYNCH%%;
         protocol           imap;
 
         ssl_session_cache  off;
@@ -80,12 +80,13 @@ mail {
 
         # Special case for enabled "ssl" directive.
 
-        ssl_asynch on;
+        ssl on;
+        %%TEST_GLOBALS_HTTPS%%
         ssl_session_cache  builtin:1000;
     }
 
     server {
-        listen             127.0.0.1:8148 ssl asynch;
+        listen             127.0.0.1:8148 ssl %%SSL_ASYNCH%%;
         protocol           imap;
 
         ssl_session_cache shared:SSL:1m;
@@ -140,7 +141,7 @@ EOF
 
 $t->write_file('openssl.conf', <<EOF);
 [ req ]
-default_bits = 1024
+default_bits = 2048
 encrypt_key = no
 distinguished_name = req_distinguished_name
 [ req_distinguished_name ]
@@ -150,7 +151,7 @@ my $d = $t->testdir();
 
 foreach my $name ('localhost', 'inherits') {
     system("openssl genrsa -out $d/$name.key -passout pass:localhost "
-        . "-aes128 1024 >>$d/openssl.out 2>&1") == 0
+        . "-aes128 2048 >>$d/openssl.out 2>&1") == 0
         or die "Can't create private key: $!\n";
     system('openssl req -x509 -new '
         . "-config $d/openssl.conf -subj /CN=$name/ "

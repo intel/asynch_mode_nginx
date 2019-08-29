@@ -59,7 +59,7 @@ mail {
     }
 
     server {
-        listen     127.0.0.1:8143 ssl asynch;
+        listen     127.0.0.1:8143 ssl %%SSL_ASYNCH%%;
         protocol   imap;
 
         ssl_verify_client on;
@@ -67,7 +67,7 @@ mail {
     }
 
     server {
-        listen     127.0.0.1:8145 ssl asynch;
+        listen     127.0.0.1:8145 ssl %%SSL_ASYNCH%%;
         protocol   imap;
 
         ssl_verify_client optional;
@@ -75,7 +75,7 @@ mail {
     }
 
     server {
-        listen     127.0.0.1:8146 ssl asynch;
+        listen     127.0.0.1:8146 ssl %%SSL_ASYNCH%%;
         protocol   imap;
 
         ssl_verify_client optional;
@@ -84,7 +84,7 @@ mail {
     }
 
     server {
-        listen     127.0.0.1:8147 ssl asynch;
+        listen     127.0.0.1:8147 ssl %%SSL_ASYNCH%%;
         protocol   imap;
 
         ssl_verify_client optional_no_ca;
@@ -120,7 +120,7 @@ EOF
 
 $t->write_file('openssl.conf', <<EOF);
 [ req ]
-default_bits = 1024
+default_bits = 2048
 encrypt_key = no
 distinguished_name = req_distinguished_name
 [ req_distinguished_name ]

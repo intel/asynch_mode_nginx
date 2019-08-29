@@ -11,7 +11,8 @@
 #   IO::Socket::SSL Cache::Memcached
 #   Cache::Memcached::Fast
 
-# the function is for avoiding the nginx timeout
+# Function Timeout().
+# Avoiding the nginx tests timeout and stuck.
 Timeout()
 {
     waitfor=3600
@@ -49,6 +50,7 @@ cd $SCRIPTPATH;
 #Configure according to the nginx test type
 if [ "$#" == '1' ];then
   if [ $1 == 'qat' ];then
+    #Update async nginx config file to running with QATZip and QATEngine.
     sed -i 's/use_engine dasync.*/use_engine qat;/' test-env.sh;
     sed -i 's/#default_algorithms ALL.*/default_algorithms ALL;/' test-env.sh;
     sed -i 's/#qat_engine.*/qat_engine {/' test-env.sh;
@@ -62,6 +64,7 @@ if [ "$#" == '1' ];then
     export GZIP_ENABLE=""
     export GZIP_MIN_LENGTH_0=""
   elif [ $1 == 'dasync' ];then
+    #Update async nginx config file to running without QATZip and QATEngine.
     cp $OPENSSL_SRC_DIR/engines/dasync.so $OPENSSL_LIB/lib/engines-1.1
     sed -i 's/use_engine qat.*/use_engine dasync;/' test-env.sh;
     sed -i 's/.*default_algorithms ALL.*/#default_algorithms ALL;/' test-env.sh;
@@ -74,6 +77,9 @@ if [ "$#" == '1' ];then
     sed -i 's/export TEST_NGINX_GLOBALS_HTTPS.*/export TEST_NGINX_GLOBALS_HTTPS=""/' test-env.sh;
     source ./test-env.sh
     export QATZIP_ENABLE=""
+    export PROXY_ASYNCH_ENABLE=""
+    export PROXY_ASYNCH_DISABLE=""
+    export SSL_ASYNCH=""
   else
     echo "The parameter qat or dasync needs to be passed in, read the README.md for more information."
     exit
@@ -91,9 +97,9 @@ cd $SCRIPTPATH;
 RESULT1=`tail -1  $SCRIPTPATH/nginx-test.log | grep "PASS" | wc -l`
 if (( $RESULT1 ))
 then
-        echo -e "Nginx Test RESULT:PASS"
+        echo -e "Nginx Official Test RESULT:PASS"
 else
-        echo -e "Nginx Test RESULT:FAIL"
+        echo -e "Nginx Official Test RESULT:FAIL"
 fi
 
 #clean up the env

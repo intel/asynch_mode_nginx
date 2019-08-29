@@ -25,7 +25,7 @@ use Test::Nginx;
 select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
-my $t = Test::Nginx->new()->has(qw/http sub/)->plan(2)
+my $t = Test::Nginx->new()->has(qw/http sub proxy/)->plan(2)
     ->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
@@ -100,3 +100,5 @@ sub http_daemon {
             "xyz";
     }
 }
+
+###############################################################################

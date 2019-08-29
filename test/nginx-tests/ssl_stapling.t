@@ -58,6 +58,8 @@ http {
     ssl_certificate end-int.crt;
     ssl_certificate_key end.key;
 
+    ssl_ciphers DEFAULT:ECCdraft;
+
     server {
         listen       127.0.0.1:8443 ssl;
         listen       127.0.0.1:8080;
@@ -121,7 +123,7 @@ my $p = port(8081);
 
 $t->write_file('openssl.conf', <<EOF);
 [ req ]
-default_bits = 1024
+default_bits = 2048
 encrypt_key = no
 distinguished_name = req_distinguished_name
 [ req_distinguished_name ]
@@ -134,7 +136,7 @@ default_ca = myca
 [ myca ]
 new_certs_dir = $d
 database = $d/certindex
-default_md = sha1
+default_md = sha256
 policy = myca_policy
 serial = $d/certserial
 default_days = 1
@@ -293,7 +295,7 @@ sub staple {
     eval {
         local $SIG{ALRM} = sub { die "timeout\n" };
         local $SIG{PIPE} = sub { die "sigpipe\n" };
-        alarm(5);
+        alarm(8);
         $s = IO::Socket::INET->new('127.0.0.1:' . port($port));
         alarm(0);
     };
@@ -334,7 +336,7 @@ sub get_version {
     eval {
         local $SIG{ALRM} = sub { die "timeout\n" };
         local $SIG{PIPE} = sub { die "sigpipe\n" };
-        alarm(5);
+        alarm(8);
         $s = IO::Socket::INET->new('127.0.0.1:' . port(8443));
         alarm(0);
     };

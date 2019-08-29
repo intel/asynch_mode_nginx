@@ -23,7 +23,7 @@ use Test::Nginx;
 select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
-my $t = Test::Nginx->new()->has(qw/http rewrite proxy/)->plan(5);
+my $t = Test::Nginx->new()->has(qw/http rewrite proxy/)->plan(6);
 
 $t->write_file_expand('nginx.conf', <<'EOF');
 
@@ -62,7 +62,7 @@ http {
         }
 
         location /limit_rate {
-            set $limit_rate 40k;
+            set $limit_rate $arg_l;
             add_header X-Rate $limit_rate;
             return 200 OK;
         }
@@ -81,7 +81,8 @@ http_get('/redefine');
 
 # $limit_rate is a special variable that has its own set_handler / get_handler
 
-like(http_get('/limit_rate'), qr/X-Rate: 40960/, 'limit_rate handlers');
+like(http_get('/limit_rate?l=40k'), qr/X-Rate: 40960/, 'limit_rate handlers');
+like(http_get('/limit_rate'), qr/X-Rate: 0/, 'limit_rate invalid');
 
 $t->stop();
 

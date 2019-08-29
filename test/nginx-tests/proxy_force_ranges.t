@@ -14,6 +14,8 @@ use strict;
 
 use Test::More;
 
+use Socket qw/ $CRLF /;
+
 BEGIN { use FindBin; chdir($FindBin::Bin); }
 
 use lib 'lib';
@@ -24,7 +26,7 @@ use Test::Nginx;
 select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
-my $t = Test::Nginx->new()->has(qw/http proxy cache/)->plan(6)
+my $t = Test::Nginx->new()->has(qw/http proxy cache/)->plan(7)
     ->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
@@ -51,6 +53,7 @@ http {
         location /proxy/ {
             proxy_pass    http://127.0.0.1:8081/;
             proxy_force_ranges on;
+            add_trailer X-Trailer "";
         }
 
         location /cache/ {
@@ -104,6 +107,16 @@ like(http_get_range('/proxy/t.html',
 like(http_get_range('/proxy/t.html',
     "Range: bytes=4-\nIf-Range: \"59a5401c-8\""),
     qr/^THIS/m, 'if-range etag proxy');
+
+# range sent using chunked transfer encoding
+
+TODO: {
+local $TODO = 'not yet' unless $t->has_version('1.17.0');
+
+like(http_get_range('/proxy/t.html', 'Range: bytes=-2'),
+    qr/2${CRLF}IS${CRLF}0$CRLF$CRLF$/, 'no dublicate final chunk');
+
+}
 
 ###############################################################################
 

@@ -18,8 +18,7 @@ use Socket qw/ $CRLF /;
 BEGIN { use FindBin; chdir($FindBin::Bin); }
 
 use lib 'lib';
-use Test::Nginx;
-use Test::Nginx::Stream qw/ stream /;
+use Test::Nginx qw/ :DEFAULT http_end /;
 
 ###############################################################################
 
@@ -86,7 +85,7 @@ EOF
 
 $t->write_file('openssl.conf', <<EOF);
 [ req ]
-default_bits = 1024
+default_bits = 2048
 encrypt_key = no
 distinguished_name = req_distinguished_name
 [ req_distinguished_name ]
@@ -129,14 +128,14 @@ like(pp_get(8088, "PROXY UNKNOWN TCP4 192.0.2.1 192.0.2.2 1234 5678${CRLF}"),
 sub pp_get {
     my ($port, $proxy) = @_;
 
-    my $s = stream(PeerPort => port($port));
-    $s->write($proxy);
+    my $s = IO::Socket::INET->new('127.0.0.1:' . port($port)) or return;
+    http($proxy, start => 1, socket => $s);
 
     eval {
         local $SIG{ALRM} = sub { die "timeout\n" };
         local $SIG{PIPE} = sub { die "sigpipe\n" };
-        alarm(5);
-        IO::Socket::SSL->start_SSL($s->{_socket},
+        alarm(8);
+        IO::Socket::SSL->start_SSL($s,
             SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_NONE(),
             SSL_error_trap => sub { die $_[1] }
         );
@@ -149,7 +148,7 @@ sub pp_get {
         return undef;
     }
 
-    return $s->read();
+    http_end($s);
 }
 
 ###############################################################################

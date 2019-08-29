@@ -59,7 +59,7 @@ stream {
 
     server {
         listen      127.0.0.1:8080 ssl;
-        ssl_asynch on;
+        %%TEST_GLOBALS_HTTPS%%
         proxy_pass  127.0.0.1:8081;
 
         ssl_session_cache builtin;
@@ -68,7 +68,7 @@ stream {
 
     server {
         listen      127.0.0.1:8082 ssl;
-        ssl_asynch on;
+        %%TEST_GLOBALS_HTTPS%%
         proxy_pass  127.0.0.1:8081;
 
         ssl_session_cache off;
@@ -77,7 +77,7 @@ stream {
 
     server {
         listen      127.0.0.1:8083 ssl;
-        ssl_asynch on;
+        %%TEST_GLOBALS_HTTPS%%
         proxy_pass  127.0.0.1:8081;
 
         ssl_session_cache builtin:1000;
@@ -86,7 +86,7 @@ stream {
 
     server {
         listen      127.0.0.1:8084 ssl;
-        ssl_asynch on;
+        %%TEST_GLOBALS_HTTPS%%
         proxy_pass  127.0.0.1:8081;
 
         ssl_session_cache shared:SSL:1m;
@@ -99,7 +99,7 @@ EOF
 
 $t->write_file('openssl.conf', <<EOF);
 [ req ]
-default_bits = 1024
+default_bits = 2048
 encrypt_key = no
 distinguished_name = req_distinguished_name
 [ req_distinguished_name ]
@@ -110,7 +110,7 @@ mkfifo("$d/password_fifo", 0700);
 
 foreach my $name ('localhost', 'inherits') {
     system("openssl genrsa -out $d/$name.key -passout pass:$name "
-        . "-aes128 1024 >>$d/openssl.out 2>&1") == 0
+        . "-aes128 2048 >>$d/openssl.out 2>&1") == 0
         or die "Can't create private key: $!\n";
     system('openssl req -x509 -new '
         . "-config $d/openssl.conf -subj /CN=$name/ "

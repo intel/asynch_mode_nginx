@@ -78,7 +78,7 @@ EOF
 
 $t->write_file('openssl.conf', <<EOF);
 [ req ]
-default_bits = 1024
+default_bits = 2048
 encrypt_key = no
 distinguished_name = req_distinguished_name
 [ req_distinguished_name ]
@@ -173,7 +173,7 @@ sub get_ssl_socket {
     eval {
         local $SIG{ALRM} = sub { die "timeout\n" };
         local $SIG{PIPE} = sub { die "sigpipe\n" };
-        alarm(5);
+        alarm(8);
         socket($s, &AF_INET, &SOCK_STREAM, 0) or die "socket: $!";
         connect($s, $dest_serv_params) or die "connect: $!";
         alarm(0);

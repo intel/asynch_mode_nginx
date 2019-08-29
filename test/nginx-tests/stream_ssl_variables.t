@@ -41,7 +41,7 @@ eval {
 };
 plan(skip_all => 'Net::SSLeay with OpenSSL SNI support required') if $@;
 
-my $t = Test::Nginx->new()->has(qw/stream stream_ssl sni stream_return/)
+my $t = Test::Nginx->new()->has(qw/stream stream_ssl stream_return/)
     ->has_daemon('openssl');
 
 $t->write_file_expand('nginx.conf', <<'EOF');
@@ -57,13 +57,12 @@ stream {
     %%TEST_GLOBALS_HTTPS%%
     ssl_certificate_key localhost.key;
     ssl_certificate localhost.crt;
+    ssl_session_cache builtin;
 
     server {
         listen  127.0.0.1:8080;
         listen  127.0.0.1:8081 ssl;
         return  $ssl_session_reused:$ssl_session_id:$ssl_cipher:$ssl_protocol;
-
-        ssl_session_cache builtin;
     }
 
     server {
@@ -76,7 +75,7 @@ EOF
 
 $t->write_file('openssl.conf', <<EOF);
 [ req ]
-default_bits = 1024
+default_bits = 2048
 encrypt_key = no
 distinguished_name = req_distinguished_name
 [ req_distinguished_name ]
@@ -92,7 +91,7 @@ foreach my $name ('localhost') {
         or die "Can't create certificate for $name: $!\n";
 }
 
-$t->run()->plan(5);
+$t->run()->plan(6);
 
 ###############################################################################
 
@@ -109,11 +108,26 @@ my $ses = Net::SSLeay::get_session($ssl);
 like(Net::SSLeay::read($ssl), qr/^r:\w{64}:[\w-]+:(TLS|SSL)v(\d|\.)+$/,
     'ssl variables - session reused');
 
+SKIP: {
+skip 'no sni', 3 unless $t->has_module('sni');
+
 ($s, $ssl) = get_ssl_socket(port(8082), undef, 'example.com');
 is(Net::SSLeay::ssl_read_all($ssl), 'example.com', 'ssl server name');
 
+TODO: {
+local $TODO = 'not yet' if $t->has_module('OpenSSL (1.1.1|3)')
+    && !$t->has_version('1.15.10');
+
+my $ses = Net::SSLeay::get_session($ssl);
+($s, $ssl) = get_ssl_socket(port(8082), $ses, 'example.com');
+is(Net::SSLeay::ssl_read_all($ssl), 'example.com', 'ssl server name - reused');
+
+}
+
 ($s, $ssl) = get_ssl_socket(port(8082));
 is(Net::SSLeay::ssl_read_all($ssl), '', 'ssl server name empty');
+
+}
 
 ###############################################################################
 

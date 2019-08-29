@@ -49,21 +49,21 @@ http {
 
         location /verify {
             proxy_pass https://127.0.0.1:8081/;
-            proxy_ssl_asynch on;
+            %%PROXY_ASYNCH_ENABLE%%
             proxy_ssl_certificate 1.example.com.crt;
             proxy_ssl_certificate_key 1.example.com.key;
         }
 
         location /fail {
             proxy_pass https://127.0.0.1:8081/;
-            proxy_ssl_asynch on;
+            %%PROXY_ASYNCH_ENABLE%%
             proxy_ssl_certificate 2.example.com.crt;
             proxy_ssl_certificate_key 2.example.com.key;
         }
 
         location /encrypted {
             proxy_pass https://127.0.0.1:8082/;
-            proxy_ssl_asynch on;
+            %%PROXY_ASYNCH_ENABLE%%
             proxy_ssl_certificate 3.example.com.crt;
             proxy_ssl_certificate_key 3.example.com.key;
             proxy_ssl_password_file password;
@@ -109,7 +109,7 @@ EOF
 
 $t->write_file('openssl.conf', <<EOF);
 [ req ]
-default_bits = 1024
+default_bits = 2048
 encrypt_key = no
 distinguished_name = req_distinguished_name
 [ req_distinguished_name ]
@@ -127,7 +127,7 @@ foreach my $name ('1.example.com', '2.example.com') {
 
 foreach my $name ('3.example.com') {
     system("openssl genrsa -out $d/$name.key -passout pass:$name "
-        . "-aes128 1024 >>$d/openssl.out 2>&1") == 0
+        . "-aes128 2048 >>$d/openssl.out 2>&1") == 0
         or die "Can't create private key: $!\n";
     system('openssl req -x509 -new '
         . "-config $d/openssl.conf -subj /CN=$name/ "

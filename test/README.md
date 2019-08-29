@@ -16,8 +16,8 @@
 **Execute the Nginx test:**
 
 Choose one of the following commands to execute.
-Passing the 'qat' parameter means testing with the QAT engine (https://github.com/intel/QAT_Engine) loaded and the QAT accelerator employed.
-Passing the 'dasync' parameter means testing with the OpenSSL built-in dasync engine loaded.
+Passing the 'qat' parameter means testing with the QATZip (https://github.com/intel/QATZip) and QAT engine (https://github.com/intel/QAT_Engine) loaded.
+Passing the 'dasync' parameter means testing with the OpenSSL built-in dasync engine loaded and no QATZip aceleration employed.
 
 ```bash
     ./nginx-test.sh qat
@@ -71,3 +71,17 @@ Passing the 'dasync' parameter:
 ```
 For more details directives of `nginx_qat_module`, please refer to
 `modules/nginx_qat_modules/README`.
+
+## nginx_qatzip_module
+This module is developed for accelerating GZIP compression with QATzip in Nginx
+dynamic module framework.
+
+For more details directives of `nginx_qatzip_module`, please refer to
+`modules/nginx_qatzip_module/README`.
+
+Using QATZip for compression:
+```bash
+   load_module modules/ngx_http_qatzip_filter_module.so;
+   ...
+   qatzip_sw no;
+```

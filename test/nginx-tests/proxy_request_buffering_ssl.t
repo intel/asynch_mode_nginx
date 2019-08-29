@@ -53,24 +53,24 @@ http {
             client_body_buffer_size 2k;
             add_header X-Body "$request_body";
             proxy_pass https://127.0.0.1:8081;
-            proxy_ssl_asynch on;
+            %%PROXY_ASYNCH_ENABLE%%
         }
         location /single {
             client_body_in_single_buffer on;
             add_header X-Body "$request_body";
             proxy_pass https://127.0.0.1:8081;
-            proxy_ssl_asynch on;
+            %%PROXY_ASYNCH_ENABLE%%
         }
         location /discard {
             return 200 "TEST\n";
         }
         location /preread {
             proxy_pass https://127.0.0.1:8081;
-            proxy_ssl_asynch on;
+            %%PROXY_ASYNCH_ENABLE%%
         }
         location /error_page {
             proxy_pass https://127.0.0.1:8081/404;
-            proxy_ssl_asynch on;
+            %%PROXY_ASYNCH_ENABLE%%
             error_page 404 /404;
             proxy_intercept_errors on;
         }
@@ -105,7 +105,7 @@ EOF
 
 $t->write_file('openssl.conf', <<EOF);
 [ req ]
-default_bits = 1024
+default_bits = 2048
 encrypt_key = no
 distinguished_name = req_distinguished_name
 [ req_distinguished_name ]

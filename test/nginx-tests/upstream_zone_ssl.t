@@ -71,24 +71,24 @@ http {
 
         location /ssl_reuse {
             proxy_pass https://u/;
-            proxy_ssl_asynch on;
+            %%PROXY_ASYNCH_ENABLE%%
             proxy_ssl_session_reuse on;
         }
 
         location /ssl {
             proxy_pass https://u/;
-            proxy_ssl_asynch on;
+            %%PROXY_ASYNCH_ENABLE%%
         }
 
         location /backup_reuse {
             proxy_pass https://u2/;
-            proxy_ssl_asynch on;
+            %%PROXY_ASYNCH_ENABLE%%
             proxy_ssl_session_reuse on;
         }
 
         location /backup {
             proxy_pass https://u2/;
-            proxy_ssl_asynch on;
+            %%PROXY_ASYNCH_ENABLE%%
         }
     }
 }
@@ -97,7 +97,7 @@ EOF
 
 $t->write_file('openssl.conf', <<EOF);
 [ req ]
-default_bits = 1024
+default_bits = 2048
 encrypt_key = no
 distinguished_name = req_distinguished_name
 [ req_distinguished_name ]

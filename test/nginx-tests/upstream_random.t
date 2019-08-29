@@ -50,7 +50,6 @@ http {
         random two;
         server 127.0.0.1:8081;
         server 127.0.0.1:8082;
-        server 127.0.0.1:8083 down;
     }
 
     upstream w {

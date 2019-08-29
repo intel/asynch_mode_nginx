@@ -58,20 +58,20 @@ http {
 
         location /ssl_reuse {
             proxy_pass https://127.0.0.1:8081/;
-            proxy_ssl_asynch on;
+            %%PROXY_ASYNCH_ENABLE%%
             proxy_ssl_session_reuse on;
         }
 
         location /ssl {
             proxy_pass https://127.0.0.1:8081/;
-            proxy_ssl_asynch on;
+            %%PROXY_ASYNCH_ENABLE%%
             proxy_ssl_session_reuse off;
         }
 
         location /timeout {
             proxy_pass https://127.0.0.1:8082;
             proxy_connect_timeout 3s;
-            proxy_ssl_asynch on;
+            %%PROXY_ASYNCH_ENABLE%%
         }
 
         location /timeout_h {
@@ -85,7 +85,7 @@ EOF
 
 $t->write_file('openssl.conf', <<EOF);
 [ req ]
-default_bits = 1024
+default_bits = 2048
 encrypt_key = no
 distinguished_name = req_distinguished_name
 [ req_distinguished_name ]

@@ -46,7 +46,7 @@ http {
 
         location /proxy_ssl/ {
             proxy_pass https://127.0.0.1:8081/;
-            proxy_ssl_asynch on;
+            %%PROXY_ASYNCH_ENABLE%%
             proxy_connect_timeout 10s;
         }
     }
@@ -55,7 +55,7 @@ http {
         listen       127.0.0.1:8081 ssl;
         server_name  localhost;
 
-        ssl_asynch on;
+        %%TEST_GLOBALS_HTTPS%%
         ssl_certificate_key localhost.key;
         ssl_certificate localhost.crt;
 
@@ -67,7 +67,7 @@ EOF
 
 $t->write_file('openssl.conf', <<EOF);
 [ req ]
-default_bits = 1024
+default_bits = 2048
 encrypt_key = no
 distinguished_name = req_distinguished_name
 [ req_distinguished_name ]

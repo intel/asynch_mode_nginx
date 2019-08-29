@@ -29,7 +29,7 @@ plan(skip_all => 'may not work, leaves coredump')
     unless $ENV{TEST_NGINX_UNSAFE};
 
 my $t = Test::Nginx->new()->has(qw/http proxy http_ssl/)->has_daemon('openssl')
-    ->has_daemon('softhsm')->has_daemon('pkcs11-tool')->plan(1);
+    ->has_daemon('softhsm')->has_daemon('pkcs11-tool');
 
 $t->write_file_expand('nginx.conf', <<'EOF');
 
@@ -54,8 +54,27 @@ http {
         location / {
             # index index.html by default
         }
+
         location /proxy {
             proxy_pass https://127.0.0.1:8081/;
+        }
+
+        location /var {
+            proxy_pass https://127.0.0.1:8082/;
+            proxy_ssl_name localhost;
+            proxy_ssl_server_name on;
+        }
+    }
+
+    server {
+        listen       127.0.0.1:8082 ssl;
+        server_name  localhost;
+
+        ssl_certificate $ssl_server_name.crt;
+        ssl_certificate_key engine:pkcs11:slot_0-id_00;
+
+        location / {
+            # index index.html by default
         }
     }
 }
@@ -88,7 +107,7 @@ init = 1
 PIN = 1234
 
 [ req ]
-default_bits = 1024
+default_bits = 2048
 encrypt_key = no
 distinguished_name = req_distinguished_name
 [ req_distinguished_name ]
@@ -109,7 +128,7 @@ foreach my $name ('localhost') {
         . ">>$d/openssl.out 2>&1");
 
     system('pkcs11-tool --module=/usr/local/lib/softhsm/libsofthsm.so '
-        . '-p 1234 -l -k -d 0 -a nx_key_0 --key-type rsa:1024 '
+        . '-p 1234 -l -k -d 0 -a nx_key_0 --key-type rsa:2048 '
         . ">>$d/openssl.out 2>&1");
 
     system('openssl req -x509 -new -engine pkcs11 '
@@ -119,12 +138,13 @@ foreach my $name ('localhost') {
         or die "Can't create certificate for $name: $!\n";
 }
 
-$t->run();
+$t->try_run('no ssl_certificate variables')->plan(2);
 
 $t->write_file('index.html', '');
 
 ###############################################################################
 
 like(http_get('/proxy'), qr/200 OK/, 'ssl engine keys');
+like(http_get('/var'), qr/200 OK/, 'ssl_certificate with variable');
 
 ###############################################################################

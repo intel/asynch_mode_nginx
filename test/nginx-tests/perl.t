@@ -24,7 +24,7 @@ use Test::Nginx;
 select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
-my $t = Test::Nginx->new()->has(qw/http perl rewrite/)->plan(17)
+my $t = Test::Nginx->new()->has(qw/http perl rewrite/)->plan(24)
     ->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
@@ -48,6 +48,8 @@ http {
                 use strict;
 
                 my $r = shift;
+
+                $r->status(204) if $r->args =~ /204/;
 
                 $r->send_http_header("text/plain");
 
@@ -106,6 +108,25 @@ http {
                 }
             }';
         }
+
+        location /discard {
+            perl 'sub {
+                use warnings;
+                use strict;
+
+                my $r = shift;
+
+                $r->discard_request_body;
+
+                $r->send_http_header("text/plain");
+
+                return OK if $r->header_only;
+
+                $r->print("host: ", $r->header_in("Host"), "\n");
+
+                return OK;
+            }';
+        }
     }
 }
 
@@ -115,7 +136,9 @@ $t->run();
 
 ###############################################################################
 
-like(http_get('/'), qr/TEST/, 'perl response');
+like(http_get('/'), qr/ 200 .*TEST/s, 'perl response');
+like(http_head('/'), qr/ 200 (?!.*TEST)/s, 'perl header_only');
+like(http_get('/?204'), qr/ 204 (?!.*TEST)/s, 'perl status, args');
 
 # various $r->header_in() cases
 
@@ -175,7 +198,7 @@ like(http(
     'perl header_out content-length multipart');
 
 TODO: {
-local $TODO = 'not yet';
+local $TODO = 'not yet' unless $t->has_version('1.17.2');
 
 like(http(
     'GET /range HTTP/1.0' . CRLF
@@ -185,7 +208,21 @@ like(http(
 
 }
 
+TODO: {
+todo_skip 'leaves coredump', 1 unless $t->has_version('1.17.1')
+    or $ENV{TEST_NGINX_UNSAFE};
+
+like(http(
+    'GET / HTTP/1.0' . CRLF
+    . 'Host: localhost' . CRLF
+    . 'If-Match: tt' . CRLF . CRLF
+), qr|200 OK|ms, 'perl precondition failed');
+
+}
+
 # various request body tests
+
+like(http_get('/body'), qr/400 Bad Request/, 'perl no body');
 
 like(http(
     'GET /body HTTP/1.0' . CRLF
@@ -240,5 +277,40 @@ like(http(
     sleep => 0.1,
     body => '67890' . CRLF . '0' . CRLF . CRLF
 ), qr/body: 1234567890/, 'perl body chunked split');
+
+like(http(
+    'GET /discard HTTP/1.1' . CRLF
+    . 'Host: localhost' . CRLF
+    . 'Connection: close' . CRLF
+    . 'Transfer-Encoding: chunked' . CRLF . CRLF
+    . 'a' . CRLF
+    . '1234567890' . CRLF
+    . '0' . CRLF . CRLF
+), qr/host: localhost/, 'perl body discard');
+
+TODO: {
+local $TODO = 'not yet' unless $t->has_version('1.17.2');
+
+like(http(
+    'GET /discard HTTP/1.1' . CRLF
+    . 'Host: localhost' . CRLF
+    . 'Connection: close' . CRLF
+    . 'Transfer-Encoding: chunked' . CRLF . CRLF
+    . 'ak' . CRLF
+    . '1234567890' . CRLF
+    . '0' . CRLF . CRLF
+), qr/400 Bad Request/, 'perl body discard bad chunk');
+
+like(http(
+    'GET /body HTTP/1.1' . CRLF
+    . 'Host: localhost' . CRLF
+    . 'Connection: close' . CRLF
+    . 'Transfer-Encoding: chunked' . CRLF . CRLF
+    . 'ak' . CRLF
+    . '1234567890' . CRLF
+    . '0' . CRLF . CRLF
+), qr/400 Bad Request/, 'perl body bad chunk');
+
+}
 
 ###############################################################################

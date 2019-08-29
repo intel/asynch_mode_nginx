@@ -45,7 +45,7 @@ http {
 
         location /verify {
             proxy_pass https://127.0.0.1:8081/;
-            proxy_ssl_asynch on;
+            %%PROXY_ASYNCH_ENABLE%%
             proxy_ssl_name example.com;
             proxy_ssl_verify on;
             proxy_ssl_trusted_certificate 1.example.com.crt;
@@ -53,7 +53,7 @@ http {
 
         location /wildcard {
             proxy_pass https://127.0.0.1:8081/;
-            proxy_ssl_asynch on;
+            %%PROXY_ASYNCH_ENABLE%%
             proxy_ssl_name foo.example.com;
             proxy_ssl_verify on;
             proxy_ssl_trusted_certificate 1.example.com.crt;
@@ -61,7 +61,7 @@ http {
 
         location /fail {
             proxy_pass https://127.0.0.1:8081/;
-            proxy_ssl_asynch on;
+            %%PROXY_ASYNCH_ENABLE%%
             proxy_ssl_name no.match.example.com;
             proxy_ssl_verify on;
             proxy_ssl_trusted_certificate 1.example.com.crt;
@@ -69,7 +69,7 @@ http {
 
         location /cn {
             proxy_pass https://127.0.0.1:8082/;
-            proxy_ssl_asynch on;
+            %%PROXY_ASYNCH_ENABLE%%
             proxy_ssl_name 2.example.com;
             proxy_ssl_verify on;
             proxy_ssl_trusted_certificate 2.example.com.crt;
@@ -77,7 +77,7 @@ http {
 
         location /cn/fail {
             proxy_pass https://127.0.0.1:8082/;
-            proxy_ssl_asynch on;
+            %%PROXY_ASYNCH_ENABLE%%
             proxy_ssl_name bad.example.com;
             proxy_ssl_verify on;
             proxy_ssl_trusted_certificate 2.example.com.crt;
@@ -85,7 +85,7 @@ http {
 
         location /untrusted {
             proxy_pass https://127.0.0.1:8082/;
-            proxy_ssl_asynch on;
+            %%PROXY_ASYNCH_ENABLE%%
             proxy_ssl_verify on;
             proxy_ssl_trusted_certificate 1.example.com.crt;
             proxy_ssl_session_reuse off;
@@ -120,7 +120,7 @@ EOF
 $t->write_file('openssl.1.example.com.conf', <<EOF);
 [ req ]
 prompt = no
-default_bits = 1024
+default_bits = 2048
 encrypt_key = no
 distinguished_name = req_distinguished_name
 x509_extensions = v3_req
@@ -135,7 +135,7 @@ EOF
 $t->write_file('openssl.2.example.com.conf', <<EOF);
 [ req ]
 prompt = no
-default_bits = 1024
+default_bits = 2048
 encrypt_key = no
 distinguished_name = req_distinguished_name
 

@@ -128,7 +128,7 @@ $t->plan(13);
 
 $t->write_file('openssl.conf', <<EOF);
 [ req ]
-default_bits = 1024
+default_bits = 2048
 encrypt_key = no
 distinguished_name = req_distinguished_name
 [ req_distinguished_name ]
@@ -225,7 +225,7 @@ sub get_ssl {
     eval {
         local $SIG{ALRM} = sub { die "timeout\n" };
         local $SIG{PIPE} = sub { die "sigpipe\n" };
-        alarm(5);
+        alarm(8);
         IO::Socket::SSL->start_SSL($s->{_socket},
             SSL_hostname => $host,
             SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_NONE(),

@@ -134,7 +134,7 @@ http {
 
         location /ssl {
             proxy_pass https://127.0.0.1:8082/outer;
-            proxy_ssl_asynch on;
+            %%PROXY_ASYNCH_ENABLE%%
 
             if ($arg_if) {
                 # inherited from outer
@@ -142,7 +142,7 @@ http {
 
             location /ssl/inner {
                 proxy_pass http://127.0.0.1:8081;
-                proxy_ssl_asynch off;
+                %%PROXY_ASYNCH_DISABLE%%
             }
         }
     }
@@ -169,7 +169,7 @@ EOF
 
 $t->write_file('openssl.conf', <<EOF);
 [ req ]
-default_bits = 1024
+default_bits = 2048
 encrypt_key = no
 distinguished_name = req_distinguished_name
 [ req_distinguished_name ]
