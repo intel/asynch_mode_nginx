@@ -20,18 +20,21 @@ Configuration
 
 Directives
 
-    Syntax:     qatzip on | off;
-    Default:    qatzip off;
+    Syntax:     qatzip_sw only | failover | no;
+    Default:    qatzip_sw failover;
     Context:    http, server, location, if in location
     Description:
-                Enables or disables qatzipping of responses.
+                only,  QATzip is disabled.
+                failover, QATzip is enabled with software fallback feature.
+                no, QATzip is enabled without software fallback feature.
 
     Syntax:     qatzip_chunk_size size;
     Default:    qatzip_chunk_size 64k;
     Context:    http, server, location
     Description:
                 Sets the chunk buffer size in which data will be compressed into
-                one deflate block. By default, the buffer size is equal to 64K.
+                one deflate block. The buffer size is limited, can be set to any
+                value between 16K ~ 128K, by default, it is 64K.
 
     Syntax:     qatzip_stream_size size;
     Default:    qatzip_stream_size 256k;

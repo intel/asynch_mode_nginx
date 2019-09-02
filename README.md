@@ -19,6 +19,7 @@
     - [External Polling Mode](#external-polling-mode)
     - [Heuristic Polling Mode](#heuristic-polling-mode)
 - [QATzip Module Configuration](#qatzip-module-configuration)
+- [QAT Sample Configuration](#qat-sample-configuration)
 - [Known Issues](#known-issues)
 - [Intended Audience](#intended-audience)
 - [Legal](#legal)
@@ -42,7 +43,7 @@ be found in the file headers of the relevant files.
 ## Features
 
 * Asynchronous Mode in SSL/TLS processing (including http/stream/mail/proxy module)
-* SSL Engine Framework for engine configuraion
+* SSL Engine Framework for engine configuration
 * Support for external polling mode and heursitic polling mode
 * Release hardware resource during worker is shutting down (For more details
   information, please read modules/nginx_qat_module/README)
@@ -74,7 +75,7 @@ Please download the QAT driver from the link https://01.org/intel-quickassist-te
 
 ## Additional Information
 
-* Async Mode Nginx is developed based on Nginx-1.14.2.
+* Async Mode Nginx is developed based on Nginx-1.16.1.
 * Async Mode Nginx SSL engine framework provides new directives:
 
 **Directives**
@@ -481,6 +482,21 @@ file: `conf/nginx.conf`
 ```
 For more details directives of `nginx_qatzip_module`, please refer to
 `modules/nginx_qatzip_modules/README`.
+
+## QAT Sample Configuration
+
+file: `conf/nginx.QAT-sample.conf`
+
+This is a sample configure file shows how to configure QAT in nginx.conf. This file includes:
+
+* Enable SSL QAT engine in heretic mode.
+* Support HTTPS async mode.
+* Enable QATzip support.
+* Select TLS-1.2 as the default ssl_protocols.
+
+**Note:**
+
+* The QAT configuration needs crypto and compression instance for the user space application.
 
 ## Known Issues
 **'Orphan ring' errors in `dmesg` output when Nginx exit**<br/>
