@@ -28,6 +28,7 @@ typedef struct {
     ngx_ssl_t        ssl;
 
     ngx_uint_t       starttls;
+    ngx_uint_t       listen;
     ngx_uint_t       protocols;
 
     ngx_uint_t       verify;

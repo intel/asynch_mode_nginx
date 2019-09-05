@@ -25,6 +25,8 @@ ngx_os_io_t ngx_os_io = {
     ngx_wsarecv_chain,
     ngx_udp_wsarecv,
     ngx_wsasend,
+    NULL,
+    NULL,
     ngx_wsasend_chain,
     0
 };
@@ -56,15 +58,22 @@ static GUID cx_guid = WSAID_CONNECTEX;
 static GUID dx_guid = WSAID_DISCONNECTEX;
 
 
+#if (NGX_LOAD_WSAPOLL)
+ngx_wsapoll_pt             WSAPoll;
+ngx_uint_t                 ngx_have_wsapoll;
+#endif
+
+
 ngx_int_t
 ngx_os_init(ngx_log_t *log)
 {
-    DWORD        bytes;
-    SOCKET       s;
-    WSADATA      wsd;
-    ngx_err_t    err;
-    ngx_uint_t   n;
-    SYSTEM_INFO  si;
+    DWORD         bytes;
+    SOCKET        s;
+    WSADATA       wsd;
+    ngx_err_t     err;
+    ngx_time_t   *tp;
+    ngx_uint_t    n;
+    SYSTEM_INFO   si;
 
     /* get Windows version */
 
@@ -220,6 +229,32 @@ ngx_os_init(ngx_log_t *log)
                       ngx_close_socket_n " failed");
     }
 
+#if (NGX_LOAD_WSAPOLL)
+    {
+    HMODULE  hmod;
+
+    hmod = GetModuleHandle("ws2_32.dll");
+    if (hmod == NULL) {
+        ngx_log_error(NGX_LOG_NOTICE, log, ngx_errno,
+                      "GetModuleHandle(\"ws2_32.dll\") failed");
+        goto nopoll;
+    }
+
+    WSAPoll = (ngx_wsapoll_pt) GetProcAddress(hmod, "WSAPoll");
+    if (WSAPoll == NULL) {
+        ngx_log_error(NGX_LOG_NOTICE, log, ngx_errno,
+                      "GetProcAddress(\"WSAPoll\") failed");
+        goto nopoll;
+    }
+
+    ngx_have_wsapoll = 1;
+
+    }
+
+nopoll:
+
+#endif
+
     if (GetEnvironmentVariable("ngx_unique", ngx_unique, NGX_INT32_LEN + 1)
         != 0)
     {
@@ -237,7 +272,8 @@ ngx_os_init(ngx_log_t *log)
         ngx_sprintf((u_char *) ngx_unique, "%P%Z", ngx_pid);
     }
 
-    srand((ngx_pid << 16) ^ (unsigned) ngx_time());
+    tp = ngx_timeofday();
+    srand((ngx_pid << 16) ^ (unsigned) tp->sec ^ tp->msec);
 
     return NGX_OK;
 }
