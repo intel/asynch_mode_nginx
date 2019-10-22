@@ -3068,6 +3068,12 @@ ngx_ssl_shutdown(ngx_connection_t *c)
         sslerr = SSL_get_error(c->ssl->connection, n);
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
                        "SSL_get_error async: %d", sslerr);
+
+        /*Mask SSL_ERROR_WANT_WRITE error in async status*/
+        if((0 == ERR_peek_error()) && (SSL_ERROR_WANT_WRITE == sslerr)) {
+                sslerr = 0;
+        }
+
     }
 
     if (n == 1 || sslerr == 0 || sslerr == SSL_ERROR_ZERO_RETURN) {
