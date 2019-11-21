@@ -71,7 +71,7 @@ This release was validated on the following:
 Please download the QAT driver from the link https://01.org/intel-quickassist-technology
 * OpenSSL-1.1.1c
 * QAT engine v0.5.42
-* QATzip v1.0.0
+* QATzip v1.0.1
 
 ## Additional Information
 
@@ -196,7 +196,23 @@ is configured as
         NumberCyInstances = 1
         NumberDcInstances = 0
         NumProcesses = 32
-        LimitDevAccess = 1
+        LimitDevAccess = 0
+    ```
+
+* When configure "worker_process auto", async Nginx will need instance number equal or larger than
+  2 times of CPU core number. Otherwise, async-Nignx might show various issue caused by leak of
+  instance.
+
+* Nginx supports QAT engine and QATzip module. By default, they use User Space
+  DMA-able Memory (USDM) Component. The USDM component is located within the
+  Upstream Intel&reg; QAT Driver source code in the following subdirectory:
+  `quickassist/utilities/libusdm_drv`. We should have this component enabled
+  and assignd enough memory before using nginx_qat_module or
+  nginx_qatzip_module, for example:
+
+    ```bash
+        echo 2048 > /sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages
+        insmod ./usdm_drv.ko max_huge_pages=2048 max_huge_pages_per_process=32
     ```
 
 ## Installation Instructions
@@ -229,6 +245,34 @@ is configured as
     make
     make install
 ```
+
+** Nginx supports setting worker to non-root user, for example:**
+
+    Add user qat in group qat, for example run below command in your terminal:
+    ```bash
+        groupadd qat
+        useradd -g qat qat
+    ```
+
+    In nginx.conf, you can set worker as qat, qat is the user you added before:
+    ```bash
+        user qat qat;
+    ```
+
+    Then we need to give non-root worker enough permission to enable qat, you need to run folow
+    connamds in your terminal:
+    ```bash
+        chgrp qat /dev/qat_*
+        chmod 660 /dev/qat_*
+        chgrp qat /dev/usdm_drv
+        chmod 660 /dev/usdm_drv
+        chgrp qat /dev/uio*
+        chmod 660 /dev/uio*
+        chgrp qat /dev/hugepages
+        chmod 770 /dev/hugepages
+        chgrp qat /usr/local/lib/libqat_s.so
+        chgrp qat /usr/local/lib/libusdm_drv_s.so
+    ```
 
 ### Build OpenSSL\* and QAT engine
 
@@ -515,12 +559,16 @@ This is a sample configure file shows how to configure QAT in nginx.conf. This f
    QATzip module supports GZIP compression acceleration now, does not support
    user define dictionary compression yet.
 
-**Worker segfault happens when proxy_ssl_asynch on and keepalive set**<br/>
-   If the async event handler is ngx_ssl_handshake_async_handler and the
-   timer expires while the connection is in keepalive saving state,
-   the connection->log will cause segfault bacause it was changed to
-   ngx_cycle->log. This issue will be fixed after the release that removes async timer
-   in keepalive free handler and sets the async log in keepalive module.
+**Segment fault happens while sending HUP signal when QAT instances not enough**<br/>
+   If the available qat instance number is less than 2x Nginx worker process number, segment fault
+   happens while sending HUP signal to Async Mode Nginx. Using `qat_sw_fallback on;` in qat_engine
+   directive as a workaround for this issue. And it needs special attention if the QAT instances
+   are enough when setting `worker_processes auto;`.
+
+**Insufficient HW resources would cause segment fault while sending HUP signal**<br/>
+   Before running nginx, please make sure you have arranged enough HW resources for nginx, including
+   memory and hard disk space. Disk space exhausted or out of memory would cause core dump when
+   nginx receives HUP signal during handshake phase.
 
 ## Intended Audience
 
