@@ -1699,6 +1699,10 @@ ngx_ssl_handshake(ngx_connection_t *c)
     }
 #endif
 
+    if (c->asynch && !c->async->handler) {
+        c->async->handler = ngx_ssl_empty_handler;
+    }
+
     ngx_ssl_clear_error(c->log);
 
     n = SSL_do_handshake(c->ssl->connection);
