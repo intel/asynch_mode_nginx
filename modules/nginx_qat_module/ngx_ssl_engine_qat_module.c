@@ -519,6 +519,10 @@ static inline void
 qat_engine_heartbeat_poll(ngx_log_t *log) {
     int poll_status = 0;
 
+    if(qat_instance_status.finished) {
+        return;
+    }
+
     if (!ENGINE_ctrl_cmd(qat_engine, "HEARTBEAT_POLL",  0, &poll_status, NULL, 0)) {
         ngx_log_error(NGX_LOG_ALERT, log, 0, "QAT Engine failed: HEARTBEAT_POLL");
     }
