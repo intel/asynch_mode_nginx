@@ -1796,6 +1796,10 @@ ngx_ssl_handshake(ngx_connection_t *c)
             c->read->saved_handler = c->read->handler;
             c->read->handler = ngx_ssl_empty_handler;
         }
+        if (c->write->handler != ngx_ssl_empty_handler) {
+            c->write->saved_handler = c->write->handler;
+            c->write->handler = ngx_ssl_empty_handler;
+        }
 
         ngx_add_timer(c->async, NGX_ASYNC_EVENT_TIMEOUT);
 
@@ -2017,6 +2021,10 @@ ngx_ssl_handshake_async_handler(ngx_event_t *aev)
     if (c->read->saved_handler != ngx_ssl_empty_handler) {
         c->read->handler = c->read->saved_handler;
         c->read->saved_handler = ngx_ssl_empty_handler;
+    }
+    if (c->write->saved_handler != ngx_ssl_empty_handler) {
+        c->write->handler = c->write->saved_handler;
+        c->write->saved_handler = ngx_ssl_empty_handler;
     }
 
     if (ngx_ssl_handshake(c) == NGX_AGAIN) {
