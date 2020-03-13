@@ -97,7 +97,7 @@ static void ngx_ssl_engine_qat_process_exit(ngx_cycle_t *cycle);
 #define HEURISTIC_POLL_SYM_DEFAULT_THRESHOLD        24
 
 #define GET_NUM_ASYM_REQUESTS_IN_FLIGHT             1
-#define GET_NUM_PRF_REQUESTS_IN_FLIGHT              2
+#define GET_NUM_KDF_REQUESTS_IN_FLIGHT              2
 #define GET_NUM_CIPHER_PIPELINE_REQUESTS_IN_FLIGHT  3
 
 #define INLINE_POLL     1
@@ -144,7 +144,7 @@ static qat_instance_status_t qat_instance_status;
 
 static int  num_heuristic_poll = 0;
 static int *num_asym_requests_in_flight = NULL;
-static int *num_prf_requests_in_flight = NULL;
+static int *num_kdf_requests_in_flight = NULL;
 static int *num_cipher_requests_in_flight = NULL;
 
 static ngx_str_t      ssl_engine_qat_name = ngx_string("qat");
@@ -312,7 +312,7 @@ ngx_ssl_engine_qat_release(ngx_cycle_t *cycle)
         ENGINE_GEN_INT_FUNC_PTR qat_finish = ENGINE_get_finish_function(e);
 
         if(0 == *num_asym_requests_in_flight &&
-           0 == *num_prf_requests_in_flight &&
+           0 == *num_kdf_requests_in_flight &&
            0 == *num_cipher_requests_in_flight &&
            1 == qat_finish(e)) {
             qat_instance_status.finished = 1;
@@ -556,7 +556,7 @@ qat_engine_external_poll_handler(ngx_event_t *ev)
         return;
     }
 
-    if (*num_asym_requests_in_flight + *num_prf_requests_in_flight
+    if (*num_asym_requests_in_flight + *num_kdf_requests_in_flight
            + *num_cipher_requests_in_flight > 0) {
         qat_engine_poll(ev->log);
     }
@@ -592,14 +592,14 @@ qat_engine_heuristic_poll_handler(ngx_event_t *ev)
         return;
     }
 
-    if (*num_asym_requests_in_flight + *num_prf_requests_in_flight
+    if (*num_asym_requests_in_flight + *num_kdf_requests_in_flight
            + *num_cipher_requests_in_flight > 0) {
         if (num_heuristic_poll == 0) {
             qat_engine_poll(ev->log);
         }
     }
 
-    if (*num_asym_requests_in_flight + *num_prf_requests_in_flight
+    if (*num_asym_requests_in_flight + *num_kdf_requests_in_flight
            + *num_cipher_requests_in_flight > 0) {
         if (ngx_event_timer_rbtree.root != ngx_event_timer_rbtree.sentinel ||
             !ngx_exiting) {
@@ -660,12 +660,12 @@ ngx_ssl_engine_qat_heuristic_poll(ngx_log_t *log) {
     int polled_flag = 0;
     int threshold;
 
-    if (*num_asym_requests_in_flight + *num_prf_requests_in_flight
+    if (*num_asym_requests_in_flight + *num_kdf_requests_in_flight
         + *num_cipher_requests_in_flight <= 0)
         return;
 
     /* one-time try to retrieve QAT responses */
-    if (*num_asym_requests_in_flight + *num_prf_requests_in_flight
+    if (*num_asym_requests_in_flight + *num_kdf_requests_in_flight
         + *num_cipher_requests_in_flight >= (int) *ngx_ssl_active) {
         qat_engine_poll(log);
         num_heuristic_poll ++;
@@ -678,14 +678,14 @@ ngx_ssl_engine_qat_heuristic_poll(ngx_log_t *log) {
         else
             threshold = qat_engine_heuristic_poll_sym_threshold;
 
-        if (*num_asym_requests_in_flight + *num_prf_requests_in_flight
+        if (*num_asym_requests_in_flight + *num_kdf_requests_in_flight
             + *num_cipher_requests_in_flight >= threshold) {
             qat_engine_poll(log);
             num_heuristic_poll ++;
         }
     }
 
-    if (*num_asym_requests_in_flight + *num_prf_requests_in_flight
+    if (*num_asym_requests_in_flight + *num_kdf_requests_in_flight
         + *num_cipher_requests_in_flight > 0
         && !qat_engine_heuristic_poll_event.timer_set) {
         num_heuristic_poll = 0;
@@ -1002,8 +1002,8 @@ qat_engine_share_info(ngx_log_t *log) {
     }
 
     if (!ENGINE_ctrl_cmd(qat_engine, "GET_NUM_REQUESTS_IN_FLIGHT",
-        GET_NUM_PRF_REQUESTS_IN_FLIGHT,
-        &num_prf_requests_in_flight, NULL, 0)) {
+        GET_NUM_KDF_REQUESTS_IN_FLIGHT,
+        &num_kdf_requests_in_flight, NULL, 0)) {
         ngx_log_error(NGX_LOG_EMERG, log, 0,
                       "QAT Engine failed: GET_NUM_REQUESTS_IN_FLIGHT");
         return NGX_ERROR;
@@ -1028,7 +1028,7 @@ ngx_ssl_engine_qat_process_init(ngx_cycle_t *cycle)
 
     num_heuristic_poll = 0;
     num_asym_requests_in_flight = NULL;
-    num_prf_requests_in_flight = NULL;
+    num_kdf_requests_in_flight = NULL;
     num_cipher_requests_in_flight = NULL;
 
     qat_engine = ENGINE_by_id(engine_id);
