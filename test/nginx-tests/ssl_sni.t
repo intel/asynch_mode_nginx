@@ -68,6 +68,7 @@ http {
 
     server {
         listen       127.0.0.1:8081 ssl;
+        %%TEST_GLOBALS_HTTPS%%
         server_name  localhost;
 
         ssl_certificate_key localhost.key;

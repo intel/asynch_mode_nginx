@@ -42,6 +42,7 @@ http {
 
     server {
         listen       127.0.0.1:8080 ssl;
+        %%TEST_GLOBALS_HTTPS%%
         server_name  default;
 
         ssl_session_tickets off;
@@ -66,6 +67,7 @@ http {
 
     server {
         listen       127.0.0.1:8081 ssl;
+        %%TEST_GLOBALS_HTTPS%%
         server_name  default;
 
         ssl_session_ticket_key ticket1.key;

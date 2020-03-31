@@ -61,6 +61,7 @@ http {
     server {
         listen       127.0.0.1:8080 ssl;
         listen       127.0.0.1:8081 ssl;
+        %%TEST_GLOBALS_HTTPS%%
         server_name  localhost;
 
         location / { }
@@ -68,6 +69,7 @@ http {
 
     server {
         listen       127.0.0.1:8081 ssl;
+        %%TEST_GLOBALS_HTTPS%%
         server_name  localhost2;
 
         location / { }
