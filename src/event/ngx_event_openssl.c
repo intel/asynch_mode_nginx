@@ -1693,15 +1693,15 @@ ngx_ssl_handshake(ngx_connection_t *c)
     int        n, sslerr;
     ngx_err_t  err;
 
+    if (c->asynch && !c->async->handler) {
+        c->async->handler = ngx_ssl_empty_handler;
+    }
+
 #ifdef SSL_READ_EARLY_DATA_SUCCESS
     if (c->ssl->try_early_data) {
         return ngx_ssl_try_early_data(c);
     }
 #endif
-
-    if (c->asynch && !c->async->handler) {
-        c->async->handler = ngx_ssl_empty_handler;
-    }
 
     ngx_ssl_clear_error(c->log);
 
@@ -1864,6 +1864,9 @@ ngx_ssl_try_early_data(ngx_connection_t *c)
     }
 
     if (n == SSL_READ_EARLY_DATA_SUCCESS) {
+        if(c->asynch && ngx_ssl_async_process_fds(c) == 0) {
+            return NGX_ERROR;
+        }
 
         if (ngx_handle_read_event(c->read, 0) != NGX_OK) {
             return NGX_ERROR;
@@ -1900,6 +1903,9 @@ ngx_ssl_try_early_data(ngx_connection_t *c)
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL_get_error: %d", sslerr);
 
     if (sslerr == SSL_ERROR_WANT_READ) {
+        if (c->asynch && ngx_ssl_async_process_fds(c) == 0) {
+            return NGX_ERROR;
+        }
         c->read->ready = 0;
         c->read->handler = ngx_ssl_handshake_handler;
         c->write->handler = ngx_ssl_handshake_handler;
@@ -1916,6 +1922,9 @@ ngx_ssl_try_early_data(ngx_connection_t *c)
     }
 
     if (sslerr == SSL_ERROR_WANT_WRITE) {
+        if (c->asynch && ngx_ssl_async_process_fds(c) == 0) {
+            return NGX_ERROR;
+        }
         c->write->ready = 0;
         c->read->handler = ngx_ssl_handshake_handler;
         c->write->handler = ngx_ssl_handshake_handler;
@@ -1927,6 +1936,32 @@ ngx_ssl_try_early_data(ngx_connection_t *c)
         if (ngx_handle_write_event(c->write, 0) != NGX_OK) {
             return NGX_ERROR;
         }
+
+        return NGX_AGAIN;
+    }
+    if (c->asynch && sslerr == SSL_ERROR_WANT_ASYNC)
+    {
+        c->async->ready = 0;
+        c->async->handler = ngx_ssl_handshake_async_handler;
+        if (c->read->handler != ngx_ssl_empty_handler) {
+            c->read->saved_handler = c->read->handler;
+            c->read->handler = ngx_ssl_empty_handler;
+        }
+
+        if (c->write->handler != ngx_ssl_empty_handler) {
+            c->write->saved_handler = c->write->handler;
+            c->write->handler = ngx_ssl_empty_handler;
+        }
+
+        ngx_add_timer(c->async, NGX_ASYNC_EVENT_TIMEOUT);
+
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                       "SSL ASYNC WANT recieved: \"%s\"", __func__);
+
+        if (ngx_ssl_async_process_fds(c) == 0) {
+            return NGX_ERROR;
+        }
+
 
         return NGX_AGAIN;
     }
