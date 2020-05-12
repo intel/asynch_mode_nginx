@@ -95,10 +95,13 @@ static void ngx_ssl_engine_qat_process_exit(ngx_cycle_t *cycle);
 
 #define HEURISTIC_POLL_ASYM_DEFAULT_THRESHOLD       48
 #define HEURISTIC_POLL_SYM_DEFAULT_THRESHOLD        24
+#define HEURISTIC_POLL_MULTIBUFF_DEFAULT_THRESHOLD  8
 
 #define GET_NUM_ASYM_REQUESTS_IN_FLIGHT             1
 #define GET_NUM_KDF_REQUESTS_IN_FLIGHT              2
 #define GET_NUM_CIPHER_PIPELINE_REQUESTS_IN_FLIGHT  3
+#define GET_NUM_ITEMS_RSA_PRIV_QUEUE                4
+#define GET_NUM_ITEMS_RSA_PUB_QUEUE                 5
 
 #define INLINE_POLL     1
 #define INTERNAL_POLL   2
@@ -146,6 +149,8 @@ static int  num_heuristic_poll = 0;
 static int *num_asym_requests_in_flight = NULL;
 static int *num_kdf_requests_in_flight = NULL;
 static int *num_cipher_requests_in_flight = NULL;
+static int *num_items_rsa_priv_queue = NULL;
+static int *num_items_rsa_pub_queue = NULL;
 
 static ngx_str_t      ssl_engine_qat_name = ngx_string("qat");
 
@@ -314,6 +319,8 @@ ngx_ssl_engine_qat_release(ngx_cycle_t *cycle)
         if(0 == *num_asym_requests_in_flight &&
            0 == *num_kdf_requests_in_flight &&
            0 == *num_cipher_requests_in_flight &&
+           0 == *num_items_rsa_priv_queue &&
+           0 == *num_items_rsa_pub_queue &&
            1 == qat_finish(e)) {
             qat_instance_status.finished = 1;
             ngx_log_debug0(NGX_LOG_DEBUG_CORE, cycle->log, 0,
@@ -557,7 +564,8 @@ qat_engine_external_poll_handler(ngx_event_t *ev)
     }
 
     if (*num_asym_requests_in_flight + *num_kdf_requests_in_flight
-           + *num_cipher_requests_in_flight > 0) {
+           + *num_cipher_requests_in_flight + *num_items_rsa_priv_queue
+           + *num_items_rsa_pub_queue > 0) {
         qat_engine_poll(ev->log);
     }
 
@@ -593,14 +601,16 @@ qat_engine_heuristic_poll_handler(ngx_event_t *ev)
     }
 
     if (*num_asym_requests_in_flight + *num_kdf_requests_in_flight
-           + *num_cipher_requests_in_flight > 0) {
+           + *num_cipher_requests_in_flight + *num_items_rsa_priv_queue
+           + *num_items_rsa_pub_queue > 0) {
         if (num_heuristic_poll == 0) {
             qat_engine_poll(ev->log);
         }
     }
 
     if (*num_asym_requests_in_flight + *num_kdf_requests_in_flight
-           + *num_cipher_requests_in_flight > 0) {
+           + *num_cipher_requests_in_flight + *num_items_rsa_priv_queue
+           + *num_items_rsa_pub_queue> 0) {
         if (ngx_event_timer_rbtree.root != ngx_event_timer_rbtree.sentinel ||
             !ngx_exiting) {
             num_heuristic_poll = 0;
@@ -661,12 +671,14 @@ ngx_ssl_engine_qat_heuristic_poll(ngx_log_t *log) {
     int threshold;
 
     if (*num_asym_requests_in_flight + *num_kdf_requests_in_flight
-        + *num_cipher_requests_in_flight <= 0)
+        + *num_cipher_requests_in_flight + *num_items_rsa_priv_queue
+        + *num_items_rsa_pub_queue <= 0)
         return;
 
     /* one-time try to retrieve QAT responses */
     if (*num_asym_requests_in_flight + *num_kdf_requests_in_flight
-        + *num_cipher_requests_in_flight >= (int) *ngx_ssl_active) {
+        + *num_cipher_requests_in_flight + *num_items_rsa_priv_queue
+        + *num_items_rsa_pub_queue >= (int) *ngx_ssl_active) {
         qat_engine_poll(log);
         num_heuristic_poll ++;
         polled_flag = 1;
@@ -675,18 +687,22 @@ ngx_ssl_engine_qat_heuristic_poll(ngx_log_t *log) {
     if (!polled_flag) {
         if (*num_asym_requests_in_flight > 0)
             threshold = qat_engine_heuristic_poll_asym_threshold;
+        else if (*num_items_rsa_priv_queue + *num_items_rsa_pub_queue > 0)
+            threshold = HEURISTIC_POLL_MULTIBUFF_DEFAULT_THRESHOLD;
         else
             threshold = qat_engine_heuristic_poll_sym_threshold;
 
         if (*num_asym_requests_in_flight + *num_kdf_requests_in_flight
-            + *num_cipher_requests_in_flight >= threshold) {
+            + *num_cipher_requests_in_flight + *num_items_rsa_priv_queue
+            + *num_items_rsa_pub_queue >= threshold) {
             qat_engine_poll(log);
             num_heuristic_poll ++;
         }
     }
 
     if (*num_asym_requests_in_flight + *num_kdf_requests_in_flight
-        + *num_cipher_requests_in_flight > 0
+        + *num_cipher_requests_in_flight + *num_items_rsa_priv_queue
+        + *num_items_rsa_pub_queue > 0
         && !qat_engine_heuristic_poll_event.timer_set) {
         num_heuristic_poll = 0;
         ngx_add_timer(&qat_engine_heuristic_poll_event,
@@ -1016,6 +1032,22 @@ qat_engine_share_info(ngx_log_t *log) {
                       "QAT Engine failed: GET_NUM_REQUESTS_IN_FLIGHT");
         return NGX_ERROR;
     }
+    if (!ENGINE_ctrl_cmd(qat_engine, "GET_NUM_REQUESTS_IN_FLIGHT",
+        GET_NUM_ITEMS_RSA_PRIV_QUEUE,
+        &num_items_rsa_priv_queue, NULL, 0)) {
+        ngx_log_error(NGX_LOG_EMERG, log, 0,
+                      "QAT Engine failed: GET_NUM_REQUESTS_IN_FLIGHT");
+        return NGX_ERROR;
+    }
+    if (!ENGINE_ctrl_cmd(qat_engine, "GET_NUM_REQUESTS_IN_FLIGHT",
+        GET_NUM_ITEMS_RSA_PUB_QUEUE,
+        &num_items_rsa_pub_queue, NULL, 0)) {
+        ngx_log_error(NGX_LOG_EMERG, log, 0,
+                      "QAT Engine failed: GET_NUM_REQUESTS_IN_FLIGHT");
+        return NGX_ERROR;
+    }
+
+
 
     return NGX_OK;
 }
@@ -1030,6 +1062,8 @@ ngx_ssl_engine_qat_process_init(ngx_cycle_t *cycle)
     num_asym_requests_in_flight = NULL;
     num_kdf_requests_in_flight = NULL;
     num_cipher_requests_in_flight = NULL;
+    num_items_rsa_priv_queue = NULL;
+    num_items_rsa_pub_queue = NULL;
 
     qat_engine = ENGINE_by_id(engine_id);
     if (qat_engine == NULL) {
