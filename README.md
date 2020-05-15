@@ -50,6 +50,8 @@ be found in the file headers of the relevant files.
 * Support OpenSSL Cipher PIPELINE feature
 * Support QATzip module to accelerate GZIP compression with Intel&reg; Quickassist Technology
 * Support software fallback for asymmetric cryptography algorithms.
+* Support [QAT Engine multibuffer feature][10]
+[10]:https://github.com/intel/QAT_Engine#intel-qat-openssl-engine-multibuffer-support
 
 ## Hardware Requirements
 
@@ -69,13 +71,31 @@ This release was validated on the following:
 
 * Async Mode Nginx has been tested with the latest Intel&reg; QuickAssist Acceleration Driver.
 Please download the QAT driver from the link https://01.org/intel-quickassist-technology
-* OpenSSL-1.1.1c
-* QAT engine v0.5.42
+* OpenSSL-1.1.1g
+* QAT engine v0.5.44
 * QATzip v1.0.1
 
 ## Additional Information
 
 * Async Mode Nginx is developed based on Nginx-1.16.1.
+
+* Generate Async Mode Nginx patch against official Nginx-1.16.1.
+
+```bash
+  git clone https://github.com/intel/asynch_mode_nginx.git
+  wget http://nginx.org/download/nginx-1.16.1.tar.gz
+  tar -xvzf ./nginx-1.16.1.tar.gz
+  diff -Naru -x .git nginx-1.16.1 asynch_mode_nginx > async_mode_nginx_1.16.1.patch
+```
+
+* Apply Async Mode Nginx patch to official Nginx-1.16.1.
+
+```bash
+  wget http://nginx.org/download/nginx-1.16.1.tar.gz
+  tar -xvzf ./nginx-1.16.1.tar.gz
+  patch -p0 < async_mode_nginx_1.16.1.patch
+```
+
 * Async Mode Nginx SSL engine framework provides new directives:
 
 **Directives**
@@ -569,6 +589,15 @@ This is a sample configure file shows how to configure QAT in nginx.conf. This f
    Before running nginx, please make sure you have arranged enough HW resources for nginx, including
    memory and hard disk space. Disk space exhausted or out of memory would cause core dump when
    nginx receives HUP signal during handshake phase.
+
+**TLS1.3 Early data function may failed when enable HKDF offload in QAT Engine**<br/>
+   When enable HKDF offload in QAT Engine, and enable early data function with TLS1.3 protocol in
+   Nginx configuration, early data operation in session reuse case may failed.
+
+**Core-dump happened when reload nginx worker with ssl_engine removed from nginx.conf**<br/>
+   Start Async Mode Nginx with ssl_engine directive in nginx.conf, then remove the ssl_engine
+   directive and reload Async Mode Nginx with command `nginx -s reload`, will cause coredump.
+   Need to avoid this kind of operation currently.
 
 ## Intended Audience
 
