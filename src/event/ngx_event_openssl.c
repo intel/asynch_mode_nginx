@@ -3044,7 +3044,7 @@ ngx_ssl_shutdown(ngx_connection_t *c)
             /* Check if there is inflight request.
              * Wait till async job becomes finished.
              */
-            if (!c->async->timedout && SSL_want_async(c->ssl->connection)) {
+            if (SSL_want_async(c->ssl->connection)) {
                 ngx_ssl_async_process_fds(c);
                 if(!c->async->timer_set)
                     ngx_add_timer(c->async, NGX_ASYNC_EVENT_TIMEOUT);
