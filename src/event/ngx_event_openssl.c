@@ -3061,7 +3061,7 @@ ngx_ssl_shutdown(ngx_connection_t *c)
                     c->num_async_fds--;
                 }
             }
-            if(ngx_del_conn && c->read->active && c->read->active) {
+            if(ngx_del_conn && c->read->active) {
                 ngx_del_conn(c, NGX_DISABLE_EVENT);
             }
         }
@@ -3137,7 +3137,7 @@ ngx_ssl_shutdown(ngx_connection_t *c)
                     c->num_async_fds--;
                 }
             }
-            if(ngx_del_conn && c->read->active && c->read->active) {
+            if(ngx_del_conn && c->read->active) {
                 ngx_del_conn(c, NGX_DISABLE_EVENT);
             }
         }
@@ -3206,7 +3206,7 @@ ngx_ssl_shutdown(ngx_connection_t *c)
                 c->num_async_fds--;
             }
         }
-        if(ngx_del_conn && c->read->active && c->read->active) {
+        if(ngx_del_conn && c->read->active) {
             ngx_del_conn(c, NGX_DISABLE_EVENT);
         }
     }
