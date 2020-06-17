@@ -235,6 +235,10 @@ is configured as
         insmod ./usdm_drv.ko max_huge_pages=2048 max_huge_pages_per_process=32
     ```
 
+* Only internal polling mode with sync offload are supported on FreeBSD.
+  Because Async Mode Nginx use epoll event for async event notification which is not available
+  on FreeBSD, so only internal polling mode with sync offload works on FreeBSD.
+
 ## Installation Instructions
 
 ### Install Async Mode Nginx
