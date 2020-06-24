@@ -316,6 +316,11 @@ These instructions can be found on [Official test][8]
 
 [8]: https://github.com/intel/asynch_mode_nginx/blob/master/test/README.md
 
+### Performance Testing Best Known Methodology
+
+These instruction can be found on [9]
+[9]: https://github.com/intel/asynch_mode_nginx/blob/master/test/performance_bkm/README.md
+
 ## SSL Engine Framework for Configuration
 
 As QAT engine is implemented as a standard OpenSSL\* engine, its behavior can be
