@@ -404,6 +404,8 @@ ngx_ssl_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
     EVP_PKEY        *pkey;
     STACK_OF(X509)  *chain;
 
+    ngx_ssl_engine_unload_check(cf->cycle);
+
     x509 = ngx_ssl_load_certificate(cf->pool, &err, cert, &chain);
     if (x509 == NULL) {
         if (err != NULL) {

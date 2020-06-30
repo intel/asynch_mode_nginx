@@ -627,11 +627,6 @@ This is a sample configure file shows how to configure QAT in nginx.conf. This f
    When enable HKDF offload in QAT Engine, and enable early data function with TLS1.3 protocol in
    Nginx configuration, early data operation in session reuse case may failed.
 
-**Core-dump happened when reload nginx worker with ssl_engine removed from nginx.conf**<br/>
-   Start Async Mode Nginx with ssl_engine directive in nginx.conf, then remove the ssl_engine
-   directive and reload Async Mode Nginx with command `nginx -s reload`, will cause coredump.
-   Need to avoid this kind of operation currently.
-
 ## Intended Audience
 
 The target audience may be software developers, test and validation engineers,

@@ -55,6 +55,7 @@ typedef struct {
 extern ngx_uint_t                       ngx_use_ssl_engine;
 extern ngx_ssl_engine_actions_t         ngx_ssl_engine_actions;
 extern ngx_uint_t                       ngx_ssl_engine_enable_heuristic_polling;
+extern ngx_flag_t                       ngx_ssl_engine_reload_processed;
 
 #define ngx_ssl_engine_init             ngx_ssl_engine_actions.init
 #define ngx_ssl_engine_send_ctrl        ngx_ssl_engine_actions.send_ctrl
@@ -89,5 +90,6 @@ extern ngx_module_t     ngx_ssl_engine_core_module;
 #define ngx_ssl_engine_get_conf(conf_ctx, module)                        \
     (*(ngx_get_conf(conf_ctx, ngx_ssl_engine_module))) [module.ctx_index];
 
+char * ngx_ssl_engine_unload_check(ngx_cycle_t *cycle);
 
 #endif /* _NGX_ENGINE_H_INCLUDED_ */

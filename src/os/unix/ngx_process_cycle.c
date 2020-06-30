@@ -222,6 +222,7 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
 
         if (ngx_reconfigure) {
             ngx_reconfigure = 0;
+            ngx_ssl_engine_reload_processed = 0;
 
             if (ngx_new_binary) {
                 ngx_start_worker_processes(cycle, ccf->worker_processes,
@@ -324,6 +325,7 @@ ngx_single_process_cycle(ngx_cycle_t *cycle)
 
         if (ngx_reconfigure) {
             ngx_reconfigure = 0;
+            ngx_ssl_engine_reload_processed = 0;
             ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "reconfiguring");
 
             cycle = ngx_init_cycle(cycle);

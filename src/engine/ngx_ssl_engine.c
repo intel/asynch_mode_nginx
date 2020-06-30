@@ -54,6 +54,7 @@ static char *ngx_ssl_engine_default_algorithms(ngx_conf_t *cf,
 static void *ngx_ssl_engine_core_create_conf(ngx_cycle_t *cycle);
 
 static void ngx_ssl_engine_table_cleanup(ENGINE *e);
+static char * ngx_ssl_engine_init_check(ngx_cycle_t *cycle, void *conf);
 
 /* indicating whether to use ssl engine: 0 or 1 */
 ngx_uint_t                  ngx_use_ssl_engine;
@@ -61,6 +62,16 @@ ngx_uint_t                  ngx_use_ssl_engine;
 ngx_ssl_engine_actions_t    ngx_ssl_engine_actions;
 ngx_uint_t                  ngx_ssl_engine_enable_heuristic_polling;
 
+ngx_str_t                   ngx_ssl_engine_name_curr = {
+    0,
+    NULL
+};
+ngx_str_t                   ngx_ssl_engine_name_prev = {
+    0,
+    NULL
+};
+
+ngx_flag_t                  ngx_ssl_engine_reload_processed = 0;
 
 static ngx_command_t  ngx_ssl_engine_commands[] = {
 
@@ -77,7 +88,7 @@ static ngx_command_t  ngx_ssl_engine_commands[] = {
 static ngx_core_module_t  ngx_ssl_engine_module_ctx = {
     ngx_string("ssl_engine"),
     NULL,
-    NULL
+    ngx_ssl_engine_init_check
 };
 
 ngx_module_t  ngx_ssl_engine_module = {
@@ -156,6 +167,85 @@ ngx_ssl_engine_table_cleanup(ENGINE *e)
     ENGINE_unregister_EC(e);
     ENGINE_unregister_RSA(e);
     ENGINE_unregister_DH(e);
+}
+
+char *
+ngx_ssl_engine_name_record(ngx_str_t *name, ngx_pool_t *pool)
+{
+    ngx_memzero(&ngx_ssl_engine_name_prev, sizeof(ngx_ssl_engine_name_prev));
+    if (NULL != ngx_ssl_engine_name_curr.data &&
+        0 < ngx_ssl_engine_name_curr.len) {
+        ngx_ssl_engine_name_prev.data = ngx_pcalloc(pool, sizeof(ngx_ssl_engine_name_curr.len));
+        ngx_ssl_engine_name_prev.len = ngx_ssl_engine_name_curr.len;
+        ngx_sprintf(ngx_ssl_engine_name_prev.data, "%s", ngx_ssl_engine_name_curr.data);
+    }
+
+    if (NULL == name) {
+        ngx_memzero(&ngx_ssl_engine_name_curr, sizeof(ngx_ssl_engine_name_curr));
+    } else {
+        ngx_ssl_engine_name_curr.data = ngx_pcalloc(pool, sizeof(name->len));
+        ngx_ssl_engine_name_curr.len = name->len;
+        ngx_sprintf(ngx_ssl_engine_name_curr.data, "%s", name->data);
+    }
+
+    return NGX_CONF_OK;
+}
+
+char *
+ngx_ssl_engine_unload_check(ngx_cycle_t *cycle)
+{
+    ENGINE      *e;
+
+    if (NGX_PROCESS_SINGLE == ngx_process ||
+        NGX_PROCESS_MASTER == ngx_process) {
+        if (ngx_ssl_engine_reload_processed) {
+            return NGX_CONF_OK;
+        }
+        ngx_ssl_engine_reload_processed = 1;
+
+        if (NULL == ngx_get_conf(cycle->conf_ctx, ngx_ssl_engine_module)) {
+            ngx_ssl_engine_name_record(NULL, cycle->pool);
+        }
+
+        if(ngx_use_ssl_engine &&
+            NULL != ngx_ssl_engine_name_prev.data &&
+            0 < ngx_ssl_engine_name_prev.len &&
+            0 == ngx_ssl_engine_name_curr.len) {
+            ngx_memzero(&ngx_ssl_engine_actions, sizeof(ngx_ssl_engine_actions));
+            ngx_use_ssl_engine = 0;
+        }
+    }
+
+    if(0 == ngx_ssl_engine_name_prev.len ||
+        NULL == ngx_ssl_engine_name_prev.data) {
+        return NGX_CONF_OK;
+    }
+
+    if ((0 == ngx_ssl_engine_name_curr.len) ||
+        (0 < ngx_ssl_engine_name_curr.len &&
+        NULL != ngx_ssl_engine_name_curr.data &&
+        0 != ngx_strcmp(ngx_ssl_engine_name_curr.data, ngx_ssl_engine_name_prev.data))) {
+
+            e = ENGINE_by_id((const char *)ngx_ssl_engine_name_prev.data);
+            if (e == NULL) {
+                ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                            "ENGINE_by_id(\"%s\") failed", (const char *)ngx_ssl_engine_name_prev.data);
+                return NGX_CONF_ERROR;
+            }
+
+            ngx_ssl_engine_table_cleanup(e);
+            ENGINE_GEN_INT_FUNC_PTR finish_function = ENGINE_get_finish_function(e);
+            finish_function(e);
+
+            if (NGX_PROCESS_SINGLE == ngx_process ||
+                NGX_PROCESS_MASTER == ngx_process) {
+                ENGINE_finish(e);
+                ENGINE_cleanup();
+            }
+            ENGINE_free(e);
+    }
+
+    return NGX_CONF_OK;
 }
 
 static ngx_int_t
@@ -305,10 +395,17 @@ ngx_ssl_engine_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     return NGX_CONF_OK;
 }
 
+static char *
+ngx_ssl_engine_init_check(ngx_cycle_t *cycle, void *conf)
+{
+    return ngx_ssl_engine_unload_check(cycle);
+}
 
 static ngx_int_t
 ngx_ssl_engine_process_init(ngx_cycle_t *cycle)
 {
+    ngx_ssl_engine_unload_check(cycle);
+
     if (ngx_use_ssl_engine) {
         if (ngx_ssl_engine_register_handler(cycle) != NGX_OK) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
@@ -359,6 +456,8 @@ ngx_ssl_engine_use(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
                 ngx_use_ssl_engine = 1;
                 ngx_ssl_engine_actions = module->actions;
+
+                ngx_ssl_engine_name_record(module->name, cf->pool);
 
                 return NGX_CONF_OK;
             }
