@@ -72,7 +72,7 @@ This release was validated on the following:
 * Async Mode Nginx has been tested with the latest Intel&reg; QuickAssist Acceleration Driver.
 Please download the QAT driver from the link https://01.org/intel-quickassist-technology
 * OpenSSL-1.1.1g
-* QAT engine v0.5.44
+* QAT engine v0.5.46
 * QATzip v1.0.1
 
 ## Additional Information
