@@ -71,9 +71,10 @@ http {
         listen       127.0.0.1:8081;
         server_name  localhost;
 
-        %%GZIP_ENABLE%%
+        gzip on;
         %%GZIP_MIN_LENGTH_0%%
         %%QATZIP_ENABLE%%
+        %%QATZIP_MIN_LENGTH_0%%
         gzip_http_version 1.0;
         gzip_vary on;
 
@@ -87,11 +88,13 @@ http {
 
         location /asterisk {
             gzip off;
+            %%QATZIP_DISABLE%%
             add_header Vary "*";
         }
 
         location /complex {
             gzip off;
+            %%QATZIP_DISABLE%%
             add_header Vary ",, Accept-encoding , ,";
         }
     }

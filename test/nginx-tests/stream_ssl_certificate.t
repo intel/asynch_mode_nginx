@@ -56,7 +56,6 @@ events {
 }
 
 stream {
-    %%TEST_GLOBALS_HTTPS%%
     geo $one {
         default one;
     }
@@ -74,16 +73,18 @@ stream {
 
     server {
         listen       127.0.0.1:8080 ssl;
+        %%TEST_NGINX_GLOBALS_HTTPS%%
         return       $ssl_server_name:$ssl_session_reused;
-    %%TEST_GLOBALS_HTTPS%%
+
         ssl_certificate $one.crt;
         ssl_certificate_key $one.key;
     }
 
     server {
         listen       127.0.0.1:8083 ssl;
+        %%TEST_NGINX_GLOBALS_HTTPS%%
         return       $ssl_server_name:$ssl_session_reused;
-    %%TEST_GLOBALS_HTTPS%%
+
         # found in key
         ssl_certificate pass.crt;
         ssl_certificate_key $pass.key;
@@ -92,24 +93,27 @@ stream {
 
     server {
         listen       127.0.0.1:8081 ssl;
+        %%TEST_NGINX_GLOBALS_HTTPS%%
         return       $ssl_server_name:$ssl_session_reused;
-    %%TEST_GLOBALS_HTTPS%%
+
         ssl_certificate $one.crt;
         ssl_certificate_key $one.key;
     }
 
     server {
         listen       127.0.0.1:8082 ssl;
+        %%TEST_NGINX_GLOBALS_HTTPS%%
         return       $ssl_server_name:$ssl_session_reused;
-    %%TEST_GLOBALS_HTTPS%%
+
         ssl_certificate $two.crt;
         ssl_certificate_key $two.key;
     }
 
     server {
         listen       127.0.0.1:8084 ssl;
+        %%TEST_NGINX_GLOBALS_HTTPS%%
         return       $ssl_server_name:$ssl_session_reused;
-    %%TEST_GLOBALS_HTTPS%%
+
         ssl_certificate $ssl_server_name.crt;
         ssl_certificate_key $ssl_server_name.key;
     }
@@ -148,7 +152,7 @@ foreach my $name ('pass') {
 $t->write_file('password_file', 'pass');
 $t->write_file('index.html', '');
 
-$t->try_run('no ssl_certificate variables')->plan(7);
+$t->run()->plan(7);
 
 ###############################################################################
 

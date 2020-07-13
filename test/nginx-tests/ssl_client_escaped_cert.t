@@ -42,7 +42,6 @@ events {
 
 http {
     %%TEST_GLOBALS_HTTP%%
-    %%TEST_GLOBALS_HTTPS%%
 
     ssl_certificate_key localhost.key;
     ssl_certificate localhost.crt;
@@ -51,6 +50,7 @@ http {
     server {
         listen       127.0.0.1:8443 ssl;
         server_name  localhost;
+        %%TEST_NGINX_GLOBALS_HTTPS%%
 
         location /cert {
             return 200 $ssl_client_raw_cert;

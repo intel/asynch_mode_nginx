@@ -25,7 +25,7 @@ use Test::Nginx;
 select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
-my $t = Test::Nginx->new()->has(qw/http/)->plan(13)
+my $t = Test::Nginx->new()->has(qw/http/)->plan(14)
     ->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
@@ -37,6 +37,8 @@ events {
 
 http {
     %%TEST_GLOBALS_HTTP%%
+    log_format test $sent_http_connection;
+    access_log %%TESTDIR%%/test.log test if=$arg_l;
 
     server {
         listen       127.0.0.1:8080;
@@ -78,7 +80,7 @@ $t->run();
 # keepalive_requests
 
 like(http_keepalive('/'), qr/Connection: keep-alive/, 'keepalive request');
-is(count_keepalive(http_keepalive('/', req => 2)), 1, 'keepalive limit');
+is(count_keepalive(http_keepalive('/?l=ok', req => 2)), 1, 'keepalive limit');
 is(count_keepalive(http_keepalive('/r', req => 3)), 3, 'keepalive merge');
 is(count_keepalive(http_keepalive('/r', req => 5)), 3, 'keepalive merge limit');
 
@@ -105,11 +107,16 @@ like($r, qr/Keep-Alive: timeout=9/, 'keepalive timeout header');
 
 like(http_keepalive('/zero'), qr/Connection: close/, 'keepalive timeout 0');
 
+$t->stop();
+TODO: {
+local $TODO = 'not yet';
+is($t->read_file('test.log'), "keep-alive\nclose\n", 'sent_http_connection');
+}
 ###############################################################################
 
 sub http_keepalive {
     my ($url, %opts) = @_;
-    my $data = '';
+    my $total = '';
 
     $opts{ua} = $opts{ua} || '';
     $opts{req} = $opts{req} || 1;
@@ -131,6 +138,7 @@ User-Agent: $opts{ua}
 
 EOF
 
+        my $data = '';
         while (IO::Select->new($s)->can_read(3)) {
             sysread($s, my $buffer, 4096) or last;
             $data .= $buffer;
@@ -138,9 +146,10 @@ EOF
         }
 
         log_in($data);
+        $total .= $data;
     }
 
-    return $data;
+    return $total;
 }
 
 sub count_keepalive {

@@ -42,7 +42,6 @@ events {
 
 http {
     %%TEST_GLOBALS_HTTP%%
-    %%TEST_GLOBALS_HTTPS%%
 
     ssl_certificate_key  localhost.key;
     ssl_certificate localhost.crt;
@@ -55,6 +54,7 @@ http {
     server {
         listen       127.0.0.1:8080 ssl;
         server_name  localhost;
+        %%TEST_NGINX_GLOBALS_HTTPS%%
 
         ssl_client_certificate root.crt;
         ssl_crl empty.crl;
@@ -63,6 +63,7 @@ http {
     server {
         listen       127.0.0.1:8081 ssl;
         server_name  localhost;
+        %%TEST_NGINX_GLOBALS_HTTPS%%
 
         ssl_client_certificate root.crt;
         ssl_crl root.crl;
@@ -71,6 +72,7 @@ http {
     server {
         listen       127.0.0.1:8082 ssl;
         server_name  localhost;
+        %%TEST_NGINX_GLOBALS_HTTPS%%
 
         ssl_verify_depth 2;
         ssl_crl root.crl;

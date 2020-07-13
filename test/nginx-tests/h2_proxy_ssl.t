@@ -30,7 +30,6 @@ my $t = Test::Nginx->new()->has(qw/http http_ssl http_v2 proxy/)
 $t->write_file_expand('nginx.conf', <<'EOF');
 
 
-user root;
 
 %%TEST_GLOBALS%%
 
@@ -40,26 +39,23 @@ events {
 }
 
 http {
+    %%TEST_GLOBALS_HTTP%%
 
     server {
         listen       127.0.0.1:8080 http2;
 
-        location /proxy_ssl/ {
-            proxy_pass https://127.0.0.1:8081/;
-            %%PROXY_ASYNCH_ENABLE%%
-            proxy_connect_timeout 10s;
-        }
-    }
 
-    server {
-        listen       127.0.0.1:8081 ssl;
+        listen       127.0.0.1:8081 ssl %%SSL_ASYNCH%%;
         server_name  localhost;
 
-        %%TEST_GLOBALS_HTTPS%%
         ssl_certificate_key localhost.key;
         ssl_certificate localhost.crt;
 
-        location / { return 200; }
+        location / { }
+        location /proxy_ssl/ {
+            proxy_pass https://127.0.0.1:8081/;
+            %%PROXY_ASYNCH_ENABLE%%
+        }
     }
 }
 

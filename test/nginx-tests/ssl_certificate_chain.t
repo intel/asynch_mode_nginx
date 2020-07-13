@@ -42,11 +42,11 @@ events {
 
 http {
     %%TEST_GLOBALS_HTTP%%
-    %%TEST_GLOBALS_HTTPS%%
 
     server {
         listen       127.0.0.1:8080 ssl;
         server_name  localhost;
+        %%TEST_NGINX_GLOBALS_HTTPS%%
 
         ssl_certificate_key end.key;
         ssl_certificate end.crt;
@@ -55,6 +55,7 @@ http {
     server {
         listen       127.0.0.1:8081 ssl;
         server_name  localhost;
+        %%TEST_NGINX_GLOBALS_HTTPS%%
 
         ssl_certificate_key int.key;
         ssl_certificate int.crt;
@@ -63,6 +64,7 @@ http {
     server {
         listen       127.0.0.1:8082 ssl;
         server_name  localhost;
+        %%TEST_NGINX_GLOBALS_HTTPS%%
 
         ssl_certificate_key end.key;
         ssl_certificate end-int.crt;

@@ -72,8 +72,8 @@ http {
 
     server {
         listen       127.0.0.1:8080 ssl;
-    %%TEST_GLOBALS_HTTPS%%
         server_name  localhost;
+        %%TEST_NGINX_GLOBALS_HTTPS%%
 
         ssl_certificate data:$pem;
         ssl_certificate_key data:$pem;
@@ -100,7 +100,7 @@ foreach my $name ('one', 'two') {
         or die "Can't create certificate for $name: $!\n";
 }
 
-$t->try_run('no ssl_certificate variables')->plan(2);
+$t->run()->plan(2);
 
 ###############################################################################
 

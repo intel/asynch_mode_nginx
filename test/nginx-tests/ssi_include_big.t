@@ -38,9 +38,7 @@ http {
 
     output_buffers  2 512;
     ssi on;
-
-    %%GZIP_ENABLE%%
-    %%QATZIP_ENABLE%%
+    gzip on;
 
     server {
         listen       127.0.0.1:8080;

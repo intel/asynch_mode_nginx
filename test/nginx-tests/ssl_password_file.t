@@ -55,20 +55,12 @@ http {
     ssl_password_file password_http;
 
     server {
+
+
+        listen       127.0.0.1:8081 ssl %%SSL_ASYNCH%%;
         listen       127.0.0.1:8080;
         server_name  localhost;
 
-        ssl_password_file password;
-
-        location / {
-            return 200 "$scheme";
-        }
-    }
-    server {
-        listen       127.0.0.1:8081 ssl;
-        server_name  localhost;
-
-        %%TEST_GLOBALS_HTTPS%%
         ssl_password_file password;
 
         location / {

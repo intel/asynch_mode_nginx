@@ -51,35 +51,43 @@ cd $SCRIPTPATH;
 if [ "$#" == '1' ];then
   if [ $1 == 'qat' ];then
     #Update async nginx config file to running with QATZip and QATEngine.
-    sed -i 's/use_engine dasync.*/use_engine qat;/' test-env.sh;
-    sed -i 's/#default_algorithms ALL.*/default_algorithms ALL;/' test-env.sh;
-    sed -i 's/#qat_engine.*/qat_engine {/' test-env.sh;
-    sed -i 's/#qat_offload_mode async.*/qat_offload_mode async;/' test-env.sh;
-    sed -i 's/#qat_notify_mode poll.*/qat_notify_mode poll;/' test-env.sh;
-    sed -i 's/#qat_poll_mode heuristic;}.*/qat_poll_mode heuristic;}/' test-env.sh;
-    sed -i 's/export TEST_LOAD_NGINX_MODULE.*/export TEST_LOAD_NGINX_MODULE="load_module $TEST_NGINX_MODULES\/ngx_ssl_engine_qat_module_for_test.so;"/' test-env.sh;
-    sed -i 's/export TEST_LOAD_QATZIP_MODULE.*/export TEST_LOAD_QATZIP_MODULE="load_module $TEST_NGINX_MODULES\/ngx_http_qatzip_filter_module_for_test.so;"/' test-env.sh;
-    sed -i 's/export TEST_NGINX_GLOBALS_HTTPS.*/export TEST_NGINX_GLOBALS_HTTPS="ssl_asynch on;"/' test-env.sh;
-    source ./test-env.sh
-    export GZIP_ENABLE=""
-    export GZIP_MIN_LENGTH_0=""
+    export TEST_NGINX_MODULES=$NGINX_INSTALL_DIR/modules
+    export TEST_LOAD_NGINX_MODULE="load_module $TEST_NGINX_MODULES/ngx_ssl_engine_qat_module_for_test.so;"
+    export TEST_LOAD_QATZIP_MODULE="load_module $TEST_NGINX_MODULES/ngx_http_qatzip_filter_module_for_test.so;"
+    export TEST_NGINX_GLOBALS="
+    $TEST_LOAD_NGINX_MODULE
+    $TEST_LOAD_QATZIP_MODULE
+    ssl_engine {
+        use_engine qat;
+        default_algorithms ALL;
+        qat_engine {
+            qat_offload_mode async;
+            qat_notify_mode poll;
+            qat_poll_mode heuristic;
+        }
+    }
+    "
+    export TEST_NGINX_GLOBALS_HTTP="qatzip_sw only;"
+    export TEST_NGINX_GLOBALS_HTTPS="ssl_asynch on;"
+    export GRPC_ASYNCH_ENABLE="grpc_ssl_asynch on;"
+    export PROXY_ASYNCH_ENABLE="proxy_ssl_asynch on;"
+    export PROXY_ASYNCH_DISABLE="proxy_ssl_asynch off;"
+    export SSL_ASYNCH=" asynch"
+    export GZIP_MIN_LENGTH_0="gzip_min_length 0;"
+    export QATZIP_TYPES="qatzip_types text/plain;"
+    export QATZIP_ENABLE="qatzip_sw no;"
+    export QATZIP_DISABLE="qatzip_sw only;"
+    export QATZIP_MIN_LENGTH_0="qatzip_min_length 0;"
   elif [ $1 == 'dasync' ];then
     #Update async nginx config file to running without QATZip and QATEngine.
-    cp $OPENSSL_SRC_DIR/engines/dasync.so $OPENSSL_LIB/lib/engines-1.1
-    sed -i 's/use_engine qat.*/use_engine dasync;/' test-env.sh;
-    sed -i 's/.*default_algorithms ALL.*/#default_algorithms ALL;/' test-env.sh;
-    sed -i 's/.*qat_engine.*/#qat_engine {/' test-env.sh;
-    sed -i 's/.*qat_offload_mode async.*/#qat_offload_mode async;/' test-env.sh;
-    sed -i 's/.*qat_notify_mode poll.*/#qat_notify_mode poll;/' test-env.sh;
-    sed -i 's/.*qat_poll_mode heuristic;}.*/#qat_poll_mode heuristic;}/' test-env.sh;
-    sed -i 's/export TEST_LOAD_NGINX_MODULE.*/export TEST_LOAD_NGINX_MODULE=""/' test-env.sh;
-    sed -i 's/export TEST_LOAD_QATZIP_MODULE.*/export TEST_LOAD_QATZIP_MODULE="load_module $TEST_NGINX_MODULES\/ngx_http_qatzip_filter_module_for_test.so;"/' test-env.sh;
-    sed -i 's/export TEST_NGINX_GLOBALS_HTTPS.*/export TEST_NGINX_GLOBALS_HTTPS=""/' test-env.sh;
-    source ./test-env.sh
-    export QATZIP_ENABLE=""
-    export PROXY_ASYNCH_ENABLE=""
-    export PROXY_ASYNCH_DISABLE=""
-    export SSL_ASYNCH=""
+    export TEST_NGINX_MODULES=$NGINX_INSTALL_DIR/modules
+    export TEST_NGINX_GLOBALS="
+    ssl_engine {
+        use_engine dasync;
+    }
+    "
+    export GZIP_TYPES="gzip_types text/plain;"
+    export GZIP_MIN_LENGTH_0="gzip_min_length 0;"
   else
     echo "The parameter qat or dasync needs to be passed in, read the README.md for more information."
     exit

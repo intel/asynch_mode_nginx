@@ -43,7 +43,7 @@ http {
         server_name  localhost;
 
         location / {
-            %%GZIP_ENABLE%%
+            gzip on;
             %%QATZIP_ENABLE%%
             scgi_pass 127.0.0.1:8081;
             scgi_param SCGI 1;

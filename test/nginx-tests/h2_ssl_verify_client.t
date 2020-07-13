@@ -45,7 +45,6 @@ events {
 
 http {
     %%TEST_GLOBALS_HTTP%%
-    %%TEST_GLOBALS_HTTPS%%
 
     ssl_certificate_key localhost.key;
     ssl_certificate localhost.crt;

@@ -73,7 +73,6 @@ $t->write_file('ssi.html',
     'set: <!--#echo var="x" -->');
 
 $t->run_daemon(\&http_daemon);
-sleep 30;
 $t->run();
 
 $t->waitforsocket('127.0.0.1:' . port(8081))

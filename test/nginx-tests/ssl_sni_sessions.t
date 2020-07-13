@@ -35,15 +35,14 @@ events {
 
 http {
     %%TEST_GLOBALS_HTTP%%
-    %%TEST_GLOBALS_HTTPS%%
 
     ssl_certificate_key localhost.key;
     ssl_certificate localhost.crt;
 
     server {
         listen       127.0.0.1:8080 ssl;
-        %%TEST_GLOBALS_HTTPS%%
         server_name  default;
+        %%TEST_NGINX_GLOBALS_HTTPS%%
 
         ssl_session_tickets off;
         ssl_session_cache shared:cache1:1m;
@@ -67,8 +66,8 @@ http {
 
     server {
         listen       127.0.0.1:8081 ssl;
-        %%TEST_GLOBALS_HTTPS%%
         server_name  default;
+        %%TEST_NGINX_GLOBALS_HTTPS%%
 
         ssl_session_ticket_key ticket1.key;
 
@@ -129,9 +128,8 @@ foreach my $name ('localhost') {
 $t->write_file('ticket1.key', '1' x 48);
 $t->write_file('ticket2.key', '2' x 48);
 
-sleep 60;
 $t->run();
-sleep 60;
+
 plan(skip_all => 'no TLS 1.3 sessions')
     if get('default', port(8080), get_ssl_context()) =~ /TLSv1.3/
     && ($Net::SSLeay::VERSION < 1.88 || $IO::Socket::SSL::VERSION < 2.061);

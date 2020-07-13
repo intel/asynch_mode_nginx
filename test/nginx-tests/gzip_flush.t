@@ -39,9 +39,10 @@ http {
         listen       127.0.0.1:8080;
         server_name  localhost;
 
-        %%GZIP_ENABLE%%
+        gzip on;
         %%GZIP_MIN_LENGTH_0%%
         %%QATZIP_ENABLE%%
+        %%QATZIP_MIN_LENGTH_0%%
 
         location / {
             perl 'sub {

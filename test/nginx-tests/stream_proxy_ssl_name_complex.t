@@ -29,7 +29,6 @@ my $t = Test::Nginx->new()->has(qw/stream stream_ssl stream_return sni/)
     ->has_daemon('openssl');
 
 $t->write_file_expand('nginx.conf', <<'EOF');
-user root;
 
 %%TEST_GLOBALS%%
 
@@ -40,8 +39,8 @@ events {
 
 stream {
     proxy_ssl on;
-    %%PROXY_ASYNCH_ENABLE%%
     proxy_ssl_session_reuse off;
+    %%PROXY_ASYNCH_ENABLE%%
 
     server {
         listen      127.0.0.1:8081;
@@ -53,11 +52,11 @@ stream {
     }
 
     server {
-        %%TEST_GLOBALS_HTTPS%%
         ssl_certificate_key localhost.key;
         ssl_certificate localhost.crt;
 
         listen  127.0.0.1:8085 ssl;
+        %%TEST_NGINX_GLOBALS_HTTPS%%
         return  $ssl_server_name;
     }
 }

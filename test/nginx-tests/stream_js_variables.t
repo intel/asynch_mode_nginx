@@ -92,28 +92,14 @@ $t->try_run('no stream njs available')->plan(2);
 
 ###############################################################################
 
-TODO: {
-local $TODO = 'not yet'
-    unless get('/njs') =~ /^([.0-9]+)$/m && $1 ge '0.2.8';
 
 is(stream('127.0.0.1:' . port(8081))->read(), 'test_var400', 'var set');
 is(stream('127.0.0.1:' . port(8082))->read(), 'not_found', 'not found set');
 
-}
 
 $t->stop();
 
 ###############################################################################
-#
-sub get {
-    my ($url, %extra) = @_;
 
-    my $s = IO::Socket::INET->new(
-        Proto => 'tcp',
-        PeerAddr => '127.0.0.1:' . port(8080)
-    ) or die "Can't connect to nginx: $!\n";
 
-    return http_get($url, socket => $s);
-}
 
-###############################################################################

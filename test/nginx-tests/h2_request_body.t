@@ -76,9 +76,7 @@ EOF
 $t->write_file('index.html', '');
 $t->write_file('t.html', 'SEE-THIS');
 $t->write_file('slow.html', 'SEE-THIS');
-sleep 30;
 $t->run();
-sleep 30;
 
 ###############################################################################
 
@@ -170,7 +168,7 @@ is($frame->{headers}->{'x-length'}, undef,
 # RST_STREAM with zero code received
 
 TODO: {
-local $TODO = 'not yet';
+local $TODO = 'not yet' unless $t->has_version('1.17.4');
 
 $s = Test::Nginx::HTTP2->new();
 $sid = $s->new_stream({ body_more => 1 });

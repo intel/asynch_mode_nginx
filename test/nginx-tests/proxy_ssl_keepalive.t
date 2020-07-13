@@ -30,7 +30,6 @@ my $t = Test::Nginx->new()->has(qw/http http_ssl proxy upstream_keepalive/)
     ->has_daemon('openssl')->plan(3)
     ->write_file_expand('nginx.conf', <<'EOF');
 
-user root;
 
 %%TEST_GLOBALS%%
 
@@ -50,12 +49,12 @@ http {
     server {
         listen       127.0.0.1:8080;
         server_name  localhost;
+        %%PROXY_ASYNCH_ENABLE%%
 
         proxy_http_version 1.1;
 
         location / {
             proxy_pass https://u/;
-            %%PROXY_ASYNCH_ENABLE%%
             proxy_set_header Connection $args;
         }
     }
@@ -63,8 +62,8 @@ http {
     server {
         listen       127.0.0.1:8081 ssl;
         server_name  localhost;
+        %%TEST_NGINX_GLOBALS_HTTPS%%
 
-        %%TEST_GLOBALS_HTTPS%%
         ssl_certificate_key localhost.key;
         ssl_certificate localhost.crt;
 

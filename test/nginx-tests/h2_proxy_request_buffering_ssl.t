@@ -31,7 +31,6 @@ my $t = Test::Nginx->new()->has(qw/http http_ssl http_v2 proxy/)
 
 $t->write_file_expand('nginx.conf', <<'EOF');
 
-user root;
 
 %%TEST_GLOBALS%%
 
@@ -46,26 +45,24 @@ http {
     server {
         listen       127.0.0.1:8080 http2;
         server_name  localhost;
+        %%PROXY_ASYNCH_ENABLE%%
 
         location / {
             proxy_request_buffering off;
             proxy_pass https://127.0.0.1:8082;
-            %%PROXY_ASYNCH_ENABLE%%
             client_body_buffer_size 512;
         }
         location /chunked {
             proxy_request_buffering off;
             proxy_http_version 1.1;
             proxy_pass https://127.0.0.1:8082;
-            %%PROXY_ASYNCH_ENABLE%%
             client_body_buffer_size 512;
         }
     }
 
     server {
-        listen       127.0.0.1:8082 ssl;
+        listen       127.0.0.1:8082 ssl %%SSL_ASYNCH%%;
         server_name  localhost;
-        %%TEST_GLOBALS_HTTPS%%
 
         ssl_certificate_key localhost.key;
         ssl_certificate localhost.crt;
@@ -251,6 +248,8 @@ sub get_body {
             $got += $chunked ? hex $_ : $_ for $chunked
                 ? $body =~ /(\w+)\x0d\x0a?\w+\x0d\x0a?/g
                 : length($body);
+            next if $chunked && !$extra{body_more}
+                && $buf !~ /^0\x0d\x0a?/m;
             last if $got >= $len;
         }
 

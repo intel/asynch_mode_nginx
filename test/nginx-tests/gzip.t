@@ -40,16 +40,16 @@ http {
         listen       127.0.0.1:8080;
         server_name  localhost;
         location / {
-            %%GZIP_ENABLE%%
+            gzip on;
             %%QATZIP_ENABLE%%
         }
         location /proxy/ {
-            %%GZIP_ENABLE%%
+            gzip on;
             %%QATZIP_ENABLE%%
             proxy_pass http://127.0.0.1:8080/local/;
         }
         location /local/ {
-            %%GZIP_DISABLE%%
+            gzip off;
             alias %%TESTDIR%%/;
         }
     }

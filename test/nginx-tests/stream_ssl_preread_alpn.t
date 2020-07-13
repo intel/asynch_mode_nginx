@@ -36,7 +36,6 @@ events {
 }
 
 stream {
-    %%TEST_GLOBALS_HTTPS%%
     map $ssl_preread_alpn_protocols $name {
         ""       127.0.0.1:8093;
         default  $ssl_preread_alpn_protocols;

@@ -27,7 +27,6 @@ my $t = Test::Nginx->new()->has(qw/http proxy http_ssl upstream_zone/)
     ->has_daemon('openssl')->plan(9)
     ->write_file_expand('nginx.conf', <<'EOF');
 
-user root;
 
 %%TEST_GLOBALS%%
 
@@ -51,9 +50,8 @@ http {
     }
 
     server {
-        listen 127.0.0.1:8081 ssl;
+        listen 127.0.0.1:8081 ssl %%SSL_ASYNCH%%;
 
-        %%TEST_GLOBALS_HTTPS%%
         ssl_certificate_key localhost.key;
         ssl_certificate localhost.crt;
         ssl_session_cache builtin;
@@ -66,29 +64,26 @@ http {
     server {
         listen       127.0.0.1:8080;
         server_name  localhost;
+        %%PROXY_ASYNCH_ENABLE%%
 
         proxy_ssl_session_reuse off;
 
         location /ssl_reuse {
             proxy_pass https://u/;
-            %%PROXY_ASYNCH_ENABLE%%
             proxy_ssl_session_reuse on;
         }
 
         location /ssl {
             proxy_pass https://u/;
-            %%PROXY_ASYNCH_ENABLE%%
         }
 
         location /backup_reuse {
             proxy_pass https://u2/;
-            %%PROXY_ASYNCH_ENABLE%%
             proxy_ssl_session_reuse on;
         }
 
         location /backup {
             proxy_pass https://u2/;
-            %%PROXY_ASYNCH_ENABLE%%
         }
     }
 }

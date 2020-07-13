@@ -28,7 +28,6 @@ my $t = Test::Nginx->new()->has(qw/http proxy rewrite http_ssl/)
 
 $t->write_file_expand('nginx.conf', <<'EOF')->todo_alerts();
 
-user root;
 
 %%TEST_GLOBALS%%
 
@@ -149,15 +148,10 @@ http {
 
     server {
         listen       127.0.0.1:8081;
+
+        listen       127.0.0.1:8082 ssl %%SSL_ASYNCH%%;
         server_name  localhost;
 
-        return 200 "uri:$uri\n";
-    }
-    server {
-        listen       127.0.0.1:8082 ssl;
-        server_name  localhost;
-
-        %%TEST_GLOBALS_HTTPS%%
         ssl_certificate localhost.crt;
         ssl_certificate_key localhost.key;
 

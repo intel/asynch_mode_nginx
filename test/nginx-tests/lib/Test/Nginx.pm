@@ -549,11 +549,17 @@ sub write_file_expand($$) {
     $content =~ s/%%TEST_GLOBALS_HTTPS%%/$self->test_globals_https()/gmse;
     $content =~ s/%%GZIP_DISABLE%%/$self->test_globals_gzip_disable()/gmse;
     $content =~ s/%%GZIP_ENABLE%%/$self->test_globals_gzip_enable()/gmse;
+    $content =~ s/%%GZIP_TYPES%%/$self->test_globals_gzip_types()/gmse;
     $content =~ s/%%GZIP_MIN_LENGTH_0%%/$self->test_globals_gzip_min_length_0()/gmse;
     $content =~ s/%%QATZIP_ENABLE%%/$self->test_globals_qatzip_enable()/gmse;
+    $content =~ s/%%QATZIP_DISABLE%%/$self->test_globals_qatzip_disable()/gmse;
+    $content =~ s/%%QATZIP_TYPES%%/$self->test_globals_qatzip_types()/gmse;
+    $content =~ s/%%QATZIP_MIN_LENGTH_0%%/$self->test_globals_qatzip_min_length_0()/gmse;
     $content =~ s/%%PROXY_ASYNCH_ENABLE%%/$self->test_globals_proxy_asynch_enable()/gmse;
     $content =~ s/%%PROXY_ASYNCH_DISABLE%%/$self->test_globals_proxy_asynch_disable()/gmse;
+    $content =~ s/%%GRPC_ASYNCH_ENABLE%%/$self->test_globals_grpc_asynch_enable()/gmse;
     $content =~ s/%%SSL_ASYNCH%%/$self->test_globals_ssl_asynch()/gmse;
+    $content =~ s/%%TEST_NGINX_GLOBALS_HTTPS%%/$self->test_globals_https()/gmse;
     $content =~ s/%%TESTDIR%%/$self->{_testdir}/gms;
 
     $content =~ s/127\.0\.0\.1:(8\d\d\d)/'127.0.0.1:' . port($1)/gmse;
@@ -709,7 +715,6 @@ sub test_globals_https() {
     $self->{_test_globals_https} = $s;
 }
 
-
 sub test_globals_gzip_disable() {
     my ($self) = @_;
 
@@ -722,7 +727,6 @@ sub test_globals_gzip_disable() {
 
     $self->{_test_globals_gzip_disable} = $s;
 }
-
 
 sub test_globals_gzip_enable() {
     my ($self) = @_;
@@ -737,6 +741,18 @@ sub test_globals_gzip_enable() {
     $self->{_test_globals_gzip_enable} = $s;
 }
 
+sub test_globals_gzip_types() {
+    my ($self) = @_;
+
+    return $self->{_test_globals_gzip_types}
+        if defined $self->{_test_globals_gzip_types};
+
+    my $s = '';
+    $s .= $ENV{GZIP_TYPES}
+        if $ENV{GZIP_TYPES};
+
+    $self->{_test_globals_gzip_types} = $s;
+}
 
 sub test_globals_gzip_min_length_0() {
     my ($self) = @_;
@@ -751,7 +767,6 @@ sub test_globals_gzip_min_length_0() {
     $self->{_test_globals_gzip_min_length_0} = $s;
 }
 
-
 sub test_globals_qatzip_enable() {
     my ($self) = @_;
 
@@ -763,6 +778,45 @@ sub test_globals_qatzip_enable() {
         if $ENV{QATZIP_ENABLE};
 
     $self->{_test_globals_qatzip_enable} = $s;
+}
+
+sub test_globals_qatzip_disable() {
+    my ($self) = @_;
+
+    return $self->{_test_globals_qatzip_disable}
+        if defined $self->{_test_globals_qatzip_disable};
+
+    my $s = '';
+    $s .= $ENV{QATZIP_DISABLE}
+        if $ENV{QATZIP_DISABLE};
+
+    $self->{_test_globals_qatzip_disable} = $s;
+}
+
+sub test_globals_qatzip_types() {
+    my ($self) = @_;
+
+    return $self->{_test_globals_qatzip_types}
+        if defined $self->{_test_globals_qatzip_types};
+
+    my $s = '';
+    $s .= $ENV{QATZIP_TYPES}
+        if $ENV{QATZIP_TYPES};
+
+    $self->{_test_globals_qatzip_types} = $s;
+}
+
+sub test_globals_qatzip_min_length_0() {
+    my ($self) = @_;
+
+    return $self->{_test_globals_qatzip_min_length_0}
+        if defined $self->{_test_globals_qatzip_min_length_0};
+
+    my $s = '';
+    $s .= $ENV{QATZIP_MIN_LENGTH_0}
+        if $ENV{QATZIP_MIN_LENGTH_0};
+
+    $self->{_test_globals_qatzip_min_length_0} = $s;
 }
 
 sub test_globals_proxy_asynch_enable() {
@@ -791,6 +845,18 @@ sub test_globals_proxy_asynch_disable() {
     $self->{_test_globals_proxy_asynch_disable} = $s;
 }
 
+sub test_globals_grpc_asynch_enable() {
+    my ($self) = @_;
+
+    return $self->{_test_globals_grpc_asynch_enable}
+        if defined $self->{_test_globals_grpc_asynch_enable};
+
+    my $s = '';
+    $s .= $ENV{GRPC_ASYNCH_ENABLE}
+        if $ENV{GRPC_ASYNCH_ENABLE};
+
+    $self->{_test_globals_grpc_asynch_enable} = $s;
+}
 
 sub test_globals_ssl_asynch() {
     my ($self) = @_;

@@ -40,7 +40,6 @@ my $t = Test::Nginx->new()->has(qw/stream stream_ssl/)->has_daemon('openssl');
 
 $t->plan(7)->write_file_expand('nginx.conf', <<'EOF');
 
-user root;
 
 %%TEST_GLOBALS%%
 
@@ -59,7 +58,7 @@ stream {
 
     server {
         listen      127.0.0.1:8080 ssl;
-        %%TEST_GLOBALS_HTTPS%%
+        %%TEST_NGINX_GLOBALS_HTTPS%%
         proxy_pass  127.0.0.1:8081;
 
         ssl_session_cache builtin;
@@ -68,7 +67,7 @@ stream {
 
     server {
         listen      127.0.0.1:8082 ssl;
-        %%TEST_GLOBALS_HTTPS%%
+        %%TEST_NGINX_GLOBALS_HTTPS%%
         proxy_pass  127.0.0.1:8081;
 
         ssl_session_cache off;
@@ -77,7 +76,7 @@ stream {
 
     server {
         listen      127.0.0.1:8083 ssl;
-        %%TEST_GLOBALS_HTTPS%%
+        %%TEST_NGINX_GLOBALS_HTTPS%%
         proxy_pass  127.0.0.1:8081;
 
         ssl_session_cache builtin:1000;
@@ -86,7 +85,7 @@ stream {
 
     server {
         listen      127.0.0.1:8084 ssl;
-        %%TEST_GLOBALS_HTTPS%%
+        %%TEST_NGINX_GLOBALS_HTTPS%%
         proxy_pass  127.0.0.1:8081;
 
         ssl_session_cache shared:SSL:1m;

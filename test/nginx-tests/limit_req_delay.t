@@ -23,7 +23,7 @@ use Test::Nginx qw/ :DEFAULT http_end /;
 select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
-my $t = Test::Nginx->new()->has(qw/http limit_req/);
+my $t = Test::Nginx->new()->has(qw/http limit_req/)->plan(4);
 
 $t->write_file_expand('nginx.conf', <<'EOF');
 
@@ -53,7 +53,7 @@ http {
 EOF
 
 $t->write_file('delay.html', 'XtestX');
-$t->try_run('no limit_req delay')->plan(4);
+$t->run();
 
 ###############################################################################
 

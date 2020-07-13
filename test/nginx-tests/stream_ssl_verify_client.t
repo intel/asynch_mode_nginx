@@ -49,8 +49,8 @@ events {
 
 stream {
     log_format  status  $status;
-    %%TEST_GLOBALS_HTTPS%%
 
+    %%PROXY_ASYNCH_ENABLE%%
     ssl_certificate_key 1.example.com.key;
     ssl_certificate 1.example.com.crt;
 
@@ -64,6 +64,7 @@ stream {
 
     server {
         listen  127.0.0.1:8081 ssl;
+        %%TEST_NGINX_GLOBALS_HTTPS%%
         return  $ssl_client_verify:$ssl_client_cert;
 
         ssl_verify_client on;
@@ -74,6 +75,7 @@ stream {
 
     server {
         listen  127.0.0.1:8082 ssl;
+        %%TEST_NGINX_GLOBALS_HTTPS%%
         return  $ssl_client_verify:$ssl_client_cert;
 
         ssl_verify_client optional;
@@ -83,6 +85,7 @@ stream {
 
     server {
         listen  127.0.0.1:8083 ssl;
+        %%TEST_NGINX_GLOBALS_HTTPS%%
         return  $ssl_client_verify:$ssl_client_cert;
 
         ssl_verify_client optional_no_ca;

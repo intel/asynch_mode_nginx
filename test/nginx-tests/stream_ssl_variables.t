@@ -54,19 +54,22 @@ events {
 }
 
 stream {
-    %%TEST_GLOBALS_HTTPS%%
     ssl_certificate_key localhost.key;
     ssl_certificate localhost.crt;
     ssl_session_cache builtin;
+    %%PROXY_ASYNCH_ENABLE%%
 
     server {
         listen  127.0.0.1:8080;
         listen  127.0.0.1:8081 ssl;
+        %%TEST_NGINX_GLOBALS_HTTPS%%
+
         return  $ssl_session_reused:$ssl_session_id:$ssl_cipher:$ssl_protocol;
     }
 
     server {
         listen  127.0.0.1:8082 ssl;
+        %%TEST_NGINX_GLOBALS_HTTPS%%
         return  $ssl_server_name;
     }
 }
@@ -114,15 +117,11 @@ skip 'no sni', 3 unless $t->has_module('sni');
 ($s, $ssl) = get_ssl_socket(port(8082), undef, 'example.com');
 is(Net::SSLeay::ssl_read_all($ssl), 'example.com', 'ssl server name');
 
-TODO: {
-local $TODO = 'not yet' if $t->has_module('OpenSSL (1.1.1|3)')
-    && !$t->has_version('1.15.10');
 
 my $ses = Net::SSLeay::get_session($ssl);
 ($s, $ssl) = get_ssl_socket(port(8082), $ses, 'example.com');
 is(Net::SSLeay::ssl_read_all($ssl), 'example.com', 'ssl server name - reused');
 
-}
 
 ($s, $ssl) = get_ssl_socket(port(8082));
 is(Net::SSLeay::ssl_read_all($ssl), '', 'ssl server name empty');

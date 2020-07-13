@@ -164,7 +164,7 @@ foreach my $name ('pass') {
 $t->write_file('password_file', 'pass');
 $t->write_file('index.html', '');
 
-$t->try_run('no ssl_certificate variables')->plan(11);
+$t->run()->plan(11);
 
 ###############################################################################
 
@@ -228,7 +228,7 @@ sub get_ssl_socket {
     Net::SSLeay::set_tlsext_host_name($ssl, $host);
     Net::SSLeay::set_session($ssl, $ses) if defined $ses;
     Net::SSLeay::set_fd($ssl, fileno($s));
-    Net::SSLeay::connect($ssl) or die("ssl connect");
+    Net::SSLeay::connect($ssl);
     return ($s, $ssl);
 }
 

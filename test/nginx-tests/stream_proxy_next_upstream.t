@@ -46,6 +46,7 @@ stream {
         server 127.0.0.1:8083;
         server 127.0.0.1:8085 backup;
     }
+    proxy_connect_timeout 2;
 
     server {
         listen      127.0.0.1:8080;

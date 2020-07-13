@@ -53,7 +53,6 @@ events {
 
 http {
     %%TEST_GLOBALS_HTTP%%
-    %%TEST_GLOBALS_HTTPS%%
 
     ssl_certificate_key localhost.key;
     ssl_certificate localhost.crt;
@@ -61,16 +60,16 @@ http {
     server {
         listen       127.0.0.1:8080 ssl;
         listen       127.0.0.1:8081 ssl;
-        %%TEST_GLOBALS_HTTPS%%
         server_name  localhost;
+        %%TEST_NGINX_GLOBALS_HTTPS%%
 
         location / { }
     }
 
     server {
         listen       127.0.0.1:8081 ssl;
-        %%TEST_GLOBALS_HTTPS%%
         server_name  localhost2;
+        %%TEST_NGINX_GLOBALS_HTTPS%%
 
         location / { }
     }
@@ -108,7 +107,6 @@ $t->plan(8);
 
 ###############################################################################
 
-my ($ossl) = $t->{_configure_args} =~ /OpenSSL ([\d\.]+)/;
 
 my ($s, $ssl) = get_ssl_socket(8080);
 ok($s, 'connection');
@@ -125,18 +123,13 @@ ok(Net::SSLeay::set_tlsext_host_name($ssl, 'localhost'), 'SNI');
 
 Net::SSLeay::write($ssl, 'Host: localhost' . CRLF . CRLF);
 
-TODO: {
-local $TODO = 'not yet' if $ossl ge '1.1.1' and $^O eq 'linux'
-    and !$t->has_version('1.15.2');
 
 ok(!Net::SSLeay::read($ssl), 'response');
 
 }
 
-}
 
 # virtual servers
-# in [1.15.4..1.15.5) SSL_OP_NO_RENEGOTIATION is cleared in servername callback
 
 ($s, $ssl) = get_ssl_socket(8081);
 ok($s, 'connection 2');
@@ -153,13 +146,9 @@ ok(Net::SSLeay::set_tlsext_host_name($ssl, 'localhost'), 'SNI');
 
 Net::SSLeay::write($ssl, 'Host: localhost' . CRLF . CRLF);
 
-TODO: {
-local $TODO = 'not yet' if $ossl ge '1.1.1' and $^O eq 'linux'
-    and !$t->has_version('1.15.2');
 
 ok(!Net::SSLeay::read($ssl), 'virtual servers');
 
-}
 
 }
 

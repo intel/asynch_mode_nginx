@@ -45,10 +45,9 @@ http {
     proxy_cache_path   %%TESTDIR%%/cache  keys_zone=NAME:1m;
 
     server {
-        listen       127.0.0.1:8080 http2 ssl sndbuf=32k;
+        listen       127.0.0.1:8080 http2 ssl sndbuf=32k %%SSL_ASYNCH%%;
         server_name  localhost;
 
-        %%TEST_GLOBALS_HTTPS%%
         ssl_certificate_key localhost.key;
         ssl_certificate localhost.crt;
 

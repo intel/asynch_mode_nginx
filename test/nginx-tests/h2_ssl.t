@@ -41,10 +41,9 @@ events {
 
 http {
     %%TEST_GLOBALS_HTTP%%
-    %%TEST_GLOBALS_HTTPS%%
 
     server {
-        listen       127.0.0.1:8080 http2 ssl;
+        listen       127.0.0.1:8080 http2 ssl %%SSL_ASYNCH%%;
         server_name  localhost;
 
         ssl_certificate_key localhost.key;

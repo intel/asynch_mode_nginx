@@ -30,7 +30,6 @@ my $t = Test::Nginx->new()->has(qw/http http_ssl proxy rewrite/)
 
 $t->write_file_expand('nginx.conf', <<'EOF');
 
-user root;
 
 %%TEST_GLOBALS%%
 
@@ -45,6 +44,7 @@ http {
     server {
         listen       127.0.0.1:8080;
         server_name  localhost;
+        %%PROXY_ASYNCH_ENABLE%%
 
         client_header_buffer_size 1k;
         proxy_request_buffering off;
@@ -53,24 +53,20 @@ http {
             client_body_buffer_size 2k;
             add_header X-Body "$request_body";
             proxy_pass https://127.0.0.1:8081;
-            %%PROXY_ASYNCH_ENABLE%%
         }
         location /single {
             client_body_in_single_buffer on;
             add_header X-Body "$request_body";
             proxy_pass https://127.0.0.1:8081;
-            %%PROXY_ASYNCH_ENABLE%%
         }
         location /discard {
             return 200 "TEST\n";
         }
         location /preread {
             proxy_pass https://127.0.0.1:8081;
-            %%PROXY_ASYNCH_ENABLE%%
         }
         location /error_page {
             proxy_pass https://127.0.0.1:8081/404;
-            %%PROXY_ASYNCH_ENABLE%%
             error_page 404 /404;
             proxy_intercept_errors on;
         }
@@ -82,10 +78,10 @@ http {
     server {
         listen       127.0.0.1:8081 ssl;
         server_name  localhost;
+        %%TEST_NGINX_GLOBALS_HTTPS%%
 
         ssl_certificate_key localhost.key;
         ssl_certificate localhost.crt;
-        %%TEST_GLOBALS_HTTPS%%
 
         location /preread {
             client_body_buffer_size 2k;

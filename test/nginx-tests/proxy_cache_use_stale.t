@@ -199,12 +199,9 @@ like(http_get('/t5.html'), qr/REVALIDATED/, 's-w-r - foreground revalidated');
 
 like(http_get('/regexp.html'), qr/STALE/, 's-w-r - regexp background update');
 
-TODO: {
-local $TODO = 'not yet' unless $t->has_version('1.15.8');
 
 like(http_get('/regexp.html'), qr/HIT/, 's-w-r - regexp revalidated');
 
-}
 
 # UPDATING while s-w-r
 

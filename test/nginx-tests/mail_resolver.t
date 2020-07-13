@@ -100,7 +100,7 @@ mail {
         ssl_certificate_key localhost.key;
         ssl_certificate localhost.crt;
 
-        listen    127.0.0.1:8033 ssl;
+        listen    127.0.0.1:8033 ssl %%SSL_ASYNCH%%;
         protocol  smtp;
         resolver  127.0.0.1:%%PORT_8983_UDP%%;
     }

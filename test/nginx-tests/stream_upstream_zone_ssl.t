@@ -29,7 +29,6 @@ my $t = Test::Nginx->new()->has(qw/stream stream_ssl stream_return/)
 
 $t->write_file_expand('nginx.conf', <<'EOF');
 
-user root;
 
 %%TEST_GLOBALS%%
 
@@ -39,11 +38,9 @@ events {
 }
 
 stream {
-    %%TEST_GLOBALS_HTTPS%%
     proxy_ssl on;
-    %%PROXY_ASYNCH_ENABLE%%
     proxy_ssl_session_reuse on;
-
+    %%PROXY_ASYNCH_ENABLE%%
     upstream u {
         zone u 1m;
         server 127.0.0.1:8084;
@@ -79,6 +76,7 @@ stream {
 
     server {
         listen      127.0.0.1:8084 ssl;
+        %%TEST_NGINX_GLOBALS_HTTPS%%
         return      $ssl_session_reused;
 
         ssl_certificate_key localhost.key;

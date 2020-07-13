@@ -36,7 +36,6 @@ events {
 }
 
 stream {
-    %%TEST_GLOBALS_HTTPS%%
     log_format status $status;
 
     map $ssl_preread_server_name $name {
@@ -100,6 +99,7 @@ stream {
         listen       127.0.0.1:8091 ssl;
         listen       127.0.0.1:8092 ssl;
         listen       127.0.0.1:8093 ssl;
+        %%TEST_NGINX_GLOBALS_HTTPS%%
         ssl_preread  off;
         return       $server_port;
     }

@@ -28,7 +28,6 @@ my $t = Test::Nginx->new()->has(qw/http http_ssl sni proxy/)
     ->has_daemon('openssl')
     ->write_file_expand('nginx.conf', <<'EOF');
 
-user root;
 
 %%TEST_GLOBALS%%
 
@@ -42,10 +41,12 @@ http {
 
     upstream backend {
         server 127.0.0.1:8081;
+        %%PROXY_ASYNCH_ENABLE%%
     }
 
     upstream backend2 {
         server 127.0.0.1:8081;
+        %%PROXY_ASYNCH_ENABLE%%
     }
 
     server {
@@ -60,14 +61,12 @@ http {
 
         location /1 {
             proxy_pass https://127.0.0.1:8081/;
-            %%PROXY_ASYNCH_ENABLE%%
             proxy_ssl_name 1.example.com;
             proxy_ssl_server_name on;
         }
 
         location /2 {
             proxy_pass https://127.0.0.1:8081/;
-            %%PROXY_ASYNCH_ENABLE%%
             proxy_ssl_name 2.example.com;
             proxy_ssl_server_name on;
 
@@ -75,48 +74,41 @@ http {
 
         location /off {
             proxy_pass https://backend/;
-            %%PROXY_ASYNCH_ENABLE%%
             proxy_ssl_server_name off;
         }
 
         location /default {
             proxy_pass https://backend/;
-            %%PROXY_ASYNCH_ENABLE%%
             proxy_ssl_server_name on;
         }
 
         location /default2 {
             proxy_pass https://backend2/;
-            %%PROXY_ASYNCH_ENABLE%%
             proxy_ssl_server_name on;
         }
 
         location /port {
             proxy_pass https://backend/;
-            %%PROXY_ASYNCH_ENABLE%%
             proxy_ssl_server_name on;
             proxy_ssl_name backend:123;
         }
 
         location /ip {
             proxy_pass https://127.0.0.1:8081/;
-            %%PROXY_ASYNCH_ENABLE%%
             proxy_ssl_server_name on;
         }
 
         location /ip6 {
             proxy_pass https://[::1]:%%PORT_8081%%/;
-            %%PROXY_ASYNCH_ENABLE%%
             proxy_ssl_server_name on;
         }
     }
 
     server {
-        listen 127.0.0.1:8081 ssl;
-        listen [::1]:%%PORT_8081%% ssl;
+        listen 127.0.0.1:8081 ssl %%SSL_ASYNCH%;
+        listen [::1]:%%PORT_8081%% ssl %%SSL_ASYNCH%%;
         server_name 1.example.com;
 
-        %%TEST_GLOBALS_HTTPS%%
         ssl_certificate localhost.crt;
         ssl_certificate_key localhost.key;
 

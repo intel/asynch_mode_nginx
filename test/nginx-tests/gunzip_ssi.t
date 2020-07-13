@@ -39,7 +39,6 @@ events {
 
 http {
     %%TEST_GLOBALS_HTTP%%
-    qatzip_sw only;
 
     server {
         listen       127.0.0.1:8080;

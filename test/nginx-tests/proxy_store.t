@@ -66,7 +66,6 @@ $t->write_file('ssi.html',
     '<!--#include virtual="/store-index-big.html?1" -->' .
     '<!--#include virtual="/store-index-big.html?2" -->'
 );
-sleep 30;
 $t->run();
 
 ###############################################################################

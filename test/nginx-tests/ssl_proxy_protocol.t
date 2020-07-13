@@ -44,13 +44,13 @@ events {
 
 http {
     %%TEST_GLOBALS_HTTP%%
-    %%TEST_GLOBALS_HTTPS%%
 
     log_format pp '$remote_addr $request';
 
     server {
         listen       127.0.0.1:8080 proxy_protocol ssl;
         server_name  localhost;
+        %%TEST_NGINX_GLOBALS_HTTPS%%
 
         ssl_certificate_key localhost.key;
         ssl_certificate localhost.crt;
