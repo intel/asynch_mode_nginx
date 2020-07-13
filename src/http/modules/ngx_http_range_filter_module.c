@@ -381,10 +381,6 @@ ngx_http_range_parse(ngx_http_request_t *r, ngx_http_range_filter_ctx_t *ctx,
                 return NGX_HTTP_RANGE_NOT_SATISFIABLE;
             }
 
-            if (size > NGX_MAX_OFF_T_VALUE - (end - start)) {
-                return NGX_HTTP_RANGE_NOT_SATISFIABLE;
-            }
-
             size += end - start;
 
             if (ranges-- == 0) {
@@ -704,8 +700,9 @@ ngx_http_range_singlepart_body(ngx_http_request_t *r,
     ngx_http_range_filter_ctx_t *ctx, ngx_chain_t *in)
 {
     off_t              start, last;
+    ngx_int_t          rc;
     ngx_buf_t         *buf;
-    ngx_chain_t       *out, *cl, **ll;
+    ngx_chain_t       *out, *cl, *tl, **ll;
     ngx_http_range_t  *range;
 
     out = NULL;
@@ -725,8 +722,22 @@ ngx_http_range_singlepart_body(ngx_http_request_t *r,
                        "http range body buf: %O-%O", start, last);
 
         if (ngx_buf_special(buf)) {
-            *ll = cl;
-            ll = &cl->next;
+
+            if (range->end <= start) {
+                continue;
+            }
+
+            tl = ngx_alloc_chain_link(r->pool);
+            if (tl == NULL) {
+                return NGX_ERROR;
+            }
+
+            tl->buf = buf;
+            tl->next = NULL;
+
+            *ll = tl;
+            ll = &tl->next;
+
             continue;
         }
 
@@ -768,21 +779,42 @@ ngx_http_range_singlepart_body(ngx_http_request_t *r,
 
             buf->last_buf = (r == r->main) ? 1 : 0;
             buf->last_in_chain = 1;
-            *ll = cl;
-            cl->next = NULL;
 
-            break;
+            tl = ngx_alloc_chain_link(r->pool);
+            if (tl == NULL) {
+                return NGX_ERROR;
+            }
+
+            tl->buf = buf;
+            tl->next = NULL;
+
+            *ll = tl;
+            ll = &tl->next;
+
+            continue;
         }
 
-        *ll = cl;
-        ll = &cl->next;
+        tl = ngx_alloc_chain_link(r->pool);
+        if (tl == NULL) {
+            return NGX_ERROR;
+        }
+
+        tl->buf = buf;
+        tl->next = NULL;
+
+        *ll = tl;
+        ll = &tl->next;
     }
 
-    if (out == NULL) {
-        return NGX_OK;
+    rc = ngx_http_next_body_filter(r, out);
+
+    while (out) {
+        cl = out;
+        out = out->next;
+        ngx_free_chain(r->pool, cl);
     }
 
-    return ngx_http_next_body_filter(r, out);
+    return rc;
 }
 
 
