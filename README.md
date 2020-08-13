@@ -148,6 +148,30 @@ file: conf/nginx.conf
     }
 ```
 
+**Directives**
+```bash
+Syntax:     grpc_ssl_asynch on | off;
+Default:    grpc_ssl_asynch off;
+Context:    http, server
+
+Enables the SSL/TLS protocol asynchronous mode for connections to a grpc server.
+```
+
+**Example**
+
+file: conf/nginx.conf
+
+```bash
+    http {
+        server {
+            location /grpcs {
+                grpc_pass https://127.0.0.1:8082/outer;
+                grpc_ssl_asynch on;
+            }
+        }
+    }
+```
+
 * Async Mode Nginx provide new option `asynch` for `listen` directive.
 
 **Example**
