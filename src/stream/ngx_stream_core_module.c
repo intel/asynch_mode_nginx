@@ -743,6 +743,11 @@ ngx_stream_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
         if (ngx_strcmp(value[i].data, "asynch") == 0) {
 #if (NGX_STREAM_SSL)
+            ngx_stream_ssl_conf_t  *sslcf;
+            sslcf = ngx_stream_conf_get_module_srv_conf(cf,
+                                                        ngx_stream_ssl_module);
+            sslcf->asynch = 1;
+
             ls->ssl = 1;
             ls->asynch = 1;
             continue;
