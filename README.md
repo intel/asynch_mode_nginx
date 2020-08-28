@@ -52,6 +52,7 @@ be found in the file headers of the relevant files.
 * Support software fallback for asymmetric cryptography algorithms.
 * Support [QAT Engine multibuffer feature][10]
 [10]:https://github.com/intel/QAT_Engine#intel-qat-openssl-engine-multibuffer-support
+* Support FreeBSD Operating System.
 
 ## Hardware Requirements
 
@@ -60,10 +61,12 @@ Async Mode Nginx supports Crypto and Compression offload to the following accele
 * [Intel&reg; C62X Series Chipset][1]
 * [Intel&reg; Communications Chipset 8925 to 8955 Series][2]
 * [Intel&reg; Communications Chipset 8960 to 8970 Series][9]
+* [Intel&reg; C3XXX Series Chipset][11]
 
 [1]:https://www.intel.com/content/www/us/en/design/products-and-solutions/processors-and-chipsets/purley/intel-xeon-scalable-processors.html
 [2]:https://www.intel.com/content/www/us/en/ethernet-products/gigabit-server-adapters/quickassist-adapter-8950-brief.html
 [9]:https://www.intel.com/content/www/us/en/ethernet-products/gigabit-server-adapters/quickassist-adapter-8960-8970-brief.html
+[11]:https://www.intel.com/content/www/us/en/design/products-and-solutions/processors-and-chipsets/denverton/ns/atom-processor-c3000-series.html
 
 ## Software Requirements
 
@@ -77,23 +80,23 @@ Please download the QAT driver from the link https://01.org/intel-quickassist-te
 
 ## Additional Information
 
-* Async Mode Nginx is developed based on Nginx-1.16.1.
+* Async Mode Nginx is developed based on Nginx-1.18.0.
 
-* Generate Async Mode Nginx patch against official Nginx-1.16.1.
+* Generate Async Mode Nginx patch against official Nginx-1.18.0.
 
 ```bash
   git clone https://github.com/intel/asynch_mode_nginx.git
-  wget http://nginx.org/download/nginx-1.16.1.tar.gz
-  tar -xvzf ./nginx-1.16.1.tar.gz
-  diff -Naru -x .git nginx-1.16.1 asynch_mode_nginx > async_mode_nginx_1.16.1.patch
+  wget http://nginx.org/download/nginx-1.18.0.tar.gz
+  tar -xvzf ./nginx-1.18.0.tar.gz
+  diff -Naru -x .git nginx-1.18.0 asynch_mode_nginx > async_mode_nginx_1.18.0.patch
 ```
 
-* Apply Async Mode Nginx patch to official Nginx-1.16.1.
+* Apply Async Mode Nginx patch to official Nginx-1.18.0.
 
 ```bash
-  wget http://nginx.org/download/nginx-1.16.1.tar.gz
-  tar -xvzf ./nginx-1.16.1.tar.gz
-  patch -p0 < async_mode_nginx_1.16.1.patch
+  wget http://nginx.org/download/nginx-1.18.0.tar.gz
+  tar -xvzf ./nginx-1.18.0.tar.gz
+  patch -p0 < async_mode_nginx_1.18.0.patch
 ```
 
 * Async Mode Nginx SSL engine framework provides new directives:
@@ -258,10 +261,6 @@ is configured as
         echo 2048 > /sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages
         insmod ./usdm_drv.ko max_huge_pages=2048 max_huge_pages_per_process=32
     ```
-
-* Only internal polling mode with sync offload are supported on FreeBSD.
-  Because Async Mode Nginx use epoll event for async event notification which is not available
-  on FreeBSD, so only internal polling mode with sync offload works on FreeBSD.
 
 ## Installation Instructions
 
