@@ -75,7 +75,7 @@ This release was validated on the following:
 * Async Mode Nginx has been tested with the latest Intel&reg; QuickAssist Acceleration Driver.
 Please download the QAT driver from the link https://01.org/intel-quickassist-technology
 * OpenSSL-1.1.1g
-* QAT engine v0.5.46
+* QAT engine v0.6.1
 * QATzip v1.0.1
 
 ## Additional Information
@@ -396,7 +396,7 @@ An example configuration in the `nginx.conf`:
     load_module modules/ngx_ssl_engine_qat_module.so;
     ...
     ssl_engine {
-        use_engine qat;
+        use_engine qatengine;
         default_algorithms RSA,EC,DH,PKEY_CRYPTO;
         qat_engine {
             qat_sw_fallback on;
@@ -445,7 +445,7 @@ file: conf/nginx.conf
     load_module modules/ngx_ssl_engine_qat_module.so;
     ...
     ssl_engine {
-        use_engine qat;
+        use_engine qatengine;
         default_algorithms ALL;
         qat_engine {
             qat_offload_mode async;
@@ -506,7 +506,7 @@ file: `conf/nginx.conf`
     load_module modules/ngx_ssl_engine_qat_module.so;
     ...
     ssl_engine {
-        use_engine qat;
+        use_engine qatengine;
         default_algorithms ALL;
         qat_engine {
             qat_offload_mode async;

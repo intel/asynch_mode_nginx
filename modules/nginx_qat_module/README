@@ -19,7 +19,7 @@ Configuration
 
 2. Using ssl_engine block to configure QAT engine
     ssl_engine {
-        use_engine qat;
+        use_engine qatengine;
         default_algorithms ALL;
         qat_engine {
             #qat_offload_mode async;

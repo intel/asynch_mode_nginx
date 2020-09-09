@@ -58,7 +58,7 @@ if [ "$#" == '1' ];then
     $TEST_LOAD_NGINX_MODULE
     $TEST_LOAD_QATZIP_MODULE
     ssl_engine {
-        use_engine qat;
+        use_engine qatengine;
         default_algorithms ALL;
         qat_engine {
             qat_offload_mode async;

@@ -152,7 +152,7 @@ static int *num_cipher_requests_in_flight = NULL;
 static int *num_items_rsa_priv_queue = NULL;
 static int *num_items_rsa_pub_queue = NULL;
 
-static ngx_str_t      ssl_engine_qat_name = ngx_string("qat");
+static ngx_str_t      ssl_engine_qat_name = ngx_string("qatengine");
 
 static ngx_command_t  ngx_ssl_engine_qat_commands[] = {
 
@@ -313,7 +313,7 @@ ngx_ssl_engine_qat_release(ngx_cycle_t *cycle)
     }
 
     if(!qat_instance_status.busy) {
-        ENGINE *e = ENGINE_by_id("qat");
+        ENGINE *e = ENGINE_by_id((const char *) ssl_engine_qat_name.data);
         ENGINE_GEN_INT_FUNC_PTR qat_finish = ENGINE_get_finish_function(e);
 
         if(0 == *num_asym_requests_in_flight &&
@@ -342,15 +342,14 @@ ngx_ssl_engine_qat_send_ctrl(ngx_cycle_t *cycle)
     ngx_ssl_engine_qat_conf_t *seqcf;
     ngx_ssl_engine_conf_t *secf;
 
-    const char *engine_id = "qat";
     ENGINE     *e;
     ngx_str_t  *value;
     ngx_uint_t  i;
 
-    e = ENGINE_by_id(engine_id);
+    e = ENGINE_by_id((const char *) ssl_engine_qat_name.data);
     if (e == NULL) {
         ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
-                      "ENGINE_by_id(\"qat\") failed");
+                      "ENGINE_by_id(\"%s\") failed", ssl_engine_qat_name.data);
         return NGX_ERROR;
     }
 
@@ -1056,8 +1055,6 @@ qat_engine_share_info(ngx_log_t *log) {
 static ngx_int_t
 ngx_ssl_engine_qat_process_init(ngx_cycle_t *cycle)
 {
-    const char  *engine_id = "qat";
-
     num_heuristic_poll = 0;
     num_asym_requests_in_flight = NULL;
     num_kdf_requests_in_flight = NULL;
@@ -1065,10 +1062,10 @@ ngx_ssl_engine_qat_process_init(ngx_cycle_t *cycle)
     num_items_rsa_priv_queue = NULL;
     num_items_rsa_pub_queue = NULL;
 
-    qat_engine = ENGINE_by_id(engine_id);
+    qat_engine = ENGINE_by_id((const char *) ssl_engine_qat_name.data);
     if (qat_engine == NULL) {
         ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
-                      "ENGINE_by_id(\"qat\") failed");
+                      "ENGINE_by_id(\"%s\") failed", ssl_engine_qat_name.data);
         return NGX_ERROR;
     }
 

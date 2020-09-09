@@ -52,7 +52,7 @@ Passing the 'qat' parameter:
    load_module modules/ngx_ssl_engine_qat_module.so;
    ...
    ssl_engine {
-       use_engine qat;
+       use_engine qatengine;
        default_algorithms ALL;
            qat_engine {
                qat_offload_mode async;

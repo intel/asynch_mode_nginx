@@ -414,7 +414,7 @@ user root;  #The "user" directive must always be root for this bkm
 worker_processes 2;     #This will be set to the maximum number of logical cores you are going to use. So if you are using Intel(R) Hyper-Threading, you would use 2, 1 worker for each logical thread.  If you were using 6 cores plus their Hyper-Threads, you would have 12 worker_proceses. If you are on an Intel(R) Atom(TM) part, you would not have Hyper-Threads, so if you use 1 core, then you would only have 1 worker_process.
 
 ssl_engine{     #This directive enables the use of QAT offload. If "ssl_engine" is totally ommitted, then software will be used.
-   use_engine qat;
+   use_engine qatengine;
    default_algorithms ALL;
    qat_engine{
       qat_notify_mode poll;
