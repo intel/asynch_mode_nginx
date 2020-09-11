@@ -175,7 +175,7 @@ ngx_ssl_engine_name_record(ngx_str_t *name, ngx_pool_t *pool)
     ngx_memzero(&ngx_ssl_engine_name_prev, sizeof(ngx_ssl_engine_name_prev));
     if (NULL != ngx_ssl_engine_name_curr.data &&
         0 < ngx_ssl_engine_name_curr.len) {
-        ngx_ssl_engine_name_prev.data = ngx_pcalloc(pool, sizeof(ngx_ssl_engine_name_curr.len));
+        ngx_ssl_engine_name_prev.data = ngx_pcalloc(pool, (ngx_ssl_engine_name_curr.len + 1));
         ngx_ssl_engine_name_prev.len = ngx_ssl_engine_name_curr.len;
         ngx_sprintf(ngx_ssl_engine_name_prev.data, "%s", ngx_ssl_engine_name_curr.data);
     }
@@ -183,7 +183,7 @@ ngx_ssl_engine_name_record(ngx_str_t *name, ngx_pool_t *pool)
     if (NULL == name) {
         ngx_memzero(&ngx_ssl_engine_name_curr, sizeof(ngx_ssl_engine_name_curr));
     } else {
-        ngx_ssl_engine_name_curr.data = ngx_pcalloc(pool, sizeof(name->len));
+        ngx_ssl_engine_name_curr.data = ngx_pcalloc(pool, (name->len + 1));
         ngx_ssl_engine_name_curr.len = name->len;
         ngx_sprintf(ngx_ssl_engine_name_curr.data, "%s", name->data);
     }
