@@ -283,7 +283,7 @@ is configured as
         --add-dynamic-module=modules/nginx_qatzip_module \
         --add-dynamic-module=modules/nginx_qat_module/ \
         --with-cc-opt="-DNGX_SECURE_MEM -I$OPENSSL_LIB/include -I$QZ_ROOT/include -Wno-error=deprecated-declarations" \
-        --with-ld-opt="-Wl,-rpath=$OPENSSL_LIB/lib -L$OPENSSL_LIB/lib -L$QZ_ROOT/src -lqatzip -lz"
+        --with-ld-opt="-Wl,-rpath -L$OPENSSL_LIB/lib -L$QZ_ROOT/src -lqatzip -lz"
 ```
 
 **Compile and Install:**
