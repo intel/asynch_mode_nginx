@@ -1,4 +1,4 @@
-# Intel&reg; QuickAssist Technology (QAT) Async Mode Nginx
+Asynch Mode for NGINX\*
 
 ## Table of Contents
 
@@ -10,7 +10,7 @@
 - [Additional Information](#additional-information)
 - [Limitations](#limitations)
 - [Installation Instructions](#installation-instructions)
-    - [Install Async Mode Nginx](#install-async-mode-nginx)
+    - [Asynch Mode for NGINX\* Installation](#asynch-mode-for-nginx-installation)
     - [Build OpenSSL\* and QAT engine](#build-openssl-and-qat-engine)
     - [Build QATzip](#build-qatzip)
     - [Run Nginx official test](#run-nginx-official-test)
@@ -29,14 +29,14 @@
 Nginx\* [engine x] is an HTTP and reverse proxy server, a mail proxy server,
 and a generic TCP/UDP proxy server, originally written by Igor Sysoev.
 This project provides an extended Nginx working with asynchronous mode OpenSSL\*.
-With Intel&reg; QuickAssist Technology (QAT) acceleration, the asynchronous mode Nginx
+With Intel&reg; QuickAssist Technology (QAT) acceleration, Asynch Mode for NGINX\*
 can provide significant performance improvement.
 
 ## Licensing
 
 The Licensing of the files within this project is:
 
-Intel&reg; Quickassist Technology (QAT) Async Mode Nginx - BSD License. Please
+Asynch Mode for NGINX\* - BSD License. Please
 see the `LICENSE` file contained in the top level folder. Further details can
 be found in the file headers of the relevant files.
 
@@ -56,7 +56,7 @@ be found in the file headers of the relevant files.
 
 ## Hardware Requirements
 
-Async Mode Nginx supports Crypto and Compression offload to the following acceleration devices:
+Asynch Mode for NGINX\* supports Crypto and Compression offload to the following acceleration devices:
 
 * [Intel&reg; C62X Series Chipset][1]
 * [Intel&reg; Communications Chipset 8925 to 8955 Series][2]
@@ -72,7 +72,7 @@ Async Mode Nginx supports Crypto and Compression offload to the following accele
 
 This release was validated on the following:
 
-* Async Mode Nginx has been tested with the latest Intel&reg; QuickAssist Acceleration Driver.
+* Asynch Mode for NGINX\* has been tested with the latest Intel&reg; QuickAssist Acceleration Driver.
 Please download the QAT driver from the link https://01.org/intel-quickassist-technology
 * OpenSSL-1.1.1g
 * QAT engine v0.6.1
@@ -80,9 +80,9 @@ Please download the QAT driver from the link https://01.org/intel-quickassist-te
 
 ## Additional Information
 
-* Async Mode Nginx is developed based on Nginx-1.18.0.
+* Asynch Mode for NGINX\* is developed based on Nginx-1.18.0.
 
-* Generate Async Mode Nginx patch against official Nginx-1.18.0.
+* Generate patch against official Nginx-1.18.0.
 
 ```bash
   git clone https://github.com/intel/asynch_mode_nginx.git
@@ -91,7 +91,7 @@ Please download the QAT driver from the link https://01.org/intel-quickassist-te
   diff -Naru -x .git nginx-1.18.0 asynch_mode_nginx > async_mode_nginx_1.18.0.patch
 ```
 
-* Apply Async Mode Nginx patch to official Nginx-1.18.0.
+* Apply patch to official Nginx-1.18.0.
 
 ```bash
   wget http://nginx.org/download/nginx-1.18.0.tar.gz
@@ -99,7 +99,7 @@ Please download the QAT driver from the link https://01.org/intel-quickassist-te
   patch -p0 < async_mode_nginx_1.18.0.patch
 ```
 
-* Async Mode Nginx SSL engine framework provides new directives:
+* Asynch Mode for NGINX\* SSL engine framework provides new directives:
 
 **Directives**
 ```bash
@@ -175,7 +175,7 @@ file: conf/nginx.conf
     }
 ```
 
-* Async Mode Nginx provide new option `asynch` for `listen` directive.
+* Asynch Mode for NGINX\* provide new option `asynch` for `listen` directive.
 
 **Example**
 
@@ -246,8 +246,8 @@ is configured as
         LimitDevAccess = 0
     ```
 
-* When configure "worker_process auto", async Nginx will need instance number equal or larger than
-  2 times of CPU core number. Otherwise, async-Nignx might show various issue caused by leak of
+* When configure "worker_process auto", Asynch Mode for NGINX\* will need instance number equal or larger than
+  2 times of CPU core number. Otherwise, Asynch Mode for NGINX\* might show various issue caused by leak of
   instance.
 
 * Nginx supports QAT engine and QATzip module. By default, they use User Space
@@ -264,7 +264,7 @@ is configured as
 
 ## Installation Instructions
 
-### Install Async Mode Nginx
+### Asynch Mode for NGINX\* Installation
 
 **Set the following environmental variables:**
 
@@ -613,7 +613,7 @@ This is a sample configure file shows how to configure QAT in nginx.conf. This f
 
 **Segment fault happens while sending HUP signal when QAT instances not enough**<br/>
    If the available qat instance number is less than 2x Nginx worker process number, segment fault
-   happens while sending HUP signal to Async Mode Nginx. Using `qat_sw_fallback on;` in qat_engine
+   happens while sending HUP signal to Asynch Mode for NGINX\*. Using `qat_sw_fallback on;` in qat_engine
    directive as a workaround for this issue. And it needs special attention if the QAT instances
    are enough when setting `worker_processes auto;`.
 
@@ -629,19 +629,19 @@ This is a sample configure file shows how to configure QAT in nginx.conf. This f
 ## Intended Audience
 
 The target audience may be software developers, test and validation engineers,
-system integrators, end users and consumers for Async Mode Nginx integrated
+system integrators, end users and consumers for Asynch Mode for NGINX\* integrated
 Intel&reg; Quick Assist Technology.
 
 ## Legal
 
-Intel&reg; disclaims all express and implied warranties, including without
+Intel disclaims all express and implied warranties, including without
 limitation, the implied warranties of merchantability, fitness for a
 particular purpose, and non-infringement, as well as any warranty arising
 from course of performance, course of dealing, or usage in trade.
 
 This document contains information on products, services and/or processes in
 development.  All information provided here is subject to change without
-notice. Contact your Intel&reg; representative to obtain the latest forecast
+notice. Contact your Intel representative to obtain the latest forecast
 , schedule, specifications and roadmaps.
 
 The products and services described may contain defects or errors known as
