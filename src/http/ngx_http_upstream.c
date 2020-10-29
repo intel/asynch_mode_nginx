@@ -1775,6 +1775,10 @@ ngx_http_upstream_ssl_handshake(ngx_http_request_t *r, ngx_http_upstream_t *u,
     long  rc;
 
     if (c->ssl->handshaked) {
+        if (c->asynch && r->connection->error) {
+            ngx_http_upstream_finalize_request(r, u, NGX_HTTP_CLIENT_CLOSED_REQUEST);
+            return;
+        }
 
         if (u->conf->ssl_verify) {
             rc = SSL_get_verify_result(c->ssl->connection);
@@ -1927,8 +1931,22 @@ done:
     return NGX_OK;
 }
 
-#endif
+static ngx_inline ngx_int_t
+ngx_http_upstream_ssl_check_want_async(ngx_http_request_t *r,
+    ngx_http_upstream_t *u)
+{
+    if (r->connection->error && u->peer.connection
+        && u->peer.connection->ssl && u->peer.connection->asynch
+        && SSL_in_init(u->peer.connection->ssl->connection)
+        && SSL_want_async(u->peer.connection->ssl->connection)) {
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "connection closed but need to wait until async job done");
+        return 1;
+    }
+    return 0;
+}
 
+#endif
 
 static ngx_int_t
 ngx_http_upstream_reinit(ngx_http_request_t *r, ngx_http_upstream_t *u)
@@ -4348,6 +4366,12 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "finalize http upstream request: %i", rc);
+
+#if (NGX_HTTP_SSL)
+    if (ngx_http_upstream_ssl_check_want_async(r, u)) {
+        return;
+    }
+#endif
 
     if (u->cleanup == NULL) {
         /* the request was already finalized */
