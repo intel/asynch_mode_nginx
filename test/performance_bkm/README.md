@@ -6,7 +6,13 @@ The purpose of this README is to configure NGINX with OpenSSL+QATEngine+QAT|CORE
 
 The general layout of the testing is as follows:
 
+EACH NODE IS A PLATFORM. Ensure to use enough clients/backend systems to avoid being performance bound.
+
+WEBSERVER: Basic use case
 [CLIENT(s)][172.16.N.2/24]<------>[172.16.N.1/24][[port 4400]NGINX Server]
+
+WEBPROXY: Most demanding both compute and IO use case
+[CLIENT(s)][172.16.N.2/24]<------>[172.16.N.1/24][[port 4400]NGINX Server][192.168.N.1/24]<------>[192.168.N.2/24][[port 8210]Backend Server]
 
 <i>Where N is between 1-255</i>
 
@@ -81,6 +87,7 @@ wget --no-check-certificate https://01.org/sites/default/files/downloads/qat1.7.
 tar xf qat1.7.l.4.9.0-00008.tar.gz
 cd /root/server/scripts/
 
+export KERNEL_SOURCE_ROOT=/usr/src/linux-headers-$(uname -r) #may change if using Red Hat
 export ICP_ROOT=/root/server/sources/tls_build/qat_install/
 export QAT_ENGINE=/root/server/sources/tls_build/qat_engine/
 export OPENSSL_SOURCE=/root/server/sources/tls_build/openssl/
@@ -1244,8 +1251,8 @@ Max CHACHAPOLLY BULK|ECDHE-RSA-CHACHCA20-POLY1305
 
 
 
-## Appendix
-# Mellanox Debug
+# Appendix
+## Mellanox Debug
 If you are using Mellanox 5 series, you may need these.
 ```bash
 sudo mlxconfig -e -d b1:00.1 set ADVANCED_POWER_SETTINGS=True
@@ -1253,3 +1260,85 @@ sudo mlxconfig -e -d b1:00.1 set DISABLE_SLOT_POWER_LIMITER=True
 sudo mlxconfig -e -d b1:00.0 set ADVANCED_POWER_SETTINGS=True
 sudo mlxconfig -e -d b1:00.0 set DISABLE_SLOT_POWER_LIMITER=True
 ```
+
+## Running OpenSSL Speed tests with Vectorized AES (VAES)
+OpenSSL Speed tests are an easy way to determine the low level micro-benchmarking performance of OpenSSL+QATEngine with VAES optimized GCM library. Below are the steps.
+
+### Prerequisites.
+1. A Xeon Generation Icelake or above.  Cascade Lake and below will not work with VAES.
+1. Ubuntu 18.04 or Ubuntu 20.04
+
+### Run the following scripts
+
+```bash
+#PREAMBLE
+cd /root/
+mkdir openssl_speed_tests/
+cd openssl_speed_tests/
+git clone https://github.com/intel/QAT_Engine.git
+git clone https://github.com/openssl/openssl.git
+git clone https://github.com/intel/intel-ipsec-mb.git
+wget --no-check-certificate https://www.nasm.us/pub/nasm/releasebuilds/2.14.02/nasm-2.14.02.tar.gz
+mkdir openssl_install/
+mv QAT_Engine qat_engine/
+mv intel-ipsec-mb intel_ipsec_mb/
+tar xf nasm-2.14.02.tar.gz
+mv nasm-2.14.02 nasm
+
+#NASM
+cd /root/openssl_speed_tests/nasm/
+./autogen.sh
+./configure
+make -j 20
+make install -j 20
+
+#OPENSSL
+export OPENSSL_ENGINES=/root/openssl_speed_tests/openssl_install/lib/engines-1.1/
+cd /root/openssl_speed_tests/openssl/
+git checkout OpenSSL_1_1_1h
+./config --prefix=/root/openssl_speed_tests/openssl_install
+make update
+make depend
+make -j 20 && make install -j 20
+
+#INTEL IPSEC
+cd /root/openssl_speed_tests/intel_ipsec_mb/
+git checkout v0.54
+make -j 20
+rm /usr/lib/libIPSec_MB.*
+rm /lib/x86_64-linux-gnu/libIPSec_MB.*
+ln -s /root/openssl_speed_tests/intel_ipsec_mb/intel-ipsec-mb.h  /root/openssl_speed_tests/intel_ipsec_mb/include/
+ln -s  /root/openssl_speed_tests/intel_ipsec_mb/libIPSec_MB.so.0 /usr/lib/
+ln -s  /root/openssl_speed_tests/intel_ipsec_mb/libIPSec_MB.so.0 /lib/x86_64-linux-gnu/
+ln -s  /root/openssl_speed_tests/intel_ipsec_mb/libIPSec_MB.so /lib/x86_64-linux-gnu/
+
+#QATENGINE
+cd /root/openssl_speed_tests/qat_engine/
+git checkout v0.6.1
+./autogen.sh
+./configure --enable-vaes_gcm  --enable-ipsec_offload --with-ipsec_install_dir=/root/openssl_speed_tests/intel_ipsec_mb/  --with-openssl_install_dir=/root/openssl_speed_tests/openssl_install/
+make -j 20
+make install -j 20
+```
+
+To run tests, follow the steps below.
+```bash
+cd /root/openssl_speed_tests/openssl_install/bin/
+taskset -c 1 ./openssl speed -multi 1 -evp aes-128-gcm #NON-VAES tests
+taskset -c 1 ./openssl speed -engine qatengine -multi 1 -evp aes-128-gcm #VAES tests
+```
+
+### Interpreting the Results.
+The results provided by OpenSSL Speed are in KB/s.  There are a number of columns of output, and each column represents a different sized buffer that was looped for a period of time using a crypto algorithm.  The higher the outputted number, the better.  This means that some number of bytes of dummy data was encrypted with a particular algorithm. For non-VAES GCM, we should see some number of bytes encrypted, and for VAES we should see some number of bytes encrypted that is higher than non-VAES. Note, the "-multi" argument and "taskset -c ??" argument should increase in lock-step.  We do this to provide some determinism and to prevent any potential thread migration. Also it is a good idea to disable P and C states in the bios to have  a stable core frequency.
+
+Below is an example of an output.
+```bash
+evp             100.0k  200.0k  300.0k  400.0k  500.0k  600.0k
+```
+The column performance will be mapped to buffer size as such...
+16B=100.0k
+64B=200.0k
+256B=300.0k
+1024B=400.0k
+8192B=500.00k
+16384B=600.0k
