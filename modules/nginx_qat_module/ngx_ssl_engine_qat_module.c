@@ -43,6 +43,7 @@
 
 
 typedef struct {
+    ngx_str_t       engine_id;
     /* if this engine can be released during worker is shutting down */
     ngx_flag_t      releasable;
 
@@ -160,7 +161,7 @@ static int *num_asym_mb_items_in_queue = NULL;
 static int *num_kdf_mb_items_in_queue = NULL;
 static int *num_sym_mb_items_in_queue = NULL;
 
-static ngx_str_t      ssl_engine_qat_name = ngx_string("qatengine");
+static ngx_str_t ngx_ssl_engine_qat_module_name = ngx_string("qatengine");
 
 static ngx_command_t  ngx_ssl_engine_qat_commands[] = {
 
@@ -259,7 +260,7 @@ static ngx_command_t  ngx_ssl_engine_qat_commands[] = {
 };
 
 ngx_ssl_engine_module_t  ngx_ssl_engine_qat_module_ctx = {
-    &ssl_engine_qat_name,
+    &ngx_ssl_engine_qat_module_name,
     ngx_ssl_engine_qat_create_conf,               /* create configuration */
     ngx_ssl_engine_qat_init_conf,                 /* init configuration */
 
@@ -335,7 +336,7 @@ ngx_ssl_engine_qat_release(ngx_cycle_t *cycle)
     }
 
     if(!qat_instance_status.busy) {
-        ENGINE *e = ENGINE_by_id((const char *) ssl_engine_qat_name.data);
+        ENGINE *e = ENGINE_by_id((const char *) seqcf->engine_id.data);
         ENGINE_GEN_INT_FUNC_PTR qat_finish = ENGINE_get_finish_function(e);
 
         if(0 == *num_asym_requests_in_flight &&
@@ -369,14 +370,15 @@ ngx_ssl_engine_qat_send_ctrl(ngx_cycle_t *cycle)
     ngx_str_t  *value;
     ngx_uint_t  i;
 
-    e = ENGINE_by_id((const char *) ssl_engine_qat_name.data);
+    seqcf = ngx_ssl_engine_get_conf(cycle->conf_ctx, ngx_ssl_engine_qat_module);
+
+    e = ENGINE_by_id((const char *) seqcf->engine_id.data);
     if (e == NULL) {
         ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
-                      "ENGINE_by_id(\"%s\") failed", ssl_engine_qat_name.data);
+                      "ENGINE_by_id(\"%s\") failed",  seqcf->engine_id.data);
         return NGX_ERROR;
     }
 
-    seqcf = ngx_ssl_engine_get_conf(cycle->conf_ctx, ngx_ssl_engine_qat_module);
 
     if (ngx_strcmp(seqcf->offload_mode.data, "async") == 0) {
         /* Need to be consistent with the directive ssl_async */
@@ -896,8 +898,15 @@ static char *
 ngx_ssl_engine_qat_init_conf(ngx_cycle_t *cycle, void *conf)
 {
     ngx_ssl_engine_qat_conf_t *seqcf = conf;
+    ngx_ssl_engine_conf_t * corecf =
+        ngx_ssl_engine_get_conf(cycle->conf_ctx, ngx_ssl_engine_core_module);
 
-    /* init the conf values not set by the user */
+    if (0 != corecf->ssl_engine_id.len) {
+        ngx_conf_init_str_value(seqcf->engine_id, corecf->ssl_engine_id.data);
+    } else {
+        ngx_conf_init_str_value(seqcf->engine_id,
+            ngx_ssl_engine_qat_module_name.data);
+    }
 
     ngx_conf_init_str_value(seqcf->offload_mode, "async");
     ngx_conf_init_str_value(seqcf->notify_mode, "poll");
@@ -1110,10 +1119,14 @@ ngx_ssl_engine_qat_process_init(ngx_cycle_t *cycle)
     num_kdf_mb_items_in_queue  = NULL;
     num_sym_mb_items_in_queue = NULL;
 
-    qat_engine = ENGINE_by_id((const char *) ssl_engine_qat_name.data);
+
+    ngx_ssl_engine_qat_conf_t *conf =
+        ngx_ssl_engine_get_conf(cycle->conf_ctx, ngx_ssl_engine_qat_module);
+
+    qat_engine = ENGINE_by_id((const char *) conf->engine_id.data);
     if (qat_engine == NULL) {
         ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
-                      "ENGINE_by_id(\"%s\") failed", ssl_engine_qat_name.data);
+                      "ENGINE_by_id(\"%s\") failed", conf->engine_id.data);
         return NGX_ERROR;
     }
 

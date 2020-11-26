@@ -112,7 +112,7 @@ static ngx_str_t ssl_engine_core_name = ngx_string("ssl_engine_core");
 static ngx_command_t  ngx_ssl_engine_core_commands[] = {
 
     { ngx_string("use_engine"),
-      NGX_SSL_ENGINE_CONF|NGX_CONF_TAKE1,
+      NGX_SSL_ENGINE_CONF|NGX_CONF_TAKE12,
       ngx_ssl_engine_use,
       0,
       0,
@@ -451,9 +451,11 @@ ngx_ssl_engine_use(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         module = cf->cycle->modules[m]->ctx;
         if (module->name->len == value[1].len) {
             if (ngx_strcmp(module->name->data, value[1].data) == 0) {
-
-                secf->ssl_engine_id = value[1];
-
+                if (3 == cf->args->nelts) {
+                    secf->ssl_engine_id = value[2];
+                } else {
+                    secf->ssl_engine_id = value[1];
+                }
                 ngx_use_ssl_engine = 1;
                 ngx_ssl_engine_actions = module->actions;
 

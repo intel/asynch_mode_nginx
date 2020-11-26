@@ -365,12 +365,22 @@ mechanism to configure Nginx SSL engine directly in the Nginx configuration file
 A new configuration block is introduced as `ssl_engine` which provides two
 general directives:
 
+Sets the engine module and engine id for OpenSSL async engine. For example:
 ```bash
-Syntax:     use_engine [engine name];
+Syntax:     use_engine [engine module name] [engine id];
 Default:    N/A
 Context:    ssl_engine
 Description:
-            Specify the engine name
+            Specify the engine module name against engine id
+```
+Sets the engine module and engine id for OpenSSL async engine by only providing
+the engine id. The engine module should be the same as engine id in this case.
+```bash
+Syntax:     use_engine [engine id];
+Default:    N/A
+Context:    ssl_engine
+Description:
+            Specify the engine id
 ```
 
 ```bash
