@@ -86,16 +86,14 @@ Please download the QAT driver from the link https://01.org/intel-quickassist-te
 
 ```bash
   git clone https://github.com/intel/asynch_mode_nginx.git
-  wget http://nginx.org/download/nginx-1.18.0.tar.gz
-  tar -xvzf ./nginx-1.18.0.tar.gz
-  diff -Naru -x .git nginx-1.18.0 asynch_mode_nginx > async_mode_nginx_1.18.0.patch
+  git clone -b release-1.18.0 git@github.com:nginx/nginx.git nginx-1.18
+  diff -Naru -x .git -x .hgtags -x README.md -x LICENSE nginx-1.18 asynch_mode_nginx > async_mode_nginx_1.18.0.patch
 ```
 
 * Apply patch to official Nginx-1.18.0.
 
 ```bash
-  wget http://nginx.org/download/nginx-1.18.0.tar.gz
-  tar -xvzf ./nginx-1.18.0.tar.gz
+  git clone -b release-1.18.0 git@github.com:nginx/nginx.git nginx-1.18
   patch -p0 < async_mode_nginx_1.18.0.patch
 ```
 
