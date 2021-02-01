@@ -352,11 +352,13 @@ ngx_stream_close_connection(ngx_connection_t *c)
 
     ngx_close_connection(c);
 
+#if (NGX_STREAM_SSL)
     if (c->ssl_enabled && ngx_use_ssl_engine
         && ngx_ssl_engine_enable_heuristic_polling) {
         (void) ngx_atomic_fetch_add(ngx_ssl_active, -1);
         ngx_ssl_engine_heuristic_poll(c->log);
     }
+#endif
 
     ngx_destroy_pool(pool);
 }
