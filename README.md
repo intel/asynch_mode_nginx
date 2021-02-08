@@ -76,7 +76,7 @@ This release was validated on the following:
 Please download the QAT driver from the link https://01.org/intel-quickassist-technology
 * OpenSSL-1.1.1i
 * QAT engine v0.6.4
-* QATzip v1.0.2
+* QATzip v1.0.3
 
 ## Additional Information
 
@@ -87,7 +87,7 @@ Please download the QAT driver from the link https://01.org/intel-quickassist-te
 ```bash
   git clone https://github.com/intel/asynch_mode_nginx.git
   wget http://nginx.org/download/nginx-1.18.0.tar.gz
-  tar -xvzf ./nginx-1.18.0.tar.gz
+  tar -xvzf nginx-1.18.0.tar.gz
   diff -Naru -x .git nginx-1.18.0 asynch_mode_nginx > async_mode_nginx_1.18.0.patch
 ```
 
@@ -95,7 +95,24 @@ Please download the QAT driver from the link https://01.org/intel-quickassist-te
 
 ```bash
   wget http://nginx.org/download/nginx-1.18.0.tar.gz
-  tar -xvzf ./nginx-1.18.0.tar.gz
+  tar -xvzf nginx-1.18.0.tar.gz
+  patch -p0 < async_mode_nginx_1.18.0.patch
+```
+
+* Generate patch against github official read-only mirror
+
+```bash
+  git clone https://github.com/intel/asynch_mode_nginx.git
+  wget https://github.com/nginx/nginx/archive/release-1.18.0.tar.gz
+  tar -xvzf release-1.18.0.tar.gz
+  diff -Naru -x .git -x .hgtags nginx-release-1.18.0 asynch_mode_nginx > async_mode_nginx_1.18.0.patch
+```
+
+* Apply patch to the github release pachage.
+
+```bash
+  wget https://github.com/nginx/nginx/archive/release-1.18.0.tar.gz
+  tar -xvzf release-1.18.0.tar.gz
   patch -p0 < async_mode_nginx_1.18.0.patch
 ```
 
@@ -282,7 +299,7 @@ is configured as
         --with-http_ssl_module \
         --add-dynamic-module=modules/nginx_qatzip_module \
         --add-dynamic-module=modules/nginx_qat_module/ \
-        --with-cc-opt="-DNGX_SECURE_MEM -I$OPENSSL_LIB/include -I$QZ_ROOT/include -Wno-error=deprecated-declarations" \
+        --with-cc-opt="-DNGX_SECURE_MEM -I$OPENSSL_LIB/include -I$ICP_ROOT/quickassist/include -I$ICP_ROOT/quickassist/include/dc -I$QZ_ROOT/include -Wno-error=deprecated-declarations" \
         --with-ld-opt="-Wl,-rpath=$OPENSSL_LIB/lib -L$OPENSSL_LIB/lib -L$QZ_ROOT/src -lqatzip -lz"
 ```
 
@@ -293,7 +310,7 @@ is configured as
     make install
 ```
 
-** Nginx supports setting worker to non-root user, for example:**
+**Nginx supports setting worker to non-root user, for example:**
 
     Add user qat in group qat, for example run below command in your terminal:
     ```bash
