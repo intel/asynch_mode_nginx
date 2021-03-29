@@ -64,9 +64,9 @@ stream {
     ssl_certificate localhost.crt;
 
     server {
-        listen       127.0.0.1:8091 ssl;
-        listen       127.0.0.1:8092 ssl;
-        listen       127.0.0.1:8093 ssl;
+        listen       127.0.0.1:8091 ssl %%SSL_ASYNCH%%;
+        listen       127.0.0.1:8092 ssl %%SSL_ASYNCH%%;
+        listen       127.0.0.1:8093 ssl %%SSL_ASYNCH%%;
         ssl_preread  off;
         return       $server_port;
     }
