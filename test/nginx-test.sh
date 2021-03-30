@@ -15,7 +15,7 @@
 # Avoiding the nginx tests timeout and stuck.
 Timeout()
 {
-    waitfor=3600
+    waitfor=720
     TEST_NGINX_BINARY=$NGINX_INSTALL_DIR/sbin/nginx-for-test prove . >$SCRIPTPATH/nginx-test.log &
     commandpid=$!
 
