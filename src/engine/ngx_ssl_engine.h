@@ -87,8 +87,14 @@ extern ngx_module_t     ngx_ssl_engine_module;
 extern ngx_module_t     ngx_ssl_engine_core_module;
 
 
-#define ngx_ssl_engine_get_conf(conf_ctx, module)                        \
+#define ngx_engine_ctx_get_conf(conf_ctx, module)                          \
     (*(ngx_get_conf(conf_ctx, ngx_ssl_engine_module))) [module.ctx_index];
+
+#define ngx_engine_cycle_get_conf(cycle, module)                           \
+    (cycle->conf_ctx[ngx_ssl_engine_module.index] ?                        \
+        (*(ngx_get_conf(cycle->conf_ctx, ngx_ssl_engine_module)))          \
+            [module.ctx_index]:                                            \
+        NULL)
 
 char * ngx_ssl_engine_unload_check(ngx_cycle_t *cycle);
 

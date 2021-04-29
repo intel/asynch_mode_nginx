@@ -306,7 +306,12 @@ ngx_ssl_engine_qat_release(ngx_cycle_t *cycle)
 
     ngx_ssl_engine_qat_conf_t *seqcf;
 
-    seqcf = ngx_ssl_engine_get_conf(cycle->conf_ctx, ngx_ssl_engine_qat_module);
+    seqcf = ngx_engine_cycle_get_conf(cycle, ngx_ssl_engine_qat_module);
+    if(seqcf == NULL) {
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                     "conf of engine_core_module is null");
+        return NGX_ERROR;
+    }
 
     if(!seqcf->releasable || qat_instance_status.finished) {
 
@@ -370,7 +375,12 @@ ngx_ssl_engine_qat_send_ctrl(ngx_cycle_t *cycle)
     ngx_str_t  *value;
     ngx_uint_t  i;
 
-    seqcf = ngx_ssl_engine_get_conf(cycle->conf_ctx, ngx_ssl_engine_qat_module);
+    seqcf = ngx_engine_cycle_get_conf(cycle, ngx_ssl_engine_qat_module);
+    if(seqcf == NULL) {
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                     "conf of engine_core_module is null");
+        return NGX_ERROR;
+    }
 
     e = ENGINE_by_id((const char *) seqcf->engine_id.data);
     if (e == NULL) {
@@ -431,7 +441,13 @@ ngx_ssl_engine_qat_send_ctrl(ngx_cycle_t *cycle)
 
     /* check the offloaded algorithms in the inline polling mode */
 
-    secf = ngx_ssl_engine_get_conf(cycle->conf_ctx, ngx_ssl_engine_core_module);
+    secf = ngx_engine_cycle_get_conf(cycle, ngx_ssl_engine_core_module);
+    if(secf == NULL) {
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                     "conf of engine_core_module is null");
+        return NGX_ERROR;
+    }
+
 
     if (qat_engine_enable_inline_polling) {
         if (secf->default_algorithms != NGX_CONF_UNSET_PTR) {
@@ -840,7 +856,13 @@ ngx_ssl_engine_qat_releasable(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_ssl_engine_conf_t *secf;
     ngx_ssl_engine_qat_conf_t *seqcf = conf;
 
-    secf = ngx_ssl_engine_get_conf(cf->cycle->conf_ctx, ngx_ssl_engine_core_module);
+    secf = ngx_engine_cycle_get_conf(cf->cycle, ngx_ssl_engine_core_module);
+    if(secf == NULL) {
+        ngx_log_error(NGX_LOG_EMERG, cf->cycle->log, 0,
+                     "conf of engine_core_module is null");
+        return NGX_CONF_ERROR;
+    }
+
 
     if (seqcf->poll_mode.data == NULL) {
         ngx_log_error(NGX_LOG_EMERG, cf->cycle->log, 0,
@@ -899,13 +921,19 @@ ngx_ssl_engine_qat_init_conf(ngx_cycle_t *cycle, void *conf)
 {
     ngx_ssl_engine_qat_conf_t *seqcf = conf;
     ngx_ssl_engine_conf_t * corecf =
-        ngx_ssl_engine_get_conf(cycle->conf_ctx, ngx_ssl_engine_core_module);
+        ngx_engine_cycle_get_conf(cycle, ngx_ssl_engine_core_module);
+    if(corecf == NULL) {
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                     "conf of engine_core_module is null");
+        return NGX_CONF_ERROR;
+    }
+
 
     if (0 != corecf->ssl_engine_id.len) {
         ngx_conf_init_str_value(seqcf->engine_id, corecf->ssl_engine_id.data);
     } else {
-        ngx_conf_init_str_value(seqcf->engine_id,
-            ngx_ssl_engine_qat_module_name.data);
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, 0, "No engine id found.");
+        return NGX_CONF_ERROR;
     }
 
     ngx_conf_init_str_value(seqcf->offload_mode, "async");
@@ -1121,7 +1149,18 @@ ngx_ssl_engine_qat_process_init(ngx_cycle_t *cycle)
 
 
     ngx_ssl_engine_qat_conf_t *conf =
-        ngx_ssl_engine_get_conf(cycle->conf_ctx, ngx_ssl_engine_qat_module);
+        ngx_engine_cycle_get_conf(cycle, ngx_ssl_engine_qat_module);
+    if (conf == NULL) {
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                     "conf of engine_core_module is null");
+        return NGX_ERROR;
+    }
+
+    if (0 == (const char *) conf->engine_id.len) {
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                     "engine id not found");
+        return NGX_ERROR;
+    }
 
     qat_engine = ENGINE_by_id((const char *) conf->engine_id.data);
     if (qat_engine == NULL) {
@@ -1142,6 +1181,12 @@ ngx_ssl_engine_qat_process_init(ngx_cycle_t *cycle)
 static void
 ngx_ssl_engine_qat_process_exit(ngx_cycle_t *cycle)
 {
+    ngx_ssl_engine_qat_conf_t *conf =
+        ngx_engine_cycle_get_conf(cycle, ngx_ssl_engine_qat_module);
+    if (conf == NULL) {
+        return;
+    }
+
     if (qat_engine) {
         ENGINE_finish(qat_engine);
         ENGINE_free(qat_engine);

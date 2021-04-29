@@ -264,7 +264,12 @@ ngx_ssl_engine_set(ngx_cycle_t *cycle)
         return NGX_ERROR;
     }
 
-    secf = ngx_ssl_engine_get_conf(cycle->conf_ctx, ngx_ssl_engine_core_module);
+    secf = ngx_engine_cycle_get_conf(cycle, ngx_ssl_engine_core_module);
+    if (secf == NULL) {
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                     "conf of engine_core_module is null");
+        return NGX_ERROR;
+    }
 
     e = ENGINE_by_id((const char *) secf->ssl_engine_id.data);
 
