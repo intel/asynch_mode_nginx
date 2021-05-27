@@ -56,6 +56,7 @@ struct ngx_cycle_s {
 
     ngx_queue_t               reusable_connections_queue;
     ngx_uint_t                reusable_connections_n;
+    time_t                    connections_reuse_time;
 
     ngx_array_t               listening;
     ngx_array_t               paths;
@@ -83,6 +84,7 @@ struct ngx_cycle_s {
     ngx_str_t                 conf_param;
     ngx_str_t                 conf_prefix;
     ngx_str_t                 prefix;
+    ngx_str_t                 error_log;
     ngx_str_t                 lock_file;
     ngx_str_t                 hostname;
     ngx_flag_t                no_ssl_init;

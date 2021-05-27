@@ -36,7 +36,7 @@ if test -z "$NGX_PLATFORM"; then
     NGX_PLATFORM="$NGX_SYSTEM:$NGX_RELEASE:$NGX_MACHINE";
 
     case "$NGX_SYSTEM" in
-        MINGW32_*)
+        MINGW32_* | MINGW64_* | MSYS_*)
             NGX_PLATFORM=win32
         ;;
     esac
@@ -86,6 +86,10 @@ have=NGX_CONF_PATH value="\"$NGX_CONF_PATH\"" . auto/define
 have=NGX_PID_PATH value="\"$NGX_PID_PATH\"" . auto/define
 have=NGX_LOCK_PATH value="\"$NGX_LOCK_PATH\"" . auto/define
 have=NGX_ERROR_LOG_PATH value="\"$NGX_ERROR_LOG_PATH\"" . auto/define
+
+if [ ".$NGX_ERROR_LOG_PATH" = "." ]; then
+    have=NGX_ERROR_LOG_STDERR . auto/have
+fi
 
 have=NGX_HTTP_LOG_PATH value="\"$NGX_HTTP_LOG_PATH\"" . auto/define
 have=NGX_HTTP_CLIENT_TEMP_PATH value="\"$NGX_HTTP_CLIENT_TEMP_PATH\""

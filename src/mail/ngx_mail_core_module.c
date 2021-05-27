@@ -2,6 +2,7 @@
 /*
  * Copyright (C) Igor Sysoev
  * Copyright (C) Nginx, Inc.
+ * Copyright (C) Intel, Inc.
  */
 
 
@@ -563,6 +564,11 @@ ngx_mail_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                                &value[i].data[13]);
             return NGX_CONF_ERROR;
 #endif
+        }
+
+        if (ngx_strcmp(value[i].data, "proxy_protocol") == 0) {
+            ls->proxy_protocol = 1;
+            continue;
         }
 
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,

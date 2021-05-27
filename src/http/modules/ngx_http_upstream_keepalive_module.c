@@ -2,6 +2,7 @@
 /*
  * Copyright (C) Maxim Dounin
  * Copyright (C) Nginx, Inc.
+ * Copyright (C) Intel, Inc.
  */
 
 
@@ -13,6 +14,7 @@
 typedef struct {
     ngx_uint_t                         max_cached;
     ngx_uint_t                         requests;
+    ngx_msec_t                         time;
     ngx_msec_t                         timeout;
 
     ngx_queue_t                        cache;
@@ -86,6 +88,13 @@ static ngx_command_t  ngx_http_upstream_keepalive_commands[] = {
       0,
       NULL },
 
+    { ngx_string("keepalive_time"),
+      NGX_HTTP_UPS_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_msec_slot,
+      NGX_HTTP_SRV_CONF_OFFSET,
+      offsetof(ngx_http_upstream_keepalive_srv_conf_t, time),
+      NULL },
+
     { ngx_string("keepalive_timeout"),
       NGX_HTTP_UPS_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_msec_slot,
@@ -149,8 +158,9 @@ ngx_http_upstream_init_keepalive(ngx_conf_t *cf,
     kcf = ngx_http_conf_upstream_srv_conf(us,
                                           ngx_http_upstream_keepalive_module);
 
+    ngx_conf_init_msec_value(kcf->time, 3600000);
     ngx_conf_init_msec_value(kcf->timeout, 60000);
-    ngx_conf_init_uint_value(kcf->requests, 100);
+    ngx_conf_init_uint_value(kcf->requests, 1000);
 
     if (kcf->original_init_upstream(cf, us) != NGX_OK) {
         return NGX_ERROR;
@@ -326,6 +336,10 @@ ngx_http_upstream_free_keepalive_peer(ngx_peer_connection_t *pc, void *data,
     }
 
     if (c->requests >= kp->conf->requests) {
+        goto invalid;
+    }
+
+    if (ngx_current_msec - c->start_time > kp->conf->time) {
         goto invalid;
     }
 
@@ -524,6 +538,7 @@ ngx_http_upstream_keepalive_create_conf(ngx_conf_t *cf)
      *     conf->max_cached = 0;
      */
 
+    conf->time = NGX_CONF_UNSET_MSEC;
     conf->timeout = NGX_CONF_UNSET_MSEC;
     conf->requests = NGX_CONF_UNSET_UINT;
 

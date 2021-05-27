@@ -2,6 +2,7 @@
 /*
  * Copyright (C) Igor Sysoev
  * Copyright (C) Nginx, Inc.
+ * Copyright (C) Intel, Inc.
  */
 
 
@@ -1472,14 +1473,14 @@ ngx_http_server_names(ngx_conf_t *cf, ngx_http_core_main_conf_t *cmcf,
                                   NGX_HASH_WILDCARD_KEY);
 
             if (rc == NGX_ERROR) {
-                return NGX_ERROR;
+                goto failed;
             }
 
             if (rc == NGX_DECLINED) {
                 ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                               "invalid server name or wildcard \"%V\" on %V",
                               &name[n].name, &addr->opt.addr_text);
-                return NGX_ERROR;
+                goto failed;
             }
 
             if (rc == NGX_BUSY) {
@@ -1717,7 +1718,6 @@ ngx_http_add_listening(ngx_conf_t *cf, ngx_http_conf_addr_t *addr)
 
     cscf = addr->default_server;
     ls->pool_size = cscf->connection_pool_size;
-    ls->post_accept_timeout = cscf->client_header_timeout;
 
     clcf = cscf->ctx->loc_conf[ngx_http_core_module.ctx_index];
 
