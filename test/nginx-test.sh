@@ -1,59 +1,120 @@
 #!/bin/bash
 
+#***************************************************************************
 # Copyright (C) Intel, Inc
-#For the nginx test,the packages installed by yum
-#   cpan hg pcre geoip perl-Geo-IP.x86_64
-#   GeoIP-devel.x86_64 memcached perl-FCGI.x86_64
-#   perl-GDGraph.noarch perl-ExtUtils-Embed.noarch
 #
-#For the nginx test,the perl packages installed
-#   Test::Nginx Protocol::WebSocket
-#   IO::Socket::SSL Cache::Memcached
-#   Cache::Memcached::Fast
+# To perform nginx tests we need following package installed:
+#     libxslt libxslt-devel gd-devel perl pcre-devel GeoIP.x86_64 GeoIP-devel
+#***************************************************************************
 
-# Function Timeout().
-# Avoiding the nginx tests timeout and stuck.
-Timeout()
-{
-    waitfor=720
-    TEST_NGINX_BINARY=$NGINX_INSTALL_DIR/sbin/nginx-for-test prove . >$SCRIPTPATH/nginx-test.log &
-    commandpid=$!
-
-    ( sleep $waitfor ; kill -9 $commandpid  > /dev/null 2>&1 ) &
-    watchdog=$!
-    sleeppid=$PPID
-
-    wait $commandpid > /dev/null 2>&1
-    kill $sleeppid > /dev/null 2>&1
-    return 0
-}
-
-#pre-set the env
 SCRIPT=$(readlink -f "$0")
 SCRIPTPATH=`dirname "$SCRIPT"`
 
-# compile and install the nginx via the config.test
-cd $SCRIPTPATH;
-killall nginx;
-cp ./nginx-config.test $NGINX_SRC_DIR/;
-cd $NGINX_SRC_DIR/;
-chmod +x ./nginx-config.test ;
-./nginx-config.test;
-make;
-cp objs/nginx $NGINX_INSTALL_DIR/sbin/nginx-for-test;
+if [ ! -d "$NGINX_INSTALL_DIR" ]; then
+    echo -e "NGINX_INSTALL_DIR not set. Run:\n\t export NGINX_INSTALL_DIR=<asynch_mode_nginx installation directory>\n"
+    exit 0
+fi
+
+if [ ! -d "$OPENSSL_ROOT" ]; then
+    echo -e "OPENSSL_ROOT not set. Run:\n\t export OPENSSL_ROOT=<openssl source code directory>\n"
+    exit 0
+fi
+
+if [ ! -d "$OPENSSL_LIB" ]; then
+    echo -e "OPENSSL_LIB not set. Run:\n\t export OPENSSL_LIB=<openssl installation directory>\n"
+    exit 0
+fi
+
+if [ ! -d "$OPENSSL_ENGINES" ]; then
+    echo -e "OPENSSL_ENGINES not set. Run:\n\t export OPENSSL_ENGINES=<openssl engine installation directory>\n"
+    exit 0
+fi
+
+if [ ! -d "$NGINX_SRC_DIR" ]; then
+    echo -e "NGINX_SRC_DIR not set. Run:\n\t export NGINX_SRC_DIR=<asynch_mode_nginx source code directory>\n"
+    exit 0
+fi
+
+if [ ! -d "$QZ_ROOT" ]; then
+    echo -e "QZ_ROOT not set. Run:\n\t export QZ_ROOT=<QATzip source code directory>\n"
+    exit 0
+fi
+
+function printHelp ()
+{
+    echo -e "Usage ./nginx-test.sh X\n" "X can be:\n" "\t qat -- qatengine\n" "\t dasync -- openssl async engine\n" "\t official -- original nginx-tests"
+}
+
+if [ "$#" == '1' ];then
+    if [[ $1 != 'qat' && $1 != 'dasync' && $1 != 'official' ]];then
+        printHelp
+        exit 0
+    fi
+else
+    printHelp
+    exit 0
+fi
 
 cd $NGINX_SRC_DIR
-cp objs/ngx_ssl_engine_qat_module.so $NGINX_INSTALL_DIR/modules/ngx_ssl_engine_qat_module_for_test.so;
-cp objs/ngx_http_qatzip_filter_module.so $NGINX_INSTALL_DIR/modules/ngx_http_qatzip_filter_module_for_test.so
+./configure \
+--prefix=$NGINX_INSTALL_DIR \
+--user=root \
+--group=root \
+--with-file-aio \
+--with-http_realip_module \
+--with-http_addition_module \
+--with-http_xslt_module \
+--with-http_image_filter_module \
+--with-http_geoip_module \
+--with-http_sub_module \
+--with-http_dav_module \
+--with-http_flv_module \
+--with-http_mp4_module \
+--with-http_gzip_static_module \
+--with-http_random_index_module \
+--with-http_secure_link_module \
+--with-http_degradation_module \
+--with-http_stub_status_module \
+--with-http_perl_module \
+--with-http_auth_request_module \
+--with-mail \
+--with-mail_ssl_module \
+--with-debug \
+--with-http_gunzip_module \
+--with-http_ssl_module \
+--with-http_v2_module \
+--with-http_slice_module \
+--with-stream \
+--with-stream_ssl_module \
+--with-stream_ssl_preread_module \
+--add-dynamic-module=$NGINX_SRC_DIR/modules/nginx_qat_module \
+--add-dynamic-module=$NGINX_SRC_DIR/modules/nginx_qatzip_module \
+--with-cc-opt="-DNGX_SECURE_MEM -DNGX_INTEL_SDL -I$OPENSSL_LIB/include -I$ICP_ROOT/quickassist/include -I$ICP_ROOT/quickassist/include/dc -I$QZ_ROOT/include -Wno-error=deprecated-declarations" \
+--with-ld-opt="-Wl,-rpath=$OPENSSL_LIB/lib -L$OPENSSL_LIB/lib -L$QZ_ROOT/src -lqatzip -lz"
 
-cd $SCRIPTPATH;
-#Configure according to the nginx test type
-if [ "$#" == '1' ];then
-  if [ $1 == 'qat' ];then
-    #Update async nginx config file to running with QATZip and QATEngine.
-    export TEST_NGINX_MODULES=$NGINX_INSTALL_DIR/modules
-    export TEST_LOAD_NGINX_MODULE="load_module $TEST_NGINX_MODULES/ngx_ssl_engine_qat_module_for_test.so;"
-    export TEST_LOAD_QATZIP_MODULE="load_module $TEST_NGINX_MODULES/ngx_http_qatzip_filter_module_for_test.so;"
+make && make install
+
+#Only for Centos 7, prepare env..."
+
+NGINX_PERL_OBJS=$NGINX_SRC_DIR/objs/src/http/modules/perl
+NGINX_AUTO_OBJS=$NGINX_PERL_OBJS/blib/arch/auto/nginx
+NGINX_PERL_INSTALL_DIR=/usr/share/perl5/
+NGINX_AUTO_INSTALL_DIR=/usr/share/perl5/auto/nginx/
+mkdir -p $NGINX_AUTO_INSTALL_DIR
+cp $NGINX_PERL_OBJS/nginx.bs $NGINX_PERL_INSTALL_DIR
+cp $NGINX_AUTO_OBJS/nginx.so $NGINX_AUTO_INSTALL_DIR
+cp $NGINX_PERL_OBJS/nginx.pm $NGINX_PERL_INSTALL_DIR
+cp $OPENSSL_ROOT/engines/dasync.so $OPENSSL_ENGINES/
+cp $NGINX_SRC_DIR/objs/ngx_ssl_engine_qat_module.so $NGINX_INSTALL_DIR/modules/ngx_ssl_engine_qat_module_for_test.so;
+cp $NGINX_SRC_DIR/objs/ngx_http_qatzip_filter_module.so $NGINX_INSTALL_DIR/modules/ngx_http_qatzip_filter_module_for_test.so
+cp objs/nginx $NGINX_INSTALL_DIR/sbin/nginx-for-test;
+
+#Prepare envionment variables...
+
+if [ $1 == 'qat' ];then
+    # Enable async against QAT_Engine
+    export TEST_LOAD_NGINX_MODULE="load_module $NGINX_INSTALL_DIR/modules/ngx_ssl_engine_qat_module_for_test.so;"
+    export TEST_LOAD_QATZIP_MODULE="load_module $NGINX_INSTALL_DIR/modules/ngx_http_qatzip_filter_module_for_test.so;"
     export TEST_NGINX_GLOBALS="
     $TEST_LOAD_NGINX_MODULE
     $TEST_LOAD_QATZIP_MODULE
@@ -78,39 +139,48 @@ if [ "$#" == '1' ];then
     export QATZIP_ENABLE="qatzip_sw no;"
     export QATZIP_DISABLE="qatzip_sw only;"
     export QATZIP_MIN_LENGTH_0="qatzip_min_length 0;"
-  elif [ $1 == 'dasync' ];then
-    #Update async nginx config file to running without QATZip and QATEngine.
-    export TEST_NGINX_MODULES=$NGINX_INSTALL_DIR/modules
+elif [ $1 == 'dasync' ];then
+    # Enable async against dasync engine
     export TEST_NGINX_GLOBALS="
     ssl_engine {
         use_engine dasync;
     }
     "
+    export TEST_NGINX_GLOBALS_HTTPS="ssl_asynch on;"
+    export GRPC_ASYNCH_ENABLE="grpc_ssl_asynch on;"
+    export PROXY_ASYNCH_ENABLE="proxy_ssl_asynch on;"
+    export PROXY_ASYNCH_DISABLE="proxy_ssl_asynch off;"
+    export SSL_ASYNCH=" asynch"
     export GZIP_TYPES="gzip_types text/plain;"
     export GZIP_MIN_LENGTH_0="gzip_min_length 0;"
-  else
-    echo "The parameter qat or dasync needs to be passed in, read the README.md for more information."
-    exit
-  fi
-else
-    echo "The parameter qat or dasync needs to be passed in, read the README.md for more information."
-    exit
+elif [ $1 == 'official' ]; then
+    # Original nginx tesets
+    export GZIP_TYPES="gzip_types text/plain;"
+    export GZIP_MIN_LENGTH_0="gzip_min_length 0;"
 fi
 
-cd ./nginx-tests
+# Start to platform tests...
 
-#run the test
-Timeout ;
-cd $SCRIPTPATH;
-RESULT1=`tail -1  $SCRIPTPATH/nginx-test.log | grep "PASS" | wc -l`
-if (( $RESULT1 ))
-then
-        echo -e "Nginx Official Test RESULT:PASS"
-else
+SELF=$$
+rm $SCRIPTPATH/nginx-test.log -f
+CASES=`find  $NGINX_SRC_DIR/ -name *.t`
+for CASE in $CASES
+do
+    TEST_NGINX_BINARY=$NGINX_INSTALL_DIR/sbin/nginx-for-test prove $CASE >> $SCRIPTPATH/nginx-test.log 2>&1 &
+    CASEPID=$!
+    ( sleep 60; kill -9 $CASEPID > /dev/null 2>&1 && echo "case $CASE failed" && echo -e "Nginx Official Test RESULT:FAIL" && kill -9 $SELF ) &
+    DOG=$!
+    DOGPPID=$PPID
+    wait $CASEPID
+    kill $DOGPPID
+    RESULT=`grep Failed $SCRIPTPATH/nginx-test.log`
+    if [ "$RESULT" != "" ]
+    then
+        echo "case $CASE failed"
         echo -e "Nginx Official Test RESULT:FAIL"
-fi
+        exit 0
+    fi
+done
 
-#clean up the env
-killall nginx-for-test
-exit 0;
+echo -e "Nginx Official Test RESULT:PASS"
 
