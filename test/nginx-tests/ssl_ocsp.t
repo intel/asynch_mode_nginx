@@ -529,6 +529,8 @@ sub http_daemon {
             $resp = 'ec-resp';
         }
 
+        next unless -s "$d/$resp.der";
+
         # ocsp dummy handler
 
         select undef, undef, undef, 0.02;
@@ -540,8 +542,14 @@ Content-Type: application/ocsp-response
 
 EOF
 
-        print $client $headers . $t->read_file("$resp.der")
-            if -e "$d/$resp.der";
+        local $/;
+        open my $fh, '<', "$d/$resp.der"
+            or die "Can't open $resp.der: $!";
+        binmode $fh;
+        my $content = <$fh>;
+        close $fh;
+
+        print $client $headers . $content;
     }
 }
 

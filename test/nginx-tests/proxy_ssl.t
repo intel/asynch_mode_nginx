@@ -122,6 +122,7 @@ like(http_get('/timeout'), qr/200 OK/, 'proxy connect timeout');
 }
 
 like(http_get('/timeout_h'), qr/504 Gateway/, 'proxy handshake timeout');
+
 is(length(Test::Nginx::http_content(http_get('/ssl/big.html'))), 720000,
     'big length');
 

@@ -39,6 +39,8 @@ events {
 }
 
 stream {
+    %%TEST_GLOBALS_STREAM%%
+
     proxy_buffer_size 1;
     tcp_nodelay off;
 

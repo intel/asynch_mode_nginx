@@ -78,8 +78,10 @@ http {
         location /var_redirect/ {
             index /$server_name.html;
         }
+
         location /not_found/ {
             error_log %%TESTDIR%%/log_not_found.log;
+
             location /not_found/off/ {
                 error_log %%TESTDIR%%/off.log;
                 log_not_found off;
@@ -94,6 +96,7 @@ $t->write_file('index.html', 'body');
 $t->write_file('many.html', 'manybody');
 $t->write_file('re.html', 'rebody');
 $t->write_file('localhost.html', 'varbody');
+
 my $d = $t->testdir();
 mkdir("$d/forbidden");
 chmod(0000, "$d/forbidden");
@@ -116,8 +119,12 @@ like(http_get('/not_found/'), qr/404 Not Found/, 'not found');
 like(http_get('/not_found/off/'), qr/404 Not Found/, 'not found log off');
 like(http_get('/forbidden/'), qr/403 Forbidden/, 'directory access denied');
 like(http_get('/index.html/'), qr/404 Not Found/, 'not a directory');
+
 $t->stop();
+
 like($t->read_file('log_not_found.log'), qr/error/, 'log_not_found');
 unlike($t->read_file('off.log'), qr/error/, 'log_not_found off');
+
 chmod(0700, "$d/forbidden");
+
 ###############################################################################

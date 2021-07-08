@@ -47,6 +47,8 @@ mail {
     smtp_auth    none;
     server_name  locahost;
 
+    proxy_timeout 15s;
+
     # prevent useless resend
     resolver_timeout 2s;
 

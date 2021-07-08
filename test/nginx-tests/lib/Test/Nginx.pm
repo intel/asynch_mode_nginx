@@ -12,7 +12,9 @@ use strict;
 use base qw/ Exporter /;
 
 our @EXPORT = qw/ log_in log_out http http_get http_head port /;
-our @EXPORT_OK = qw/ http_gzip_request http_gzip_like http_start http_end /;
+our @EXPORT_OK = qw/
+    http_gzip_request http_gzip_like http_start http_end http_content
+/;
 our %EXPORT_TAGS = (
     gzip => [ qw/ http_gzip_request http_gzip_like / ]
 );
@@ -180,6 +182,8 @@ sub has_module($) {
             => '(?s)^(?!.*--without-stream_map_module)',
         stream_return
             => '(?s)^(?!.*--without-stream_return_module)',
+        stream_set
+            => '(?s)^(?!.*--without-stream_set_module)',
         stream_split_clients
             => '(?s)^(?!.*--without-stream_split_clients_module)',
         stream_ssl
@@ -287,19 +291,24 @@ sub try_run($$) {
     my ($self, $message) = @_;
 
     eval {
-        open OLDERR, ">&", \*STDERR; close STDERR;
+        open OLDERR, ">&", \*STDERR;
+        open NEWERR, ">", $self->{_testdir} . '/stderr'
+            or die "Can't open stderr: $!";
+        close STDERR;
+        open STDERR, ">&", \*NEWERR;
+        close NEWERR;
+
         $self->run();
+
+        close STDERR;
         open STDERR, ">&", \*OLDERR;
     };
 
     return $self unless $@;
 
     if ($ENV{TEST_NGINX_VERBOSE}) {
-        my $path = $self->{_configure_args} =~ m!--error-log-path=(\S+)!
-            ? $1 : 'logs/error.log';
-        $path = "$self->{_testdir}/$path" if index($path, '/');
-
-        open F, '<', $path or die "Can't open $path: $!";
+        open F, '<', $self->{_testdir} . '/stderr'
+            or die "Can't open stderr: $!";
         log_core($_) while (<F>);
         close F;
     }
@@ -341,7 +350,10 @@ sub run(;$) {
         my @globals = $self->{_test_globals} ?
             () : ('-g', "pid $testdir/nginx.pid; "
             . "error_log $testdir/error.log debug;");
-        exec($NGINX, '-p', "$testdir/", '-c', 'nginx.conf', @globals),
+        my @error = $self->has_version('1.19.5') ?
+            ('-e', 'error.log') : ();
+        exec($NGINX, '-p', "$testdir/", '-c', 'nginx.conf',
+            @error, @globals)
             or die "Unable to exec(): $!\n";
     }
 
@@ -413,8 +425,10 @@ sub dump_config() {
     my @globals = $self->{_test_globals} ?
         () : ('-g', "pid $testdir/nginx.pid; "
         . "error_log $testdir/error.log debug;");
+    my @error = $self->has_version('1.19.5') ?
+        ('-e', 'error.log') : ();
     my $command = "$NGINX -T -p $testdir/ -c nginx.conf "
-        . join(' ', @globals);
+        . join(' ', @error, @globals);
 
     return qx/$command 2>&1/;
 }
@@ -467,8 +481,10 @@ sub reload() {
         my @globals = $self->{_test_globals} ?
             () : ('-g', "pid $testdir/nginx.pid; "
             . "error_log $testdir/error.log debug;");
+        my @error = $self->has_version('1.19.5') ?
+            ('-e', 'error.log') : ();
         system($NGINX, '-p', $testdir, '-c', "nginx.conf",
-            '-s', 'reload', @globals) == 0
+            '-s', 'reload', @error, @globals) == 0
             or die "system() failed: $?\n";
 
     } else {
@@ -490,15 +506,42 @@ sub stop() {
         my @globals = $self->{_test_globals} ?
             () : ('-g', "pid $testdir/nginx.pid; "
             . "error_log $testdir/error.log debug;");
+        my @error = $self->has_version('1.19.5') ?
+            ('-e', 'error.log') : ();
         system($NGINX, '-p', $testdir, '-c', "nginx.conf",
-            '-s', 'stop', @globals) == 0
+            '-s', 'quit', @error, @globals) == 0
             or die "system() failed: $?\n";
 
     } else {
         kill 'QUIT', $pid;
     }
 
-    waitpid($pid, 0);
+    my $exited;
+
+    for (1 .. 900) {
+        $exited = waitpid($pid, WNOHANG) != 0;
+        last if $exited;
+        select undef, undef, undef, 0.1;
+    }
+
+    if (!$exited) {
+        if ($^O eq 'MSWin32') {
+            my $testdir = $self->{_testdir};
+            my @globals = $self->{_test_globals} ?
+                () : ('-g', "pid $testdir/nginx.pid; "
+                . "error_log $testdir/error.log debug;");
+            my @error = $self->has_version('1.19.5') ?
+                ('-e', 'error.log') : ();
+            system($NGINX, '-p', $testdir, '-c', "nginx.conf",
+                '-s', 'stop', @error, @globals) == 0
+                or die "system() failed: $?\n";
+
+        } else {
+            kill 'TERM', $pid;
+        }
+
+        waitpid($pid, 0);
+    }
 
     $self->{_started} = 0;
 
@@ -546,6 +589,7 @@ sub write_file_expand($$) {
 
     $content =~ s/%%TEST_GLOBALS%%/$self->test_globals()/gmse;
     $content =~ s/%%TEST_GLOBALS_HTTP%%/$self->test_globals_http()/gmse;
+    $content =~ s/%%TEST_GLOBALS_STREAM%%/$self->test_globals_stream()/gmse;
     $content =~ s/%%TEST_GLOBALS_HTTPS%%/$self->test_globals_https()/gmse;
     $content =~ s/%%GZIP_DISABLE%%/$self->test_globals_gzip_disable()/gmse;
     $content =~ s/%%GZIP_ENABLE%%/$self->test_globals_gzip_enable()/gmse;
@@ -608,12 +652,11 @@ sub test_globals() {
     $s .= "pid $self->{_testdir}/nginx.pid;\n";
     $s .= "error_log $self->{_testdir}/error.log debug;\n";
 
-    $s .= $self->test_globals_modules();
-
     $s .= $ENV{TEST_NGINX_GLOBALS}
         if $ENV{TEST_NGINX_GLOBALS};
 
-#    $s .= $self->test_globals_perl5lib() if $s !~ /env PERL5LIB/;
+    $s .= $self->test_globals_modules();
+    $s .= $self->test_globals_perl5lib() if $s !~ /env PERL5LIB/;
 
     $self->{_test_globals} = $s;
 }
@@ -668,7 +711,7 @@ sub test_globals_perl5lib() {
     $objs = File::Spec->rel2abs($objs);
     $objs =~ s!\\!/!g if $^O eq 'MSWin32';
 
-    return "env PERL5LIB=$ENV{SOURCE_DIR_NGINX_SSL_CURRENT}/src/http/modules/perl:"
+    return "env PERL5LIB=$objs/src/http/modules/perl:"
         . "$objs/src/http/modules/perl/blib/arch;\n";
 }
 
@@ -700,6 +743,20 @@ sub test_globals_http() {
         if $ENV{TEST_NGINX_GLOBALS_HTTP};
 
     $self->{_test_globals_http} = $s;
+}
+
+sub test_globals_stream() {
+    my ($self) = @_;
+
+    return $self->{_test_globals_stream}
+        if defined $self->{_test_globals_stream};
+
+    my $s = '';
+
+    $s .= $ENV{TEST_NGINX_GLOBALS_STREAM}
+        if $ENV{TEST_NGINX_GLOBALS_STREAM};
+
+    $self->{_test_globals_stream} = $s;
 }
 
 sub test_globals_https() {
@@ -871,6 +928,7 @@ sub test_globals_ssl_asynch() {
     $self->{_test_globals_ssl_asynch} = $s;
 }
 
+
 ###############################################################################
 
 sub log_core {
@@ -1018,10 +1076,16 @@ sub http_content {
     }
 
     my $content = '';
+    my $len = -1;
+
     while ($body =~ /\G\x0d?\x0a?([0-9a-f]+)\x0d\x0a?/gcmsi) {
-        my $len = hex($1);
+        $len = hex($1);
         $content .= substr($body, pos($body), $len);
         pos($body) += $len;
+    }
+
+    if ($len != 0) {
+        $content .= '[no-last-chunk]';
     }
 
     return $content;

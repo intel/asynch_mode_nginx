@@ -1,6 +1,5 @@
 #!/usr/bin/perl
 
-# Copyright (C) Intel, Inc.
 # (C) Sergey Kandaurov
 # (C) Nginx, Inc.
 
@@ -35,6 +34,8 @@ events {
 }
 
 stream {
+    %%TEST_GLOBALS_STREAM%%
+
     log_format test $upstream_addr;
 
     upstream u {

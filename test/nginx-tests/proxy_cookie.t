@@ -52,6 +52,13 @@ http {
             proxy_cookie_path /$server_name/ /new/$server_name/;
             proxy_cookie_path ~^/regex/(.+)$ /$1;
             proxy_cookie_path ~*^/caseless/(.+)$ /$1;
+
+            location /off/ {
+                proxy_pass http://127.0.0.1:8081;
+
+                proxy_cookie_domain off;
+                proxy_cookie_path off;
+            }
         }
     }
 
@@ -74,7 +81,7 @@ http {
 
 EOF
 
-$t->run()->plan(8);
+$t->run()->plan(9);
 
 ###############################################################################
 
@@ -101,6 +108,9 @@ is(http_get_set_cookie('/?path=/CASEless/test.html'),
 is(http_get_set_cookie('/?domain=www.example.org&path=/path/test.html'),
     'v=path=domain=; Domain=example.com; Path=/new/test.html',
     'domain and path rewrite');
+is(http_get_set_cookie('/off/?domain=www.example.org&path=/path/test.html'),
+    'v=path=domain=; Domain=www.example.org; Path=/path/test.html',
+    'domain and path rewrite off');
 
 ###############################################################################
 

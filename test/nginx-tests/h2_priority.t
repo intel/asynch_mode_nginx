@@ -211,6 +211,7 @@ is($sids, "$sid $sid2", 'dependency - PRIORITY 2');
 
 TODO: {
 local $TODO = 'not yet' unless $t->has_version('1.17.4');
+
 $s = Test::Nginx::HTTP2->new();
 $sid = $s->new_stream();
 $s->read(all => [{ sid => $sid, fin => 1 }]);
@@ -221,6 +222,7 @@ $frames = $s->read(all => [{ type => 'GOAWAY' }]);
 my ($frame) = grep { $_->{type} eq "GOAWAY" } @$frames;
 is($frame->{last_sid}, $sid, 'dependency - PRIORITY self - GOAWAY');
 is($frame->{code}, 1, 'dependency - PRIORITY self - PROTOCOL_ERROR');
+
 }
 
 # HEADERS PRIORITY flag, reprioritize prior PRIORITY frame records
@@ -279,6 +281,7 @@ is($sids, "$sid $sid2", 'dependency - HEADERS PRIORITY 2');
 
 TODO: {
 local $TODO = 'not yet' unless $t->has_version('1.17.4');
+
 $s = Test::Nginx::HTTP2->new();
 $sid = $s->new_stream({ dep => 1 });
 $frames = $s->read(all => [{ type => 'GOAWAY' }]);
@@ -286,6 +289,7 @@ $frames = $s->read(all => [{ type => 'GOAWAY' }]);
 my ($frame) = grep { $_->{type} eq "GOAWAY" } @$frames;
 is($frame->{last_sid}, 0, 'dependency - HEADERS self - GOAWAY');
 is($frame->{code}, 1, 'dependency - HEADERS self - PROTOCOL_ERROR');
+
 }
 
 # PRIORITY frame, weighted dependencies

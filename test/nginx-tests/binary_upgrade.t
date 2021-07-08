@@ -36,14 +36,17 @@ events {
 
 http {
     %%TEST_GLOBALS_HTTP%%
+
     server {
         listen       unix:%%TESTDIR%%/unix.sock;
         server_name  localhost;
     }
 }
+
 EOF
 
 my $d = $t->testdir();
+
 $t->run();
 
 ###############################################################################
@@ -66,21 +69,32 @@ for (1 .. 30) {
     last if ! -e "$d/nginx.pid.oldbin";
     select undef, undef, undef, 0.2
 }
+
 ok(-e "$d/unix.sock", 'unix socket exists on old master shutdown');
+
 # unix socket on new master termination
+
 $pid = $t->read_file('nginx.pid');
+
 kill 'USR2', $pid;
+
 for (1 .. 30) {
     last if -e "$d/nginx.pid" && -e "$d/nginx.pid.oldbin";
     select undef, undef, undef, 0.2
 }
+
 kill 'TERM', $t->read_file('nginx.pid');
+
 for (1 .. 30) {
     last if ! -e "$d/nginx.pid.oldbin";
     select undef, undef, undef, 0.2
 }
+
 TODO: {
 $TODO = 'not yet' unless $t->has_version('1.19.1');
+
 ok(-e "$d/unix.sock", 'unix socket exists on new master termination');
+
 }
+
 ###############################################################################

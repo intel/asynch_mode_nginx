@@ -40,6 +40,7 @@ my $t = Test::Nginx->new()->has(qw/http http_ssl/)->has_daemon('openssl');
 plan(skip_all => 'no OCSP stapling') if $t->has_module('BoringSSL');
 
 $t->plan(9)->write_file_expand('nginx.conf', <<'EOF');
+
 %%TEST_GLOBALS%%
 
 daemon off;
@@ -399,7 +400,14 @@ Content-Type: application/ocsp-response
 
 EOF
 
-        print $client $headers . $t->read_file("$resp.der");
+        local $/;
+        open my $fh, '<', "$d/$resp.der"
+            or die "Can't open $resp.der: $!";
+        binmode $fh;
+        my $content = <$fh>;
+        close $fh;
+
+        print $client $headers . $content;
     }
 }
 

@@ -38,6 +38,8 @@ events {
 }
 
 stream {
+    %%TEST_GLOBALS_STREAM%%
+
     geo $geo_base_create {
         ranges;
         include  base.conf;

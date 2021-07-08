@@ -31,6 +31,7 @@ $t->{_configure_args} =~ /OpenSSL ([\d\.]+)/;
 plan(skip_all => 'OpenSSL too old') unless defined $1 and $1 ge '1.0.2';
 
 $t->write_file_expand('nginx.conf', <<'EOF')->plan(33);
+
 %%TEST_GLOBALS%%
 
 daemon off;
@@ -56,10 +57,6 @@ http {
         ssl_verify_client optional;
         ssl_client_certificate client.crt;
 
-        http2_max_field_size 128k;
-        http2_max_header_size 128k;
-        http2_body_preread_size 128k;
-
         location / {
             grpc_pass 127.0.0.1:8082;
             add_header X-Connection $connection;
@@ -70,10 +67,6 @@ http {
         listen       127.0.0.1:8080 http2;
         server_name  localhost;
         %%GRPC_ASYNCH_ENABLE%%
-
-        http2_max_field_size 128k;
-        http2_max_header_size 128k;
-        http2_body_preread_size 128k;
 
         location / {
             grpc_pass grpcs://127.0.0.1:8081;

@@ -17,7 +17,7 @@ use Test::More;
 BEGIN { use FindBin; chdir($FindBin::Bin); }
 
 use lib 'lib';
-use Test::Nginx;
+use Test::Nginx qw/ :DEFAULT http_content /;
 
 ###############################################################################
 
@@ -80,6 +80,7 @@ my $sbad = <<'EOF';
 000000a0:  3b 00 00 00 18 63 6f 36  34 00 00 00 00 00 00 00  |;....co64.......|
 000000b0:  01 ff ff ff ff f0 0f fb  e7                       |.........|
 EOF
+
 $t->write_file('bad.mp4', unhex($sbad));
 $t->run()->plan(27);
 
@@ -116,12 +117,17 @@ like(http_head("$test_uri?start=21"), qr!HTTP/1.1 500!, 'start beyond EOF');
 $test_uri = '/no_mdat.mp4', goto again unless $test_uri eq '/no_mdat.mp4';
 
 # corrupted formats
+
 TODO: {
 local $TODO = 'not yet' unless $t->has_version('1.17.9');
+
 like(http_get("/bad.mp4?start=0.5"), qr/500 Internal/, 'co64 chunk beyond EOF');
+
 }
+
 $t->todo_alerts() if $t->read_file('nginx.conf') =~ /sendfile on/
     and !$t->has_version('1.17.9');
+
 ###############################################################################
 
 sub durations {
@@ -139,7 +145,7 @@ sub durations {
         $uri .= "?end=$end";
     }
 
-    $t->write_file('frag.mp4', Test::Nginx::http_content(http_get($uri)));
+    $t->write_file('frag.mp4', http_content(http_get($uri)));
 
     my $r = `ffprobe -show_streams $path 2>/dev/null`;
     Test::Nginx::log_core('||', $r);
@@ -149,11 +155,14 @@ sub durations {
 sub unhex {
     my ($input) = @_;
     my $buffer = '';
+
     for my $l ($input =~ m/:  +((?:[0-9a-f]{2,4} +)+) /gms) {
         for my $v ($l =~ m/[0-9a-f]{2}/g) {
             $buffer .= chr(hex($v));
         }
     }
+
     return $buffer;
 }
+
 ###############################################################################

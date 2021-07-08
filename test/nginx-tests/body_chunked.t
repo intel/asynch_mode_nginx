@@ -136,8 +136,10 @@ like(http_get_body('/discard', '0123456789' x 128, '0123456789' x 512,
     'chunked body discard 2');
 
 # invalid chunks
+
 TODO: {
 local $TODO = 'not yet' unless $t->has_version('1.17.4');
+
 like(
     http(
         'GET / HTTP/1.1' . CRLF
@@ -150,6 +152,7 @@ like(
     ),
     qr/400 Bad/, 'runaway chunk'
 );
+
 like(
     http(
         'GET /discard HTTP/1.1' . CRLF
@@ -162,19 +165,24 @@ like(
     ),
     qr/400 Bad/, 'runaway chunk discard'
 );
+
 }
+
 # proxy_next_upstream
 
 like(http_get_body('/next', '0123456789'),
     qr/X-Body: 0123456789\x0d?$/ms, 'body chunked next upstream');
 # invalid Transfer-Encoding
+
 TODO: {
 local $TODO = 'not yet' unless $t->has_version('1.17.9');
+
 like(http_transfer_encoding('identity'), qr/501 Not Implemented/,
     'transfer encoding identity');
 like(http_transfer_encoding("chunked\nTransfer-Encoding: chunked"),
     qr/400 Bad/, 'transfer encoding repeat');
 }
+
 like(http_transfer_encoding('chunked, identity'), qr/501 Not Implemented/,
     'transfer encoding list');
 
@@ -215,10 +223,12 @@ sub http_get_body {
 
 sub http_transfer_encoding {
     my ($encoding) = @_;
+
     http("GET / HTTP/1.1" . CRLF
         . "Host: localhost" . CRLF
         . "Connection: close" . CRLF
         . "Transfer-Encoding: $encoding" . CRLF . CRLF
         . "0" . CRLF . CRLF);
 }
+
 ###############################################################################

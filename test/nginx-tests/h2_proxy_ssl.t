@@ -1,6 +1,5 @@
 #!/usr/bin/perl
 
-# Copyright (C) Intel, Inc.
 # (C) Sergey Kandaurov
 # (C) Nginx, Inc.
 
@@ -29,8 +28,6 @@ my $t = Test::Nginx->new()->has(qw/http http_ssl http_v2 proxy/)
 
 $t->write_file_expand('nginx.conf', <<'EOF');
 
-
-
 %%TEST_GLOBALS%%
 
 daemon off;
@@ -43,8 +40,6 @@ http {
 
     server {
         listen       127.0.0.1:8080 http2;
-
-
         listen       127.0.0.1:8081 ssl %%SSL_ASYNCH%%;
         server_name  localhost;
 
@@ -78,8 +73,10 @@ foreach my $name ('localhost') {
         . ">>$d/openssl.out 2>&1") == 0
         or die "Can't create certificate for $name: $!\n";
 }
+
 $t->write_file('index.html', '');
 $t->run();
+
 ###############################################################################
 
 # request body with an empty DATA frame proxied to ssl backend

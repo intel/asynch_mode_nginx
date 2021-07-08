@@ -27,7 +27,6 @@ my $t = Test::Nginx->new()->has(qw/http proxy http_ssl upstream_zone/)
     ->has_daemon('openssl')->plan(9)
     ->write_file_expand('nginx.conf', <<'EOF');
 
-
 %%TEST_GLOBALS%%
 
 daemon off;

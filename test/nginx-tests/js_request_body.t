@@ -4,7 +4,7 @@
 # (C) Dmitry Volyntsev
 # (C) Nginx, Inc.
 
-# Tests for http njs module, req.requestBody method.
+# Tests for http njs module, r.requestBody method.
 
 ###############################################################################
 
@@ -44,10 +44,6 @@ http {
         listen       127.0.0.1:8080;
         server_name  localhost;
 
-        location /njs {
-            js_content test_njs;
-        }
-
         location /body {
             js_content test_body;
         }
@@ -62,10 +58,6 @@ http {
 EOF
 
 $t->write_file('test.js', <<EOF);
-    function test_njs(r) {
-        r.return(200, njs.version);
-    }
-
     function test_body(r) {
         try {
             var body = r.requestBody;

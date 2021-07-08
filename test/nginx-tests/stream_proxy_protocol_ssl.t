@@ -33,7 +33,6 @@ my $t = Test::Nginx->new()->has(qw/stream stream_ssl/)->has_daemon('openssl')
 
 $t->write_file_expand('nginx.conf', <<'EOF');
 
-
 %%TEST_GLOBALS%%
 
 daemon off;
@@ -42,6 +41,8 @@ events {
 }
 
 stream {
+    %%TEST_GLOBALS_STREAM%%
+
     proxy_ssl       on;
     proxy_protocol  on;
     %%PROXY_ASYNCH_ENABLE%%

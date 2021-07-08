@@ -24,7 +24,7 @@ use Test::Nginx::Stream qw/ stream /;
 select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
-my $t = Test::Nginx->new()->has(qw/http stream stream_return/)
+my $t = Test::Nginx->new()->has(qw/stream stream_return/)
     ->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
@@ -34,22 +34,9 @@ daemon off;
 events {
 }
 
-http {
-    %%TEST_GLOBALS_HTTP%%
-
-    js_include test.js;
-
-    server {
-        listen       127.0.0.1:8080;
-        server_name  localhost;
-
-        location /njs {
-            js_content test_njs;
-        }
-    }
-}
-
 stream {
+    %%TEST_GLOBALS_STREAM%%
+
     js_set $test_var       test_var;
     js_set $test_not_found test_not_found;
 
@@ -69,10 +56,6 @@ stream {
 EOF
 
 $t->write_file('test.js', <<EOF);
-    function test_njs(r) {
-        r.return(200, njs.version);
-    }
-
     function test_var(s) {
         s.variables.status = 400;
         return 'test_var';
@@ -92,14 +75,9 @@ $t->try_run('no stream njs available')->plan(2);
 
 ###############################################################################
 
-
 is(stream('127.0.0.1:' . port(8081))->read(), 'test_var400', 'var set');
 is(stream('127.0.0.1:' . port(8082))->read(), 'not_found', 'not found set');
-
 
 $t->stop();
 
 ###############################################################################
-
-
-

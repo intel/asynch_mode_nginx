@@ -13,8 +13,6 @@ use strict;
 
 use Test::More;
 
-use Socket;
-
 BEGIN { use FindBin; chdir($FindBin::Bin); }
 
 use lib 'lib';
@@ -54,6 +52,8 @@ events {
 }
 
 stream {
+    %%TEST_GLOBALS_STREAM%%
+
     ssl_certificate_key localhost.key;
     ssl_certificate localhost.crt;
     ssl_session_cache builtin;
@@ -117,11 +117,9 @@ skip 'no sni', 3 unless $t->has_module('sni');
 ($s, $ssl) = get_ssl_socket(port(8082), undef, 'example.com');
 is(Net::SSLeay::ssl_read_all($ssl), 'example.com', 'ssl server name');
 
-
 my $ses = Net::SSLeay::get_session($ssl);
 ($s, $ssl) = get_ssl_socket(port(8082), $ses, 'example.com');
 is(Net::SSLeay::ssl_read_all($ssl), 'example.com', 'ssl server name - reused');
-
 
 ($s, $ssl) = get_ssl_socket(port(8082));
 is(Net::SSLeay::ssl_read_all($ssl), '', 'ssl server name empty');
@@ -132,14 +130,8 @@ is(Net::SSLeay::ssl_read_all($ssl), '', 'ssl server name empty');
 
 sub get_ssl_socket {
     my ($port, $ses, $name) = @_;
-    my $s;
 
-    my $dest_ip = inet_aton('127.0.0.1');
-    my $dest_serv_params = sockaddr_in($port, $dest_ip);
-
-    socket($s, &AF_INET, &SOCK_STREAM, 0) or die "socket: $!";
-    connect($s, $dest_serv_params) or die "connect: $!";
-
+    my $s = IO::Socket::INET->new('127.0.0.1:' . $port);
     my $ctx = Net::SSLeay::CTX_new() or die("Failed to create SSL_CTX $!");
     my $ssl = Net::SSLeay::new($ctx) or die("Failed to create SSL $!");
     Net::SSLeay::set_tlsext_host_name($ssl, $name) if defined $name;

@@ -13,7 +13,7 @@ use strict;
 
 use Test::More;
 
-use Socket qw/ :DEFAULT CRLF /;
+use Socket qw/ CRLF /;
 
 BEGIN { use FindBin; chdir($FindBin::Bin); }
 
@@ -72,9 +72,8 @@ http {
     }
 
     server {
-        listen       127.0.0.1:8081 ssl;
+        listen       127.0.0.1:8081 ssl %%SSL_ASYNCH%%;
         server_name  on;
-        %%TEST_NGINX_GLOBALS_HTTPS%%
 
         ssl_certificate_key 1.example.com.key;
         ssl_certificate 1.example.com.crt;
@@ -84,9 +83,8 @@ http {
     }
 
     server {
-        listen       127.0.0.1:8081 ssl;
+        listen       127.0.0.1:8081 ssl %%SSL_ASYNCH%%;
         server_name  optional;
-        %%TEST_NGINX_GLOBALS_HTTPS%%
 
         ssl_certificate_key 1.example.com.key;
         ssl_certificate 1.example.com.crt;
@@ -97,19 +95,20 @@ http {
     }
 
     server {
-        listen       127.0.0.1:8081 ssl;
+        listen       127.0.0.1:8081 ssl %%SSL_ASYNCH%%;
         server_name  off;
+
         ssl_certificate_key 1.example.com.key;
         ssl_certificate 1.example.com.crt;
+
         ssl_verify_client off;
         ssl_client_certificate 2.example.com.crt;
         ssl_trusted_certificate 3.example.com.crt;
-        %%TEST_NGINX_GLOBALS_HTTPS%%
     }
+
     server {
-        listen       127.0.0.1:8081 ssl;
+        listen       127.0.0.1:8081 ssl %%SSL_ASYNCH%%;
         server_name  optional.no.ca;
-        %%TEST_NGINX_GLOBALS_HTTPS%%
 
         ssl_certificate_key 1.example.com.key;
         ssl_certificate 1.example.com.crt;
@@ -187,12 +186,7 @@ sub get {
 
     $host = $sni if !defined $host;
 
-    my $dest_ip = inet_aton('127.0.0.1');
-    my $dest_serv_params = sockaddr_in(port(8081), $dest_ip);
-
-    socket(my $s, &AF_INET, &SOCK_STREAM, 0) or die "socket: $!";
-    connect($s, $dest_serv_params) or die "connect: $!";
-
+    my $s = IO::Socket::INET->new('127.0.0.1:' . port(8081));
     my $ctx = Net::SSLeay::CTX_new() or die("Failed to create SSL_CTX $!");
     Net::SSLeay::set_cert_and_key($ctx, "$d/$cert.crt", "$d/$cert.key")
         or die if $cert;

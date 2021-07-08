@@ -55,11 +55,13 @@ http {
                 deny 192.0.2.1/32;
                 access_log %%TESTDIR%%/pp4.log pp;
             }
+
             location /pp_6 {
                 deny 2001:DB8::1/128;
                 access_log %%TESTDIR%%/pp6.log pp;
             }
         }
+
         location / { }
     }
 }
@@ -100,6 +102,7 @@ unlike($r, qr/X-IP: (192.0.2.1|[^!]+!123\x0d)/, 'tlv client');
 $r = pp_get('/t1', $unk1);
 like($r, qr/SEE-THIS/, 'unknown request 1');
 like($r, qr/X-PP: !\x0d/, 'unknown proxy 1');
+
 $r = pp_get('/t1', $unk2);
 like($r, qr/SEE-THIS/, 'unknown request 2');
 like($r, qr/X-PP: !\x0d/, 'unknown proxy 2');

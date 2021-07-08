@@ -31,7 +31,6 @@ my $t = Test::Nginx->new()->has(qw/http http_ssl http_v2 proxy/)
 
 $t->write_file_expand('nginx.conf', <<'EOF');
 
-
 %%TEST_GLOBALS%%
 
 daemon off;

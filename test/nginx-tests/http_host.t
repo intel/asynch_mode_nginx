@@ -16,7 +16,7 @@ use Test::More;
 BEGIN { use FindBin; chdir($FindBin::Bin); }
 
 use lib 'lib';
-use Test::Nginx;
+use Test::Nginx qw/ :DEFAULT http_content /;
 
 ###############################################################################
 
@@ -52,7 +52,6 @@ EOF
 $t->run();
 
 ###############################################################################
-
 
 is(http_host_header('www.abcd-ef.g02.xyz'), 'www.abcd-ef.g02.xyz',
     'domain w/o port (host header)');
@@ -173,8 +172,11 @@ is(http_host_header('123.40.56.78:9000:80'), '123.40.56.78',
 
 TODO: {
 local $TODO = 'not yet' unless $t->has_version('1.17.9');
+
 like(http_host_header("localhost\nHost: again", 1), qr/ 400 /, 'host repeat');
+
 }
+
 ###############################################################################
 
 sub http_host_header {
@@ -184,7 +186,7 @@ GET / HTTP/1.0
 Host: $host
 
 EOF
-    return ($all ? $r : Test::Nginx::http_content($r));
+    return ($all ? $r : http_content($r));
 }
 
 sub http_absolute_path {
@@ -194,7 +196,7 @@ GET http://$host/ HTTP/1.0
 Host: localhost
 
 EOF
-    return ($all ? $r : Test::Nginx::http_content($r));
+    return ($all ? $r : http_content($r));
 }
 
 ###############################################################################

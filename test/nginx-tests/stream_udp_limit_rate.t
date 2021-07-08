@@ -35,6 +35,8 @@ events {
 }
 
 stream {
+    %%TEST_GLOBALS_STREAM%%
+
     proxy_requests           2;
     proxy_responses          1;
     proxy_timeout            3s;
@@ -76,14 +78,10 @@ is($s->io($str), $str, 'unlimited 2');
 
 # datagram doesn't get split
 
-
-
 $s = dgram('127.0.0.1:' . port(8983));
 is($s->io($str), $str, 'download');
 my $t1 = time();
 is($s->io($str), $str, 'download 2');
-
-
 my $t2 = time();
 cmp_ok($t1, '<', $t2, 'download 2 delayed');
 
@@ -95,7 +93,6 @@ is($s->io($str, read_timeout => 0.5), '', 'upload limited');
 
 select undef, undef, undef, 1.6;
 is($s->io($str), $str, 'upload passed');
-
 
 ###############################################################################
 

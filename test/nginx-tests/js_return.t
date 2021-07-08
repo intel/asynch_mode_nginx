@@ -44,10 +44,6 @@ http {
         listen       127.0.0.1:8080;
         server_name  localhost;
 
-        location /njs {
-            js_content test_njs;
-        }
-
         location / {
             js_content test_return;
         }
@@ -57,10 +53,6 @@ http {
 EOF
 
 $t->write_file('test.js', <<EOF);
-    function test_njs(r) {
-        r.return(200, njs.version);
-    }
-
     function test_return(r) {
         r.return(Number(r.args.c), r.args.t);
     }
@@ -75,9 +67,6 @@ like(http_get('/?c=200'), qr/200 OK.*\x0d\x0a?\x0d\x0a?$/s, 'return code');
 like(http_get('/?c=200&t=SEE-THIS'), qr/200 OK.*^SEE-THIS$/ms, 'return text');
 like(http_get('/?c=301&t=path'), qr/ 301 .*Location: path/s, 'return redirect');
 like(http_get('/?c=404'), qr/404 Not.*html/s, 'return error page');
-
-
 like(http_get('/?c=inv'), qr/ 500 /, 'return invalid');
-
 
 ###############################################################################

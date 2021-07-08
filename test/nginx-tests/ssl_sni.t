@@ -155,10 +155,8 @@ SKIP: {
 skip 'no TLS 1.3 sessions', 1 if get('/protocol', 'localhost') =~ /TLSv1.3/
     && ($Net::SSLeay::VERSION < 1.88 || $IO::Socket::SSL::VERSION < 2.061);
 
-
 like(get('/', 'localhost', 8081, $ctx), qr/^r:localhost$/m,
     'ssl server name - reused');
-
 
 }
 

@@ -43,10 +43,6 @@ http {
         listen       127.0.0.1:8080;
         server_name  localhost;
 
-        location /njs {
-            js_content test_njs;
-        }
-
         location /to_string {
             js_content to_string;
         }
@@ -80,10 +76,6 @@ http {
 EOF
 
 $t->write_file('test.js', <<EOF);
-    function test_njs(r) {
-        r.return(200, njs.version);
-    }
-
     function to_string(r) {
         r.return(200, r.toString());
     }
@@ -128,11 +120,6 @@ $t->try_run('no njs request object')->plan(7);
 
 ###############################################################################
 
-TODO: {
-local $TODO = 'not yet'
-              unless http_get('/njs') =~ /^([.0-9]+)$/m && $1 ge '0.4.0';
-
-
 like(http_get('/to_string'), qr/\[object Request\]/, 'toString');
 like(http_get('/define_prop'), qr/Foo: bar/, 'define_prop');
 like(http(
@@ -144,7 +131,5 @@ like(http_get('/redefine_bind'), qr/redefine_bind/, 'redefine_bind');
 like(http_get('/redefine_proxy'), qr/redefine_proxy/, 'redefine_proxy');
 like(http_get('/redefine_proto'), qr/a|b/, 'redefine_proto');
 like(http_get('/get_own_prop_descs'), qr/true/, 'get_own_prop_descs');
-
-}
 
 ###############################################################################

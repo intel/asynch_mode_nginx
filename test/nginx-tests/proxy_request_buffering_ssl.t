@@ -30,7 +30,6 @@ my $t = Test::Nginx->new()->has(qw/http http_ssl proxy rewrite/)
 
 $t->write_file_expand('nginx.conf', <<'EOF');
 
-
 %%TEST_GLOBALS%%
 
 daemon off;

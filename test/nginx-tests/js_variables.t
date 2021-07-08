@@ -46,10 +46,6 @@ http {
 
         set $foo       foo_orig;
 
-        location /njs {
-            js_content test_njs;
-        }
-
         location /var_set {
             return 200 $test_var$foo;
         }
@@ -67,10 +63,6 @@ http {
 EOF
 
 $t->write_file('test.js', <<EOF);
-    function test_njs(r) {
-        r.return(200, njs.version);
-    }
-
     function test_var(r) {
         r.variables.foo = r.variables.arg_a;
         return 'test_var';
@@ -95,10 +87,8 @@ $t->try_run('no njs')->plan(3);
 
 ###############################################################################
 
-
 like(http_get('/var_set?a=bar'), qr/test_varbar/, 'var set');
 like(http_get('/content_set?a=bar'), qr/bar/, 'content set');
 like(http_get('/not_found_set'), qr/variable not found/, 'not found exception');
-
 
 ###############################################################################

@@ -38,6 +38,8 @@ events {
 }
 
 stream {
+    %%TEST_GLOBALS_STREAM%%
+
     proxy_protocol on;
 
     server {

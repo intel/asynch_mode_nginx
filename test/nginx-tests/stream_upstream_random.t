@@ -36,6 +36,8 @@ events {
 }
 
 stream {
+    %%TEST_GLOBALS_STREAM%%
+
     upstream u {
         zone z 1m;
         random;
@@ -110,6 +112,7 @@ stream {
     }
 
     proxy_connect_timeout 2;
+
     server {
         listen      127.0.0.1:8080;
         proxy_pass  u;

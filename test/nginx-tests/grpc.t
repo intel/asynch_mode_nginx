@@ -25,7 +25,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http rewrite http_v2 grpc/)
-    ->has(qw/upstream_keepalive/)->plan(109);
+    ->has(qw/upstream_keepalive/)->plan(123);
 
 $t->write_file_expand('nginx.conf', <<'EOF');
 
@@ -51,6 +51,7 @@ http {
         http2_max_field_size 128k;
         http2_max_header_size 128k;
         http2_body_preread_size 128k;
+        large_client_header_buffers 4 32k;
 
         location / {
             grpc_pass grpc://127.0.0.1:8081;
@@ -92,7 +93,11 @@ http {
 
 EOF
 
+# suppress deprecation warning
+
+open OLDERR, ">&", \*STDERR; close STDERR;
 $t->run();
+open STDERR, ">&", \*OLDERR;
 
 ###############################################################################
 
@@ -278,6 +283,25 @@ is($frame->{flags}, 5, 'grpc error - HEADERS flags');
 ($frame) = grep { $_->{type} eq "DATA" } @$frames;
 ok(!$frame, 'grpc error - no DATA frame');
 
+# malformed response body length not equal to content-length
+
+TODO: {
+local $TODO = 'not yet' unless $t->has_version('1.19.1');
+
+$f->{http_start}('/SayHello');
+$f->{data}('Hello');
+$frames = $f->{http_err2}(cl => 42);
+($frame) = grep { $_->{type} eq "RST_STREAM" } @$frames;
+ok($frame, 'response body less than content-length');
+
+$f->{http_start}('/SayHello');
+$f->{data}('Hello');
+$frames = $f->{http_err2}(cl => 8);
+($frame) = grep { $_->{type} eq "RST_STREAM" } @$frames;
+ok($frame, 'response body more than content-length');
+
+}
+
 # continuation from backend, expect parts assembled
 
 $f->{http_start}('/SayHello');
@@ -360,6 +384,52 @@ $frames = $f->{field_len}(2**15);
 ($frame) = grep { $_->{flags} & 0x4 } @$frames;
 is($frame->{headers}{'x' x 2**15}, 'y' x 2**15, 'long header field 3');
 
+# Intermediary Encapsulation Attacks, malformed header fields
+
+$f->{http_start}('/');
+$f->{data}('Hello');
+$frames = $f->{field_bad}(n => 'n:n');
+($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
+is($frame->{headers}{':status'}, 502, 'invalid header name colon');
+
+$f->{http_start}('/');
+$f->{data}('Hello');
+$frames = $f->{field_bad}(n => 'NN');
+($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
+is($frame->{headers}{':status'}, 502, 'invalid header name uppercase');
+
+$f->{http_start}('/');
+$f->{data}('Hello');
+$frames = $f->{field_bad}(n => "n\nn");
+($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
+is($frame->{headers}{':status'}, 502, 'invalid header name ctl');
+
+$f->{http_start}('/');
+$f->{data}('Hello');
+$frames = $f->{field_bad}(v => "v\nv");
+($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
+is($frame->{headers}{':status'}, 502, 'invalid header value ctl');
+
+# invalid HPACK index
+
+$f->{http_start}('/');
+$f->{data}('Hello');
+$frames = $f->{field_bad}('m' => 0);
+($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
+is($frame->{headers}{':status'}, 502, 'invalid index - indexed header');
+
+$f->{http_start}('/');
+$f->{data}('Hello');
+$frames = $f->{field_bad}('m' => 1);
+($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
+is($frame->{headers}{':status'}, 502, 'invalid index - with indexing');
+
+$f->{http_start}('/');
+$f->{data}('Hello');
+$frames = $f->{field_bad}('m' => 3);
+($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
+is($frame->{headers}{':status'}, 502, 'invalid index - without indexing');
+
 # flow control
 
 $f->{http_start}('/FlowControl');
@@ -409,6 +479,22 @@ $frames = $f->{http_end}(body_padding => 42);
 is($frame->{data}, 'Hello world', 'DATA padding');
 is($frame->{length}, 11, 'DATA padding - length');
 is($frame->{flags}, 0, 'DATA padding - flags');
+
+# DATA padding with Content-Length
+
+TODO: {
+local $TODO = 'not yet'
+    if $t->has_version('1.19.1') and !$t->has_version('1.19.9');
+
+$f->{http_start}('/SayPadding');
+$f->{data}('Hello');
+$frames = $f->{http_end}(body_padding => 42, cl => length('Hello world'));
+($frame) = grep { $_->{type} eq "DATA" } @$frames;
+is($frame->{data}, 'Hello world', 'DATA padding cl');
+is($frame->{length}, 11, 'DATA padding cl - length');
+is($frame->{flags}, 0, 'DATA padding cl - flags');
+
+}
 
 # :authority inheritance
 
@@ -465,27 +551,62 @@ $f->{http_end}();
 
 TODO: {
 local $TODO = 'not yet' unless $t->has_version('1.19.0');
+
 # receiving END_STREAM followed by WINDOW_UPDATE on incomplete request body
+
 $f->{http_start}('/Discard_WU');
 $frames = $f->{discard}();
 (undef, $frame) = grep { $_->{type} eq "HEADERS" } @$frames;
 is($frame->{flags}, 5, 'discard WINDOW_UPDATE - trailers');
+
 # receiving END_STREAM followed by RST_STREAM NO_ERROR
+
 $f->{http_start}('/Discard_NE');
 $frames = $f->{discard}();
 (undef, $frame) = grep { $_->{type} eq "HEADERS" } @$frames;
 is($frame->{flags}, 5, 'discard NO_ERROR - trailers');
+
 }
+
 # receiving END_STREAM followed by several RST_STREAM NO_ERROR
+
 $f->{http_start}('/Discard_NE3');
 $frames = $f->{discard}();
 (undef, $frame) = grep { $_->{type} eq "HEADERS" } @$frames;
 is($frame->{flags}, undef, 'discard NO_ERROR many - no trailers');
+
 # receiving END_STREAM followed by RST_STREAM CANCEL
+
 $f->{http_start}('/Discard_CNL');
 $frames = $f->{discard}();
 (undef, $frame) = grep { $_->{type} eq "HEADERS" } @$frames;
 is($frame->{flags}, undef, 'discard CANCEL - no trailers');
+
+undef $f;
+$f = grpc();
+
+# upstream keepalive, grpc error
+# receiving END_STREAM followed by RST_STREAM NO_ERROR
+
+$f->{http_start}('/KeepAlive');
+$f->{data}('Hello');
+$frames = $f->{http_err_rst}();
+($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
+ok($frame->{headers}{'grpc-status'}, 'keepalive 3 - grpc error, rst');
+
+$frames = $f->{http_start}('/KeepAlive', reuse => 1);
+($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
+
+TODO: {
+local $TODO = 'not yet' unless $t->has_version('1.19.5');
+
+ok($frame, 'keepalive 3 - connection reused');
+
+}
+
+undef $f;
+$f = grpc();
+
 ###############################################################################
 
 sub grpc {
@@ -571,14 +692,16 @@ sub grpc {
     };
     $f->{http_end} = sub {
         my (%extra) = @_;
-        $c->new_stream({ body_more => 1, %extra, headers => [
+        my $h = [
             { name => ':status', value => '200',
                 mode => $extra{mode} || 0 },
             { name => 'content-type', value => 'application/grpc',
                 mode => $extra{mode} || 1, huff => 1 },
             { name => 'x-connection', value => $n,
-                mode => 2, huff => 1 },
-        ]}, $sid);
+                mode => 2, huff => 1 }];
+        push @$h, { name => 'content-length', value => $extra{cl} }
+            if $extra{cl};
+        $c->new_stream({ body_more => 1, headers => $h, %extra }, $sid);
         $c->h2_body('Hello world', { body_more => 1,
             body_padding => $extra{body_padding} });
         $c->new_stream({ headers => [
@@ -632,6 +755,40 @@ sub grpc {
 
         return $s->read(all => [{ fin => 1 }]);
     };
+    $f->{http_err_rst} = sub {
+        $c->start_chain();
+        $c->new_stream({ headers => [
+            { name => ':status', value => '200', mode => 0 },
+            { name => 'content-type', value => 'application/grpc' },
+            { name => 'grpc-status', value => '12', mode => 2 },
+            { name => 'grpc-message', value => 'unknown service',
+                mode => 2 },
+        ]}, $sid);
+        $c->h2_rst($sid, 0);
+        $c->send_chain();
+
+        return $s->read(all => [{ fin => 1 }]);
+    };
+    $f->{http_err2} = sub {
+        my %extra = @_;
+        $c->new_stream({ body_more => 1, headers => [
+            { name => ':status', value => '200', mode => 0 },
+            { name => 'content-type', value => 'application/grpc',
+                mode => 1, huff => 1 },
+            { name => 'content-length', value => $extra{cl},
+                mode => 1, huff => 1 },
+        ]}, $sid);
+        $c->h2_body('Hello world',
+            { body_more => 1, body_split => [5] });
+        $c->new_stream({ headers => [
+            { name => 'grpc-status', value => '0',
+                mode => 2, huff => 1 },
+            { name => 'grpc-message', value => '',
+                mode => 2, huff => 1 },
+        ]}, $sid);
+
+        return $s->read(all => [{ type => 'RST_STREAM' }]);
+    };
     $f->{continuation} = sub {
         $c->new_stream({ continuation => 1, body_more => 1, headers => [
             { name => ':status', value => '200', mode => 0 },
@@ -674,6 +831,18 @@ sub grpc {
 
         return $s->read(all => [{ fin => 1 }]);
     };
+    $f->{field_bad} = sub {
+        my (%extra) = @_;
+        my $n = defined $extra{'n'} ? $extra{'n'} : 'n';
+        my $v = defined $extra{'v'} ? $extra{'v'} : 'v';
+        my $m = defined $extra{'m'} ? $extra{'m'} : 2;
+        $c->new_stream({ headers => [
+            { name => ':status', value => '200' },
+            { name => $n, value => $v, mode => $m },
+        ]}, $sid);
+
+        return $s->read(all => [{ fin => 1 }]);
+    };
     $f->{discard} = sub {
         my (%extra) = @_;
         $c->new_stream({ body_more => 1, %extra, headers => [
@@ -685,18 +854,21 @@ sub grpc {
                 mode => 2, huff => 1 },
         ]}, $sid);
         $c->h2_body('Hello world', { body_more => 1,
-        body_padding => $extra{body_padding} });
+            body_padding => $extra{body_padding} });
+
         # stick trailers and subsequent frames for reproducibility
-        my $fld = $c->hpack('grpc-status', '0', mode => 2);
-        my $trailers = pack("x2CCCN", length($fld), 1, 5, $sid) . $fld;
-        my $window = pack("xxCCCNN", 4, 8, 0, $sid, 42);
-        my $rst = pack("x2C2xNN", 4, 3, $sid, 0);
-        my $cnl = pack("x2C2xNN", 4, 3, $sid, 8);
-        $trailers .= $window if $uri eq '/Discard_WU';
-        $trailers .= $rst if $uri eq '/Discard_NE';
-        $trailers .= ($rst x 3) if $uri eq '/Discard_NE3';
-        $trailers .= $cnl if $uri eq '/Discard_CNL';
-        Test::Nginx::HTTP2::raw_write($client, $trailers);
+
+        $c->start_chain();
+        $c->new_stream({ headers => [
+            { name => 'grpc-status', value => '0', mode => 2 }
+        ]}, $sid);
+        $c->h2_window(42, $sid) if $uri eq '/Discard_WU';
+        $c->h2_rst($sid, 0) if $uri eq '/Discard_NE';
+        $c->h2_rst($sid, 0), $c->h2_rst($sid, 0), $c->h2_rst($sid, 0)
+            if $uri eq '/Discard_NE3';
+        $c->h2_rst($sid, 8) if $uri eq '/Discard_CNL';
+        $c->send_chain();
+
         return $s->read(all => [{ fin => 1 }], wait => 2)
             if $uri eq '/Discard_WU' || $uri eq '/Discard_NE';
         return $s->read(all => [{ type => 'RST_STREAM' }]);

@@ -13,6 +13,8 @@ use strict;
 
 use Test::More;
 
+use Sys::Hostname;
+
 BEGIN { use FindBin; chdir($FindBin::Bin); }
 
 use lib 'lib';
@@ -36,6 +38,8 @@ events {
 }
 
 stream {
+    %%TEST_GLOBALS_STREAM%%
+
     log_format  test  $server_addr;
     log_format  vars  $connection:$nginx_version:$hostname:$pid;
     log_format  addr  $binary_remote_addr:$remote_addr:$remote_port:
@@ -159,7 +163,7 @@ is($t->read_file('filtered.log'), "127.0.0.1\n", 'log filtering');
 ok($t->read_file('complex.log'), 'if with complex value');
 ok($t->read_file('varlog_3.log'), 'variable in file');
 
-chomp(my $hostname = lc `hostname`);
+my $hostname = lc hostname();
 like($t->read_file('vars.log'), qr/^\d+:[\d.]+:$hostname:\d+$/, 'log vars');
 is($t->read_file('addr.log'),
     "$escaped:$lhost:$lport:127.0.0.1:$dport:127.0.0.1:$uport\n",

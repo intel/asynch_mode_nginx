@@ -1,6 +1,5 @@
 #!/usr/bin/perl
 
-# Copyright (C) Intel, Inc.
 # (C) Maxim Dounin
 
 # Tests for nginx dav module with chunked request body.

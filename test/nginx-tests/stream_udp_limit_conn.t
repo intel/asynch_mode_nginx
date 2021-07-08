@@ -35,6 +35,8 @@ events {
 }
 
 stream {
+    %%TEST_GLOBALS_STREAM%%
+
     limit_conn_zone  $binary_remote_addr  zone=zone:1m;
     limit_conn_zone  $binary_remote_addr  zone=zone2:1m;
 
@@ -91,9 +93,7 @@ is($s->io('1'), '1', 'passed');
 # regardless of incomplete responses, new requests in the same
 # socket will be treated as requests in existing session
 
-
 is($s->io('1', read_timeout => 0.4), '1', 'passed new request');
-
 
 is(dgram('127.0.0.1:' . port(8981))->io('1', read_timeout => 0.1), '',
     'rejected new session');

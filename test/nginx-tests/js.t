@@ -45,6 +45,7 @@ http {
     js_set $test_arg      test_arg;
     js_set $test_iarg     test_iarg;
     js_set $test_var      test_var;
+    js_set $test_type     test_type;
     js_set $test_global   test_global;
     js_set $test_log      test_log;
     js_set $test_except   test_except;
@@ -108,6 +109,10 @@ http {
             js_content request_body;
         }
 
+        location /request_body_cache {
+            js_content request_body_cache;
+        }
+
         location /send {
             js_content send;
         }
@@ -119,6 +124,11 @@ http {
         location /arg_keys {
             js_content arg_keys;
         }
+
+        location /type {
+            js_content test_type;
+        }
+
         location /log {
             return 200 $test_log;
         }
@@ -200,6 +210,12 @@ $t->write_file('test.js', <<EOF);
         }
     }
 
+    function request_body_cache(r) {
+        function t(v) {return Buffer.isBuffer(v) ? 'buffer' : (typeof v);}
+        r.return(200,
+      `requestText:\${t(r.requestText)} requestBuffer:\${t(r.requestBuffer)}`);
+    }
+
     function send(r) {
         var a, s;
         r.status = 200;
@@ -220,8 +236,16 @@ $t->write_file('test.js', <<EOF);
     function arg_keys(r) {
         r.return(200, Object.keys(r.args).sort());
     }
+
+    function test_type(r) {
+        var p = r.args.path.split('.').reduce((a, v) => a[v], r);
+
+        var type = Buffer.isBuffer(p) ? 'buffer' : (typeof p);
+        r.return(200, `type: \${type}`);
+    }
+
     function test_log(r) {
-        r.log('SEE-THIS');
+        r.log('SEE-LOG');
     }
 
     function test_except(r) {
@@ -239,10 +263,9 @@ $t->write_file('test.js', <<EOF);
 
 EOF
 
-$t->try_run('no njs available')->plan(27);
+$t->try_run('no njs available')->plan(33);
 
 ###############################################################################
-
 
 like(http_get('/method'), qr/method=GET/, 'r.method');
 like(http_get('/version'), qr/version=1.0/, 'r.httpVersion');
@@ -252,12 +275,10 @@ like(http_get('/arg?foO=12345'), qr/arg=12345/, 'r.args');
 like(http_get('/iarg?foo=12345&foo2=bar&nn=22&foo-3=z'), qr/12345barz/,
     'r.args iteration');
 
-
 like(http_get('/iarg?foo=123&foo2=&foo3&foo4=456'), qr/123undefined456/,
     'r.args iteration 2');
 like(http_get('/iarg?foo=123&foo2=&foo3'), qr/123/, 'r.args iteration 3');
 like(http_get('/iarg?foo=123&foo2='), qr/123/, 'r.args iteration 4');
-
 
 like(http_get('/status'), qr/204 No Content/, 'r.status');
 
@@ -278,10 +299,27 @@ like(http_get('/return_method?c=301&t=path'), qr/ 301 .*Location: path/s,
     'return redirect');
 like(http_get('/return_method?c=404'), qr/404 Not.*html/s, 'return error page');
 like(http_get('/return_method?c=inv'), qr/ 500 /, 'return invalid');
+
+like(http_get('/arg_keys?b=1&c=2&a=5'), qr/a,b,c/m, 'r.args sorted keys');
+
 TODO: {
 local $TODO = 'not yet'
-        unless http_get('/njs') =~ /^([.0-9]+)$/m && $1 ge '0.3.7';
-like(http_get('/arg_keys?b=1&c=2&a=5'), qr/a,b,c/m, 'r.args sorted keys');
+    unless http_get('/njs') =~ /^([.0-9]+)$/m && $1 ge '0.5.0';
+
+like(http_get('/type?path=variables.host'), qr/200 OK.*type: string$/s,
+    'variables type');
+like(http_get('/type?path=rawVariables.host'), qr/200 OK.*type: buffer$/s,
+    'rawVariables type');
+
+like(http_post('/type?path=requestBody'), qr/200 OK.*type: string$/s,
+    'requestBody type');
+like(http_post('/type?path=requestText'), qr/200 OK.*type: string$/s,
+    'requestText type');
+like(http_post('/type?path=requestBuffer'), qr/200 OK.*type: buffer$/s,
+    'requestBuffer type');
+like(http_post('/request_body_cache'),
+    qr/requestText:string requestBuffer:buffer$/s, 'request body cache');
+
 }
 
 like(http_get('/var'), qr/variable=127.0.0.1/, 'r.variables');
@@ -296,11 +334,11 @@ like(http_get('/content_empty'), qr/500 Internal Server Error/,
 
 $t->stop();
 
-ok(index($t->read_file('error.log'), 'SEE-THIS') > 0, 'log js');
+ok(index($t->read_file('error.log'), 'SEE-LOG') > 0, 'log js');
 ok(index($t->read_file('error.log'), 'at fs.readFileSync') > 0,
-   'js_set backtrace');
+    'js_set backtrace');
 ok(index($t->read_file('error.log'), 'at JSON.parse') > 0,
-   'js_content backtrace');
+    'js_content backtrace');
 
 ###############################################################################
 

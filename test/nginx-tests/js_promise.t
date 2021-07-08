@@ -41,12 +41,20 @@ http {
         listen       127.0.0.1:8080;
         server_name  localhost;
 
+        location /njs {
+            js_content test_njs;
+        }
+
         location /promise {
             js_content promise;
         }
 
         location /promise_throw {
             js_content promise_throw;
+        }
+
+        location /promise_pure {
+            js_content promise_pure;
         }
 
         location /timeout {
@@ -56,10 +64,6 @@ http {
         location /sub_token {
             js_content sub_token;
         }
-
-        location /njs {
-            js_content test_njs;
-        }
     }
 }
 
@@ -67,6 +71,10 @@ EOF
 
 $t->write_file('test.js', <<EOF);
     var global_token = '';
+
+    function test_njs(r) {
+        r.return(200, njs.version);
+    }
 
     function promise(r) {
         promisified_subrequest(r, '/sub_token', 'code=200&token=a')
@@ -111,6 +119,18 @@ $t->write_file('test.js', <<EOF);
         })
         .catch(token => {
             r.return(200, '{"token": "' + token + '"}');
+        });
+    }
+
+    function promise_pure(r) {
+        var count = 0;
+
+        Promise.resolve(true)
+        .then(() => count++)
+        .then(() => not_exist_ref)
+        .finally(() => count++)
+        .catch(() => {
+            r.return((count != 2) ? 500 : 200);
         });
     }
 
@@ -165,24 +185,23 @@ $t->write_file('test.js', <<EOF);
         r.return(parseInt(code), '{"token": "'+ token +'"}');
     }
 
-    function test_njs(r) {
-        r.return(200, njs.version);
-    }
-
 EOF
 
-$t->try_run('no njs available')->plan(3);
+$t->try_run('no njs available')->plan(4);
 
 ###############################################################################
-
-TODO: {
-local $TODO = 'not yet'
-    unless http_get('/njs') =~ /^([.0-9]+)$/m && $1 ge '0.3.8';
 
 like(http_get('/promise'), qr/{"token": "b"}/, "Promise");
 like(http_get('/promise_throw'), qr/{"token": "x"}/, "Promise throw and catch");
 like(http_get('/timeout'), qr/{"token": "R"}/, "Promise with timeout");
 
+TODO: {
+local $TODO = 'not yet'
+    unless http_get('/njs') =~ /^([.0-9]+)$/m && $1 ge '0.5.0';
+
+like(http_get('/promise_pure'), qr/200 OK/, "events handling");
 }
+
+$t->todo_alerts() unless http_get('/njs') =~ /^([.0-9]+)$/m && $1 ge '0.5.0';
 
 ###############################################################################

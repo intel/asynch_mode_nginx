@@ -35,6 +35,8 @@ events {
 }
 
 stream {
+    %%TEST_GLOBALS_STREAM%%
+
     proxy_responses      1;
     proxy_timeout        1s;
 
@@ -95,7 +97,6 @@ $t->waitforfile($t->testdir . '/' . port(8985));
 my @ports = my ($port4, $port5) = (port(8984), port(8985));
 
 is(many(10, port(8980)), "$port4: 5, $port5: 5", 'balanced');
-
 
 is(dgram('127.0.0.1:' . port(8981))->io('.', read_timeout => 0.5), '',
     'no next upstream for dgram');

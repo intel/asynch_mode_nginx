@@ -228,9 +228,7 @@ is(substr(uid_set(http_get('/service')), 0, 8), $addr, 'service custom');
 $addr = $bigendian ? "00000001" : "01000000";
 is(substr(uid_set(http_get('/ip6')), 0, 8), $addr, 'service ipv6');
 
-
 is(substr(uid_set(http_get('/unix')), 0, 8), "00000000", 'service unix');
-
 
 # reset log
 

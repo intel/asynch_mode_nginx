@@ -35,6 +35,8 @@ events {
 }
 
 stream {
+    %%TEST_GLOBALS_STREAM%%
+
     map $server_port $upstream {
         %%PORT_8081%%  a.example.com:%%PORT_8090%%;
         %%PORT_8082%%  a.example.com;
@@ -120,8 +122,8 @@ sub reply_handler {
     my (@name, @rdata);
 
     use constant NOERROR    => 0;
-    use constant A        => 1;
-    use constant IN     => 1;
+    use constant A          => 1;
+    use constant IN         => 1;
 
     # default values
 

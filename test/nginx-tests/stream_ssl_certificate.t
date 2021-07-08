@@ -13,8 +13,6 @@ use strict;
 
 use Test::More;
 
-use Socket qw/ :DEFAULT CRLF /;
-
 BEGIN { use FindBin; chdir($FindBin::Bin); }
 
 use lib 'lib';
@@ -56,6 +54,8 @@ events {
 }
 
 stream {
+    %%TEST_GLOBALS_STREAM%%
+
     geo $one {
         default one;
     }
@@ -166,13 +166,9 @@ like(get('password', 8083), qr/password/, 'ssl_password_file');
 my ($s, $ssl) = get_ssl_socket('default', 8080);
 my $ses = Net::SSLeay::get_session($ssl);
 
-like(get('default', 8080, $ses), qr/:r/, 'session reused');
-
-# do not check $ssl_server_name, since stream doesn't install SNI callback
-# see for more details: https://github.com/openssl/openssl/issues/7014
-
-like(get('default', 8081, $ses), qr/:r/, 'session id context match');
-like(get('default', 8082, $ses), qr/:\./, 'session id context distinct');
+like(get('default', 8080, $ses), qr/default:r/, 'session reused');
+like(get('default', 8081, $ses), qr/default:r/, 'session id context match');
+like(get('default', 8082, $ses), qr/default:\./, 'session id context distinct');
 
 # errors
 
@@ -185,9 +181,14 @@ ok(Net::SSLeay::ERR_peek_error(), 'no certificate');
 sub get {
     my ($host, $port, $ctx) = @_;
     my ($s, $ssl) = get_ssl_socket($host, $port, $ctx) or return;
+
+    local $SIG{PIPE} = 'IGNORE';
+
     my $r = Net::SSLeay::read($ssl);
+    Net::SSLeay::shutdown($ssl);
     $s->close();
-    return $r;
+    return $r unless wantarray();
+    return ($s, $ssl);
 }
 
 sub cert {
@@ -198,15 +199,8 @@ sub cert {
 
 sub get_ssl_socket {
     my ($host, $port, $ses) = @_;
-    my $s;
 
-    my $dest_ip = inet_aton('127.0.0.1');
-    $port = port($port);
-    my $dest_serv_params = sockaddr_in($port, $dest_ip);
-
-    socket($s, &AF_INET, &SOCK_STREAM, 0) or die "socket: $!";
-    connect($s, $dest_serv_params) or die "connect: $!";
-
+    my $s = IO::Socket::INET->new('127.0.0.1:' . port($port));
     my $ctx = Net::SSLeay::CTX_new() or die("Failed to create SSL_CTX $!");
     my $ssl = Net::SSLeay::new($ctx) or die("Failed to create SSL $!");
     Net::SSLeay::set_tlsext_host_name($ssl, $host);

@@ -54,37 +54,20 @@ http {
             grpc_pass grpc://$host:%%PORT_8081%%;
         }
 
+        location /grpcs {
+            %%GRPC_ASYNCH_ENABLE%%
+            grpc_pass grpcs://$host:%%PORT_8082%%;
+        }
+
         location /arg {
             grpc_pass $arg_b;
         }
     }
 
     server {
-        listen       127.0.0.1:8080;
-        server_name  localhost;
-        %%GRPC_ASYNCH_ENABLE%%
-
-        location /grpcs {
-            grpc_pass grpcs://$host:%%PORT_8082%%;
-        }
-    }
-
-    server {
         listen       127.0.0.1:8081 http2;
+        listen       127.0.0.1:8082 http2 ssl %%SSL_ASYNCH%%;
         server_name  localhost;
-
-        ssl_certificate_key localhost.key;
-        ssl_certificate localhost.crt;
-
-        location / {
-            return 200 $http_host;
-        }
-    }
-
-    server {
-        listen       127.0.0.1:8082 http2 ssl;
-        server_name  localhost;
-        %%TEST_NGINX_GLOBALS_HTTPS%%
 
         ssl_certificate_key localhost.key;
         ssl_certificate localhost.crt;
@@ -143,9 +126,9 @@ sub reply_handler {
 
     my (@name, @rdata);
 
-    use constant NOERROR => 0;
-    use constant A  => 1;
-    use constant IN  => 1;
+    use constant NOERROR    => 0;
+    use constant A        => 1;
+    use constant IN        => 1;
 
     # default values
 
@@ -172,7 +155,7 @@ sub reply_handler {
 
     $len = @name;
     pack("n6 (C/a*)$len x n2", $id, $hdr | $rcode, 1, scalar @rdata,
-            0, 0, @name, $type, $class) . join('', @rdata);
+        0, 0, @name, $type, $class) . join('', @rdata);
 }
 
 sub rd_addr {

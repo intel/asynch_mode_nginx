@@ -46,7 +46,7 @@ http {
 
     js_include test.js;
 
-    js_set $async_var async_var;
+    js_set $async_var       async_var;
     js_set $subrequest_var  subrequest_var;
 
     server {
@@ -64,6 +64,7 @@ http {
         location /sr_pr {
             js_content sr_pr;
         }
+
         location /sr_args {
             js_content sr_args;
         }
@@ -75,9 +76,11 @@ http {
         location /sr_options_args_pr {
             js_content sr_options_args_pr;
         }
+
         location /sr_options_method {
             js_content sr_options_method;
         }
+
         location /sr_options_method_pr {
             js_content sr_options_method_pr;
         }
@@ -97,28 +100,34 @@ http {
         location /sr_body_pr {
             js_content sr_body_pr;
         }
+
         location /sr_body_special {
             js_content sr_body_special;
         }
-
 
         location /sr_in_variable_handler {
             set $_ $async_var;
             js_content sr_in_variable_handler;
         }
+
         location /sr_detached_in_variable_handler {
             return 200 $subrequest_var;
         }
 
-        location /sr_error_page {
+        location /sr_async_var {
             set $_ $async_var;
             error_page 404 /return;
             return 404;
         }
 
+        location /sr_error_page {
+            js_content sr_error_page;
+        }
+
         location /sr_js_in_subrequest {
             js_content sr_js_in_subrequest;
         }
+
         location /sr_js_in_subrequest_pr {
             js_content sr_js_in_subrequest_pr;
         }
@@ -135,6 +144,7 @@ http {
         location /sr_unavail {
             js_content sr_unavail;
         }
+
         location /sr_unavail_pr {
             js_content sr_unavail_pr;
         }
@@ -155,14 +165,12 @@ http {
             js_content sr_except_not_a_func;
         }
 
-
         location /sr_except_failed_to_convert_options_arg {
             js_content sr_except_failed_to_convert_options_arg;
         }
 
         location /sr_except_invalid_options_header_only {
             js_content sr_except_invalid_options_header_only;
-
         }
 
         location /sr_in_sr_callback {
@@ -211,6 +219,12 @@ http {
         location /return {
             return 200 '["$request_method"]';
         }
+
+        location /error_page_404 {
+            return 404;
+
+            error_page 404 /404.html;
+        }
     }
 
     server {
@@ -255,6 +269,7 @@ EOF
 
 $t->write_file('test.js', <<EOF);
     this.Failed = {get toConvert() { return {toString(){return {};}}}};
+
     function test_njs(r) {
         r.return(200, njs.version);
     }
@@ -267,6 +282,7 @@ $t->write_file('test.js', <<EOF);
         r.subrequest('/p/sub1', 'h=xxx')
         .then(reply => r.return(200, JSON.stringify({h:reply.headersOut.h})))
     }
+
     function sr_args(r) {
         r.subrequest('/p/sub1', 'h=xxx', reply => {
             r.return(200, JSON.stringify({h:reply.headersOut.h}));
@@ -283,6 +299,7 @@ $t->write_file('test.js', <<EOF);
         r.subrequest('/p/sub1', {args:'h=xxx'})
         .then(reply => r.return(200, JSON.stringify({h:reply.headersOut.h})))
     }
+
     function sr_options_method(r) {
         r.subrequest('/p/method', {method:r.args.m}, body_fwd_cb);
     }
@@ -291,9 +308,10 @@ $t->write_file('test.js', <<EOF);
         r.subrequest('/p/method', {method:r.args.m})
         .then(body_fwd_cb);
     }
+
     function sr_options_body(r) {
         r.subrequest('/p/body', {method:'POST', body:'["REQ-BODY"]'},
-                       body_fwd_cb);
+                     body_fwd_cb);
     }
 
     function sr_options_method_head(r) {
@@ -310,11 +328,10 @@ $t->write_file('test.js', <<EOF);
         r.subrequest('/p/sub1')
         .then(body_fwd_cb);
     }
+
     function sr_body_special(r) {
         r.subrequest('/p/sub2', body_fwd_cb);
     }
-
-
 
     function body(r) {
         r.return(200, r.variables.request_body);
@@ -322,7 +339,7 @@ $t->write_file('test.js', <<EOF);
 
     function delayed(r) {
         setTimeout(r => r.return(200), 100, r);
-     }
+    }
 
     function detached(r) {
         var method = r.variables.request_method;
@@ -341,10 +358,17 @@ $t->write_file('test.js', <<EOF);
 
         return "";
     }
+
+    function sr_error_page(r) {
+         r.subrequest('/error_page_404')
+         .then(reply => {r.return(200, `reply.status:\${reply.status}`)});
+    }
+
     function subrequest_var(r) {
         r.subrequest('/p/detached',  {detached:true});
         r.subrequest('/p/detached',  {detached:true, args:'a=yyy',
                                       method:'POST'});
+
         return "subrequest_var";
     }
 
@@ -363,10 +387,11 @@ $t->write_file('test.js', <<EOF);
     function sr_unavail_pr(req) {
         subrequest_fn_pr(req, ['/unavail'], ['uri', 'status']);
     }
+
     function sr_broken(r) {
         r.subrequest('/daemon/unfinished', reply => {
             r.return(200, JSON.stringify({code:reply.status}));
-                        });
+        });
     }
 
     function sr_too_large(r) {
@@ -417,27 +442,30 @@ $t->write_file('test.js', <<EOF);
                       ['uri', 'status']);
     }
 
-
     function collect(replies, props, total, reply) {
         reply.log(`subrequest handler: \${reply.uri} status: \${reply.status}`)
 
         var rep = {};
         props.forEach(p => {rep[p] = reply[p]});
 
-                replies.push(rep);
+        replies.push(rep);
 
         if (replies.length == total) {
             reply.parent.return(200, JSON.stringify(replies));
-                }
+        }
     }
+
     function subrequest_fn(r, subs, props) {
         var replies = [];
+
         subs.forEach(sr =>
                      r.subrequest(sr, collect.bind(null, replies,
                                                    props, subs.length)));
     }
+
     function subrequest_fn_pr(r, subs, props) {
         var replies = [];
+
         subs.forEach(sr => r.subrequest(sr)
             .then(collect.bind(null, replies, props, subs.length)));
     }
@@ -445,7 +473,6 @@ $t->write_file('test.js', <<EOF);
     function sr_except_not_a_func(r) {
         r.subrequest('/sub1', 'a=1', 'b');
     }
-
 
     function sr_except_failed_to_convert_options_arg(r) {
         r.subrequest('/sub1', {args:Failed.toConvert}, ()=>{});
@@ -467,7 +494,7 @@ EOF
 
 $t->write_file('t', '["SEE-THIS"]');
 
-$t->try_run('no njs available')->plan(31);
+$t->try_run('no njs available')->plan(32);
 $t->run_daemon(\&http_daemon);
 
 ###############################################################################
@@ -476,11 +503,7 @@ is(get_json('/sr'), '[{"status":404,"uri":"/p/sub2"}]', 'sr');
 is(get_json('/sr_args'), '{"h":"xxx"}', 'sr_args');
 is(get_json('/sr_options_args'), '{"h":"xxx"}', 'sr_options_args');
 is(get_json('/sr_options_method?m=POST'), '["POST"]', 'sr method POST');
-
-
 is(get_json('/sr_options_method?m=PURGE'), '["PURGE"]', 'sr method PURGE');
-
-
 is(get_json('/sr_options_body'), '["REQ-BODY"]', 'sr_options_body');
 is(get_json('/sr_options_method_head'), '{"c":200}', 'sr_options_method_head');
 is(get_json('/sr_body'), '{"a":{"b":1}}', 'sr_body');
@@ -511,11 +534,6 @@ is(get_json('/sr_out_of_order'),
     '{"status":200,"uri":"/p/delayed"}]',
     'sr_multi');
 
-my $ver = http_get('/njs');
-
-TODO: {
-local $TODO = 'not yet'
-    unless $ver =~ /^([.0-9]+)$/m && $1 ge '0.3.8';
 is(get_json('/sr_pr'), '{"h":"xxx"}', 'sr_promise');
 is(get_json('/sr_options_args_pr'), '{"h":"xxx"}', 'sr_options_args_pr');
 is(get_json('/sr_options_method_pr?m=PUT'), '["PUT"]', 'sr method PUT');
@@ -523,29 +541,31 @@ is(get_json('/sr_body_pr'), '{"a":{"b":1}}', 'sr_body_pr');
 is(get_json('/sr_js_in_subrequest_pr'), '["JS-SUB"]', 'sr_js_in_subrequest_pr');
 is(get_json('/sr_unavail_pr'), '[{"status":502,"uri":"/unavail"}]',
     'sr_unavail_pr');
-}
-TODO: {
-local $TODO = 'not yet'
-    unless $ver =~ /^([.0-9]+)$/m && $1 ge '0.3.9';
+
 like(http_get('/sr_detached_in_variable_handler'), qr/subrequest_var/,
-    'sr_detached_in_variable_handler');
+     'sr_detached_in_variable_handler');
+
+TODO: {
+todo_skip 'leaves coredump', 1 unless $ENV{TEST_NGINX_UNSAFE}
+    or http_get('/njs') =~ /^([.0-9]+)$/m && $1 ge '0.5.0';
+
+like(http_get('/sr_error_page'), qr/reply\.status:404/,
+     'sr_error_page');
+
 }
+
 http_get('/sr_broken');
 http_get('/sr_in_sr');
 http_get('/sr_in_variable_handler');
-http_get('/sr_error_page');
+http_get('/sr_async_var');
 http_get('/sr_too_large');
 http_get('/sr_except_not_a_func');
 http_get('/sr_except_failed_to_convert_options_arg');
 http_get('/sr_uri_except');
 
-
-
-
 is(get_json('/sr_in_sr_callback'),
     '{"e":"subrequest can only be created for the primary request"}',
     'subrequest for non-primary request');
-
 
 $t->stop();
 
@@ -562,12 +582,9 @@ ok(index($t->read_file('error.log'), 'subrequest creation failed') > 0,
 ok(index($t->read_file('error.log'),
         'js subrequest: failed to get the parent context') > 0,
     'zero parent ctx');
-TODO: {
-local $TODO = 'not yet'
-    unless $ver =~ /^([.0-9]+)$/m && $1 ge '0.3.9';
+
 ok(index($t->read_file('error.log'), 'DETACHED') > 0,
     'detached subrequest');
-}
 
 ###############################################################################
 

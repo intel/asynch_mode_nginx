@@ -38,6 +38,8 @@ events {
 }
 
 stream {
+    %%TEST_GLOBALS_STREAM%%
+
     proxy_ssl on;
     proxy_ssl_session_reuse off;
     %%PROXY_ASYNCH_ENABLE%%

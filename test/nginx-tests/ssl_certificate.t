@@ -13,7 +13,7 @@ use strict;
 
 use Test::More;
 
-use Socket qw/ :DEFAULT CRLF /;
+use Socket qw/ CRLF /;
 
 BEGIN { use FindBin; chdir($FindBin::Bin); }
 
@@ -199,8 +199,12 @@ ok(Net::SSLeay::ERR_peek_error(), 'no certificate');
 sub get {
     my ($host, $port, $ctx) = @_;
     my ($s, $ssl) = get_ssl_socket($host, $port, $ctx) or return;
+
+    local $SIG{PIPE} = 'IGNORE';
+
     Net::SSLeay::write($ssl, 'GET / HTTP/1.0' . CRLF . CRLF);
     my $r = Net::SSLeay::read($ssl);
+    Net::SSLeay::shutdown($ssl);
     $s->close();
     return $r unless wantarray();
     return ($s, $ssl);
@@ -214,15 +218,8 @@ sub cert {
 
 sub get_ssl_socket {
     my ($host, $port, $ses) = @_;
-    my $s;
 
-    my $dest_ip = inet_aton('127.0.0.1');
-    $port = port($port);
-    my $dest_serv_params = sockaddr_in($port, $dest_ip);
-
-    socket($s, &AF_INET, &SOCK_STREAM, 0) or die "socket: $!";
-    connect($s, $dest_serv_params) or die "connect: $!";
-
+    my $s = IO::Socket::INET->new('127.0.0.1:' . port($port));
     my $ctx = Net::SSLeay::CTX_new() or die("Failed to create SSL_CTX $!");
     my $ssl = Net::SSLeay::new($ctx) or die("Failed to create SSL $!");
     Net::SSLeay::set_tlsext_host_name($ssl, $host);

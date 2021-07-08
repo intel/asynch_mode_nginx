@@ -14,6 +14,7 @@ use strict;
 use Test::More;
 
 use IO::Select;
+use Sys::Hostname;
 
 BEGIN { use FindBin; chdir($FindBin::Bin); }
 
@@ -27,7 +28,7 @@ select STDOUT; $| = 1;
 
 plan(skip_all => 'win32') if $^O eq 'MSWin32';
 
-my $t = Test::Nginx->new()->has(qw/http limit_req/)->plan(61);
+my $t = Test::Nginx->new()->has(qw/http limit_req/)->plan(62);
 
 $t->write_file_expand('nginx.conf', <<'EOF');
 
@@ -221,15 +222,16 @@ http_get('/if/work?logme=yes');
 
 get_syslog('/a');
 
-like($t->read_file('s_if.log'), qr/good:404.*work:404/s, 'syslog if success');
+like($t->read_file('s_if.log'), qr/good:404/s, 'syslog if success');
+like($t->read_file('s_if.log'), qr/work:404/s, 'syslog if success 2');
 unlike($t->read_file('s_if.log'), qr/(if:|empty:|zero:)404/, 'syslog if fail');
 
 like(get_syslog('/nohostname'),
-    qr/^<(\d{1,3})>                # PRI
-    ([A-Z][a-z]{2})\s            # mon
+    qr/^<(\d{1,3})>                         # PRI
+    ([A-Z][a-z]{2})\s                       # mon
     ([ \d]\d)\s(\d{2}):(\d{2}):(\d{2})\s    # date
-    (\w{1,32}):\s                # tag
-    (.*)/x,                    # MSG
+    (\w{1,32}):\s                           # tag
+    (.*)/x,                                 # MSG
     'nohostname');
 
 # send error handling
@@ -291,12 +293,12 @@ sub parse_syslog_message {
         'Sep', 'Oct', 'Nov', 'Dec');
 
     my ($pri, $mon, $mday, $hour, $minute, $sec, $host, $tag, $msg) =
-        $line =~ /^<(\d{1,3})>                # PRI
-            ([A-Z][a-z]{2})\s            # mon
+        $line =~ /^<(\d{1,3})>                      # PRI
+            ([A-Z][a-z]{2})\s                       # mon
             ([ \d]\d)\s(\d{2}):(\d{2}):(\d{2})\s    # date
-            ([\S]*)\s                # host
-            (\w{1,32}):\s                # tag
-            (.*)/x;                    # MSG
+            ([\S]*)\s                               # host
+            (\w{1,32}):\s                           # tag
+            (.*)/x;                                 # MSG
 
     my $sev = $pri & 0x07;
     my $fac = ($pri & 0x03f8) >> 3;
@@ -321,8 +323,7 @@ sub parse_syslog_message {
     ok($sec < 60, "$desc valid seconds");
 
     ok(defined($host), "$desc has host");
-    chomp(my $hostname = lc `hostname`);
-    is($host , $hostname, "$desc valid host");
+    is($host, lc(hostname()), "$desc valid host");
 
     ok(defined($tag), "$desc has tag");
     like($tag, qr'\w+', "$desc valid tag");

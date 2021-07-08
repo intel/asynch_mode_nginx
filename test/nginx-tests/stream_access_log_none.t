@@ -34,6 +34,8 @@ events {
 }
 
 stream {
+    %%TEST_GLOBALS_STREAM%%
+
     map $pid $a {
         default '" \ "';
     }

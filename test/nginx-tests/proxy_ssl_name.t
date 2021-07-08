@@ -28,7 +28,6 @@ my $t = Test::Nginx->new()->has(qw/http http_ssl sni proxy/)
     ->has_daemon('openssl')
     ->write_file_expand('nginx.conf', <<'EOF');
 
-
 %%TEST_GLOBALS%%
 
 daemon off;

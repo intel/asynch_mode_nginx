@@ -13,8 +13,6 @@ use strict;
 
 use Test::More;
 
-use Socket;
-
 BEGIN { use FindBin; chdir($FindBin::Bin); }
 
 use lib 'lib';
@@ -47,7 +45,6 @@ plan(skip_all => 'OpenSSL too old') unless defined $1 and $1 ge '1.0.2';
 
 $t->write_file_expand('nginx.conf', <<'EOF');
 
-
 %%TEST_GLOBALS%%
 
 daemon off;
@@ -71,9 +68,8 @@ http {
     ';
 
     server {
-        listen       127.0.0.1:8080 ssl;
+        listen       127.0.0.1:8080 ssl %%SSL_ASYNCH%%;
         server_name  localhost;
-        %%TEST_NGINX_GLOBALS_HTTPS%%
 
         ssl_certificate data:$pem;
         ssl_certificate_key data:$pem;
@@ -117,15 +113,8 @@ sub cert {
 
 sub get_ssl_socket {
     my ($host, $port) = @_;
-    my $s;
 
-    my $dest_ip = inet_aton('127.0.0.1');
-    $port = port($port);
-    my $dest_serv_params = sockaddr_in($port, $dest_ip);
-
-    socket($s, &AF_INET, &SOCK_STREAM, 0) or die "socket: $!";
-    connect($s, $dest_serv_params) or die "connect: $!";
-
+    my $s = IO::Socket::INET->new('127.0.0.1:' . port($port));
     my $ctx = Net::SSLeay::CTX_new() or die("Failed to create SSL_CTX $!");
     my $ssl = Net::SSLeay::new($ctx) or die("Failed to create SSL $!");
     Net::SSLeay::set_tlsext_host_name($ssl, $host);
