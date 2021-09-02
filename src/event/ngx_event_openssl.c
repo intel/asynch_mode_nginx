@@ -91,6 +91,12 @@ static void ngx_ssl_shutdown_async_handler(ngx_event_t *aev);
 #define NGX_ASYNC_EVENT_TIMEOUT 10000
 
 
+/* indicate that nginx start without ngx_ssl_init()
+ * which will involve OpenSSL configuration file to
+ * start OpenSSL engine */
+ngx_uint_t  ngx_no_ssl_init;
+
+
 int  ngx_ssl_connection_index;
 int  ngx_ssl_server_conf_index;
 int  ngx_ssl_session_cache_index;
@@ -120,6 +126,10 @@ ngx_ssl_empty_handler(ngx_event_t *ev)
 ngx_int_t
 ngx_ssl_init(ngx_log_t *log)
 {
+    if (ngx_no_ssl_init) {
+        return NGX_OK;
+    }
+
 #if OPENSSL_VERSION_NUMBER >= 0x10100003L
 
     if (OPENSSL_init_ssl(OPENSSL_INIT_LOAD_CONFIG, NULL) == 0) {
@@ -4717,15 +4727,17 @@ ngx_ssl_cleanup_ctx(void *data)
 
     X509  *cert, *next;
 
-    cert = SSL_CTX_get_ex_data(ssl->ctx, ngx_ssl_certificate_index);
+    if (!ngx_no_ssl_init) {
+        cert = SSL_CTX_get_ex_data(ssl->ctx, ngx_ssl_certificate_index);
 
-    while (cert) {
-        next = X509_get_ex_data(cert, ngx_ssl_next_certificate_index);
-        X509_free(cert);
-        cert = next;
+        while (cert) {
+            next = X509_get_ex_data(cert, ngx_ssl_next_certificate_index);
+            X509_free(cert);
+            cert = next;
+        }
+
+        SSL_CTX_free(ssl->ctx);
     }
-
-    SSL_CTX_free(ssl->ctx);
 }
 
 

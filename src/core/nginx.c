@@ -183,10 +183,6 @@ ngx_module_t  ngx_core_module = {
 static ngx_uint_t   ngx_show_help;
 static ngx_uint_t   ngx_show_version;
 static ngx_uint_t   ngx_show_configure;
-/* indicate that nginx start without ngx_ssl_init()
- * which will involve OpenSSL configuration file to
- * start OpenSSL engine */
-static ngx_uint_t   ngx_no_ssl_init;
 static u_char      *ngx_prefix;
 static u_char      *ngx_error_log;
 static u_char      *ngx_conf_file;
@@ -243,8 +239,7 @@ main(int argc, char *const *argv)
 
     /* STUB */
 #if (NGX_OPENSSL)
-    if(!ngx_no_ssl_init)
-        ngx_ssl_init(log);
+    ngx_ssl_init(log);
 #endif
 
     /*
