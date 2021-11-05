@@ -91,15 +91,15 @@ static void ngx_ssl_shutdown_async_handler(ngx_event_t *aev);
 #define NGX_ASYNC_EVENT_TIMEOUT 10000
 
 
-int  ngx_ssl_connection_index;
-int  ngx_ssl_server_conf_index;
-int  ngx_ssl_session_cache_index;
-int  ngx_ssl_session_ticket_keys_index;
-int  ngx_ssl_ocsp_index;
-int  ngx_ssl_certificate_index;
-int  ngx_ssl_next_certificate_index;
-int  ngx_ssl_certificate_name_index;
-int  ngx_ssl_stapling_index;
+int  ngx_ssl_connection_index = -1;
+int  ngx_ssl_server_conf_index = -1;
+int  ngx_ssl_session_cache_index = -1;
+int  ngx_ssl_session_ticket_keys_index = -1;
+int  ngx_ssl_ocsp_index = -1;
+int  ngx_ssl_certificate_index = -1;
+int  ngx_ssl_next_certificate_index = -1;
+int  ngx_ssl_certificate_name_index = -1;
+int  ngx_ssl_stapling_index = -1;
 
 
 static void
