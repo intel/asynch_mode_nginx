@@ -55,7 +55,7 @@ $t->run()->plan(1);
 
 my $s = http('', start => 1);
 
-select undef, undef, undef, 0.2;
+select undef, undef, undef, 10;
 
 $t->reload();
 
