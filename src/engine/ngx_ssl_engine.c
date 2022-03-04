@@ -72,6 +72,7 @@ ngx_str_t                   ngx_ssl_engine_name_prev = {
 };
 
 ngx_flag_t                  ngx_ssl_engine_reload_processed = 0;
+ngx_flag_t                  ngx_ssl_engine_need_finished = 0;
 
 static ngx_command_t  ngx_ssl_engine_commands[] = {
 
@@ -281,6 +282,21 @@ ngx_ssl_engine_set(ngx_cycle_t *cycle)
 
     /* Cleanup OpenSSL engine tables */
     ngx_ssl_engine_table_cleanup(e);
+
+    /* The ENGINE_finish is not executed by master process before the Nginx
+     * reload, which causes the worker can't exit gracefully due to unreleased
+     * resources. Run ENGINE_finish for master process here when reload happens
+     * to cover such case.
+     * */
+    if (NGX_PROCESS_SINGLE == ngx_process ||
+        NGX_PROCESS_MASTER == ngx_process) {
+        if (ngx_ssl_engine_need_finished) {
+            ENGINE_finish(e);
+        }
+        else {
+            ngx_ssl_engine_need_finished = 1;
+        }
+    }
 
     if (!ENGINE_init(e)) {
         ngx_log_error(NGX_LOG_EMERG, cycle->log, 0, "engine init failed");
