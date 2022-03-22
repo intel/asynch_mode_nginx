@@ -91,15 +91,18 @@ static void ngx_ssl_shutdown_async_handler(ngx_event_t *aev);
 #define NGX_ASYNC_EVENT_TIMEOUT 10000
 
 
-int  ngx_ssl_connection_index = -1;
-int  ngx_ssl_server_conf_index = -1;
-int  ngx_ssl_session_cache_index = -1;
-int  ngx_ssl_session_ticket_keys_index = -1;
-int  ngx_ssl_ocsp_index = -1;
-int  ngx_ssl_certificate_index = -1;
-int  ngx_ssl_next_certificate_index = -1;
-int  ngx_ssl_certificate_name_index = -1;
-int  ngx_ssl_stapling_index = -1;
+int  ngx_ssl_connection_index;
+int  ngx_ssl_server_conf_index;
+int  ngx_ssl_session_cache_index;
+int  ngx_ssl_session_ticket_keys_index;
+int  ngx_ssl_ocsp_index;
+int  ngx_ssl_certificate_index;
+int  ngx_ssl_next_certificate_index;
+int  ngx_ssl_certificate_name_index;
+int  ngx_ssl_stapling_index;
+
+
+extern ngx_uint_t ngx_no_ssl_init;
 
 
 static void
@@ -120,22 +123,24 @@ ngx_ssl_empty_handler(ngx_event_t *ev)
 ngx_int_t
 ngx_ssl_init(ngx_log_t *log)
 {
+    if (!ngx_no_ssl_init) {
+
 #if OPENSSL_VERSION_NUMBER >= 0x10100003L
+        if (OPENSSL_init_ssl(OPENSSL_INIT_LOAD_CONFIG, NULL) == 0) {
+            ngx_ssl_error(NGX_LOG_ALERT, log, 0, "OPENSSL_init_ssl() failed");
+            return NGX_ERROR;
+        }
 
-    if (OPENSSL_init_ssl(OPENSSL_INIT_LOAD_CONFIG, NULL) == 0) {
-        ngx_ssl_error(NGX_LOG_ALERT, log, 0, "OPENSSL_init_ssl() failed");
-        return NGX_ERROR;
-    }
+        /*
+         * OPENSSL_init_ssl() may leave errors in the error queue
+         * while returning success
+         */
 
-    /*
-     * OPENSSL_init_ssl() may leave errors in the error queue
-     * while returning success
-     */
+        ERR_clear_error();
 
-    ERR_clear_error();
+        ENGINE_load_builtin_engines();
+        ENGINE_load_dynamic();
 
-    ENGINE_load_builtin_engines();
-    ENGINE_load_dynamic();
 #else
 
     OPENSSL_config(NULL);
@@ -146,6 +151,8 @@ ngx_ssl_init(ngx_log_t *log)
     OpenSSL_add_all_algorithms();
 
 #endif
+
+    }
 
 #ifndef SSL_OP_NO_COMPRESSION
     {
