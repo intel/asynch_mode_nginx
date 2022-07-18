@@ -794,9 +794,6 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
             return NGX_CONF_ERROR;
         }
 
-        conf->ssl.asynch = conf->enable_asynch;
-
-
     } else if (conf->certificates) {
 
         if (conf->certificate_keys == NULL
@@ -813,6 +810,8 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     } else if (!conf->reject_handshake) {
         return NGX_CONF_OK;
     }
+
+    conf->ssl.asynch = conf->enable_asynch;
 
     if (ngx_ssl_create(&conf->ssl, conf->protocols, conf) != NGX_OK) {
         return NGX_CONF_ERROR;
@@ -1117,22 +1116,10 @@ ngx_http_ssl_enable_asynch(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     char  *rv;
 
-    ngx_flag_t       *pssl, *pssl_asynch;
-
     rv = ngx_conf_set_flag_slot(cf, cmd, conf);
 
     if (rv != NGX_CONF_OK) {
         return rv;
-    }
-
-    /* If ssl_asynch on is configured, then ssl on is configured by default
-     * This will align 'ssl_asynch on;' and 'listen port ssl' diretives
-     * */
-    pssl = (ngx_flag_t *) ((char *)conf + offsetof(ngx_http_ssl_srv_conf_t, enable));
-    pssl_asynch = (ngx_flag_t *) ((char *)conf + cmd->offset);
-
-    if(*pssl_asynch && *pssl != 1) {
-        *pssl = *pssl_asynch;
     }
 
     sscf->file = cf->conf_file->file.name.data;
