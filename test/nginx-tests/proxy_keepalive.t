@@ -26,7 +26,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http proxy upstream_keepalive ssi rewrite/)
-    ->plan(49)->write_file_expand('nginx.conf', <<'EOF');
+	->plan(49)->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -69,14 +69,14 @@ http {
 EOF
 
 $t->write_file('ssi.html',
-    '<!--#include virtual="/include$request_uri" set="x" -->' .
-    'set: <!--#echo var="x" -->');
+	'<!--#include virtual="/include$request_uri" set="x" -->' .
+	'set: <!--#echo var="x" -->');
 
 $t->run_daemon(\&http_daemon);
 $t->run();
 
 $t->waitforsocket('127.0.0.1:' . port(8081))
-    or die "Can't start test backend";
+	or die "Can't start test backend";
 
 ###############################################################################
 
@@ -99,23 +99,23 @@ like(http_get('/buffered/length2'), qr/X-Connection: $n.*SEE/ms, 'buffered 2');
 like($r = http_get('/buffered/chunked1'), qr/SEE-THIS/, 'buffered chunked');
 $r =~ m/X-Connection: (\d+)/; $n = $1;
 like(http_get('/buffered/chunked2'), qr/X-Connection: $n/,
-    'buffered chunked 2');
+	'buffered chunked 2');
 
 like($r = http_get('/buffered/complex1'), qr/(0123456789){100}/,
-    'buffered complex chunked');
+	'buffered complex chunked');
 $r =~ m/X-Connection: (\d+)/; $n = $1;
 like(http_get('/buffered/complex2'), qr/X-Connection: $n/,
-    'buffered complex chunked 2');
+	'buffered complex chunked 2');
 
 like($r = http_get('/buffered/chunk01'), qr/200 OK/, 'buffered 0 chunk');
 $r =~ m/X-Connection: (\d+)/; $n = $1;
 like(http_get('/buffered/chunk02'), qr/X-Connection: $n/, 'buffered 0 chunk 2');
 
 like($r = http_head('/buffered/length/head1'), qr/(?!SEE-THIS)/,
-    'buffered head');
+	'buffered head');
 $r =~ m/X-Connection: (\d+)/; $n = $1;
 like(http_head('/buffered/length/head2'), qr/X-Connection: $n/,
-    'buffered head 2');
+	'buffered head 2');
 
 like($r = http_get('/buffered/empty1'), qr/200 OK/, 'buffered empty');
 $r =~ m/X-Connection: (\d+)/; $n = $1;
@@ -126,10 +126,10 @@ $r =~ m/X-Connection: (\d+)/; $n = $1;
 like(http_get('/buffered/304nolen2'), qr/X-Connection: $n/, 'buffered 304 2');
 
 like($r = http_get('/buffered/304len1'), qr/304 Not/,
-    'buffered 304 with length');
+	'buffered 304 with length');
 $r =~ m/X-Connection: (\d+)/; $n = $1;
 like(http_get('/buffered/304len2'), qr/X-Connection: $n/,
-    'buffered 304 with length 2');
+	'buffered 304 with length 2');
 
 # unbuffered
 
@@ -140,40 +140,40 @@ like(http_get('/unbuffered/length2'), qr/X-Connection: $n/, 'unbuffered 2');
 like($r = http_get('/unbuffered/chunked1'), qr/SEE-THIS/, 'unbuffered chunked');
 $r =~ m/X-Connection: (\d+)/; $n = $1;
 like(http_get('/unbuffered/chunked2'), qr/X-Connection: $n/,
-    'unbuffered chunked 2');
+	'unbuffered chunked 2');
 
 like($r = http_get('/unbuffered/complex1'), qr/(0123456789){100}/,
-    'unbuffered complex chunked');
+	'unbuffered complex chunked');
 $r =~ m/X-Connection: (\d+)/; $n = $1;
 like(http_get('/unbuffered/complex2'), qr/X-Connection: $n/,
-    'unbuffered complex chunked 2');
+	'unbuffered complex chunked 2');
 
 like($r = http_get('/unbuffered/chunk01'), qr/200 OK/, 'unbuffered 0 chunk');
 $r =~ m/X-Connection: (\d+)/; $n = $1;
 like(http_get('/unbuffered/chunk02'), qr/X-Connection: $n/,
-    'unbuffered 0 chunk 2');
+	'unbuffered 0 chunk 2');
 
 like($r = http_get('/unbuffered/empty1'), qr/200 OK/, 'unbuffered empty');
 $r =~ m/X-Connection: (\d+)/; $n = $1;
 like(http_get('/unbuffered/empty2'), qr/X-Connection: $n/,
-    'unbuffered empty 2');
+	'unbuffered empty 2');
 
 like($r = http_head('/unbuffered/length/head1'), qr/(?!SEE-THIS)/,
-    'unbuffered head');
+	'unbuffered head');
 $r =~ m/X-Connection: (\d+)/; $n = $1;
 like(http_head('/unbuffered/length/head2'), qr/X-Connection: $n/,
-    'unbuffered head 2');
+	'unbuffered head 2');
 
 like($r = http_get('/unbuffered/304nolen1'), qr/304 Not/, 'unbuffered 304');
 $r =~ m/X-Connection: (\d+)/; $n = $1;
 like(http_get('/unbuffered/304nolen2'), qr/X-Connection: $n/,
-    'unbuffered 304 2');
+	'unbuffered 304 2');
 
 like($r = http_get('/unbuffered/304len1'), qr/304 Not/,
-    'unbuffered 304 with length');
+	'unbuffered 304 with length');
 $r =~ m/X-Connection: (\d+)/; $n = $1;
 like(http_get('/unbuffered/304len2'), qr/X-Connection: $n/,
-    'unbuffered 304 with length 2');
+	'unbuffered 304 with length 2');
 
 # in memory
 
@@ -190,10 +190,10 @@ $r =~ m/SEE-THIS(\d+)/; $n = $1;
 like(http_get('/inmemory/chunked2'), qr/SEE-THIS$n/, 'inmemory chunked 2');
 
 like($r = http_get('/inmemory/complex1'), qr/(0123456789){100}/,
-    'inmemory complex chunked');
+	'inmemory complex chunked');
 $r =~ m/SEE-THIS(\d+)/; $n = $1;
 like(http_get('/inmemory/complex2'), qr/SEE-THIS$n/,
-    'inmemory complex chunked 2');
+	'inmemory complex chunked 2');
 
 like(http_get('/inmemory/chunk01'), qr/set: $/, 'inmemory 0 chunk');
 like(http_get('/inmemory/chunk02'), qr/set: $/, 'inmemory 0 chunk 2');
@@ -214,144 +214,144 @@ like(`grep -F '[error]' ${\($t->testdir())}/error.log`, qr/^$/s, 'no errors');
 ###############################################################################
 
 sub http_daemon {
-    my $server = IO::Socket::INET->new(
-        Proto => 'tcp',
-        LocalHost => '127.0.0.1:' . port(8081),
-        Listen => 5,
-        Reuse => 1
-    )
-        or die "Can't create listening socket: $!\n";
+	my $server = IO::Socket::INET->new(
+		Proto => 'tcp',
+		LocalHost => '127.0.0.1:' . port(8081),
+		Listen => 5,
+		Reuse => 1
+	)
+		or die "Can't create listening socket: $!\n";
 
-    my $ccount = 0;
-    my $rcount = 0;
+	my $ccount = 0;
+	my $rcount = 0;
 
-    # dumb server which is able to keep connections alive
+	# dumb server which is able to keep connections alive
 
-    while (my $client = $server->accept()) {
-        Test::Nginx::log_core('||',
-            "connection from " . $client->peerhost());
-        $client->autoflush(1);
-        $ccount++;
+	while (my $client = $server->accept()) {
+		Test::Nginx::log_core('||',
+			"connection from " . $client->peerhost());
+		$client->autoflush(1);
+		$ccount++;
 
-        while (1) {
-            my $headers = '';
-            my $uri = '';
+		while (1) {
+			my $headers = '';
+			my $uri = '';
 
-            while (<$client>) {
-                Test::Nginx::log_core('||', $_);
-                $headers .= $_;
-                last if (/^\x0d?\x0a?$/);
-            }
+			while (<$client>) {
+				Test::Nginx::log_core('||', $_);
+				$headers .= $_;
+				last if (/^\x0d?\x0a?$/);
+			}
 
-            last if $headers eq '';
-            $rcount++;
+			last if $headers eq '';
+			$rcount++;
 
-            $uri = $1 if $headers =~ /^\S+\s+([^ ]+)\s+HTTP/i;
+			$uri = $1 if $headers =~ /^\S+\s+([^ ]+)\s+HTTP/i;
 
-            if ($uri =~ m/length/) {
-                print $client
-                    "HTTP/1.1 200 OK" . CRLF .
-                    "X-Request: $rcount" . CRLF .
-                    "X-Connection: $ccount" . CRLF .
-                    "Content-Length: 26" . CRLF . CRLF;
-                print $client "TEST-OK-IF-YOU-SEE-THIS" .
-                    sprintf("%03d", $ccount)
-                    unless $headers =~ /^HEAD/i;
+			if ($uri =~ m/length/) {
+				print $client
+					"HTTP/1.1 200 OK" . CRLF .
+					"X-Request: $rcount" . CRLF .
+					"X-Connection: $ccount" . CRLF .
+					"Content-Length: 26" . CRLF . CRLF;
+				print $client "TEST-OK-IF-YOU-SEE-THIS" .
+					sprintf("%03d", $ccount)
+					unless $headers =~ /^HEAD/i;
 
-            } elsif ($uri =~ m/empty/) {
-                print $client
-                    "HTTP/1.1 200 OK" . CRLF .
-                    "X-Request: $rcount" . CRLF .
-                    "X-Connection: $ccount" . CRLF .
-                    "Content-Length: 0" . CRLF . CRLF;
+			} elsif ($uri =~ m/empty/) {
+				print $client
+					"HTTP/1.1 200 OK" . CRLF .
+					"X-Request: $rcount" . CRLF .
+					"X-Connection: $ccount" . CRLF .
+					"Content-Length: 0" . CRLF . CRLF;
 
-            } elsif ($uri =~ m/304nolen/) {
-                print $client
-                    "HTTP/1.1 304 Not Modified" . CRLF .
-                    "X-Request: $rcount" . CRLF .
-                    "X-Connection: $ccount" . CRLF . CRLF;
+			} elsif ($uri =~ m/304nolen/) {
+				print $client
+					"HTTP/1.1 304 Not Modified" . CRLF .
+					"X-Request: $rcount" . CRLF .
+					"X-Connection: $ccount" . CRLF . CRLF;
 
-            } elsif ($uri =~ m/304len/) {
-                print $client
-                    "HTTP/1.1 304 Not Modified" . CRLF .
-                    "X-Request: $rcount" . CRLF .
-                    "X-Connection: $ccount" . CRLF .
-                    "Content-Length: 100" . CRLF . CRLF;
+			} elsif ($uri =~ m/304len/) {
+				print $client
+					"HTTP/1.1 304 Not Modified" . CRLF .
+					"X-Request: $rcount" . CRLF .
+					"X-Connection: $ccount" . CRLF .
+					"Content-Length: 100" . CRLF . CRLF;
 
-            } elsif ($uri =~ m/chunked/) {
-                print $client
-                    "HTTP/1.1 200 OK" . CRLF .
-                    "X-Request: $rcount" . CRLF .
-                    "X-Connection: $ccount" . CRLF .
-                    "Transfer-Encoding: chunked" . CRLF .
-                    CRLF;
-                print $client
-                    "1a" . CRLF .
-                    "TEST-OK-IF-YOU-SEE-THIS" .
-                    sprintf("%03d", $ccount) . CRLF .
-                    "0" . CRLF . CRLF
-                    unless $headers =~ /^HEAD/i;
+			} elsif ($uri =~ m/chunked/) {
+				print $client
+					"HTTP/1.1 200 OK" . CRLF .
+					"X-Request: $rcount" . CRLF .
+					"X-Connection: $ccount" . CRLF .
+					"Transfer-Encoding: chunked" . CRLF .
+					CRLF;
+				print $client
+					"1a" . CRLF .
+					"TEST-OK-IF-YOU-SEE-THIS" .
+					sprintf("%03d", $ccount) . CRLF .
+					"0" . CRLF . CRLF
+					unless $headers =~ /^HEAD/i;
 
-            } elsif ($uri =~ m/complex/) {
-                print $client
-                    "HTTP/1.1 200 OK" . CRLF .
-                    "X-Request: $rcount" . CRLF .
-                    "X-Connection: $ccount" . CRLF .
-                    "Transfer-Encoding: chunked" . CRLF .
-                    CRLF;
+			} elsif ($uri =~ m/complex/) {
+				print $client
+					"HTTP/1.1 200 OK" . CRLF .
+					"X-Request: $rcount" . CRLF .
+					"X-Connection: $ccount" . CRLF .
+					"Transfer-Encoding: chunked" . CRLF .
+					CRLF;
 
-                if ($headers !~ /^HEAD/i) {
-                    for my $n (1..100) {
-                        print $client
-                            "a" . CRLF .
-                            "0123456789" . CRLF;
-                        select undef, undef, undef, 0.01
-                            if $n % 50 == 0;
-                    }
-                    print $client
-                        "1a" . CRLF .
-                        "TEST-OK-IF-YOU-SEE-THIS" .
-                        sprintf("%03d", $ccount) .
-                        CRLF .
-                        "0" . CRLF;
-                    select undef, undef, undef, 0.05;
-                    print $client CRLF;
-                }
+				if ($headers !~ /^HEAD/i) {
+					for my $n (1..100) {
+						print $client
+							"a" . CRLF .
+							"0123456789" . CRLF;
+						select undef, undef, undef, 0.01
+							if $n % 50 == 0;
+					}
+					print $client
+						"1a" . CRLF .
+						"TEST-OK-IF-YOU-SEE-THIS" .
+						sprintf("%03d", $ccount) .
+						CRLF .
+						"0" . CRLF;
+					select undef, undef, undef, 0.05;
+					print $client CRLF;
+				}
 
-            } elsif ($uri =~ m/chunk0/) {
-                print $client
-                    "HTTP/1.1 200 OK" . CRLF .
-                    "X-Request: $rcount" . CRLF .
-                    "X-Connection: $ccount" . CRLF .
-                    "Transfer-Encoding: chunked" . CRLF .
-                    CRLF;
-                print $client
-                    "0" . CRLF . CRLF
-                    unless $headers =~ /^HEAD/i;
+			} elsif ($uri =~ m/chunk0/) {
+				print $client
+					"HTTP/1.1 200 OK" . CRLF .
+					"X-Request: $rcount" . CRLF .
+					"X-Connection: $ccount" . CRLF .
+					"Transfer-Encoding: chunked" . CRLF .
+					CRLF;
+				print $client
+					"0" . CRLF . CRLF
+					unless $headers =~ /^HEAD/i;
 
-            } elsif ($uri =~ m/closed/) {
-                print $client
-                    "HTTP/1.1 200 OK" . CRLF .
-                    "X-Request: $rcount" . CRLF .
-                    "X-Connection: $ccount" . CRLF .
-                    "Connection: close" . CRLF .
-                    "Content-Length: 12" . CRLF . CRLF .
-                    "0123456789" . CRLF;
-                last;
+			} elsif ($uri =~ m/closed/) {
+				print $client
+					"HTTP/1.1 200 OK" . CRLF .
+					"X-Request: $rcount" . CRLF .
+					"X-Connection: $ccount" . CRLF .
+					"Connection: close" . CRLF .
+					"Content-Length: 12" . CRLF . CRLF .
+					"0123456789" . CRLF;
+				last;
 
-            } else {
-                print $client
-                    "HTTP/1.1 404 Not Found" . CRLF .
-                    "X-Request: $rcount" . CRLF .
-                    "X-Connection: $ccount" . CRLF .
-                    "Connection: close" . CRLF . CRLF .
-                    "Oops, '$uri' not found" . CRLF;
-                last;
-            }
-        }
+			} else {
+				print $client
+					"HTTP/1.1 404 Not Found" . CRLF .
+					"X-Request: $rcount" . CRLF .
+					"X-Connection: $ccount" . CRLF .
+					"Connection: close" . CRLF . CRLF .
+					"Oops, '$uri' not found" . CRLF;
+				last;
+			}
+		}
 
-        close $client;
-    }
+		close $client;
+	}
 }
 
 ###############################################################################

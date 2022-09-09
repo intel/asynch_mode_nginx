@@ -68,30 +68,30 @@ like(http('PUT / HTTP/1.0' . CRLF . CRLF), qr!405 Not Allowed!i, 'put');
 ###############################################################################
 
 sub unhex {
-    my ($input) = @_;
-    my $buffer = '';
+	my ($input) = @_;
+	my $buffer = '';
 
-    for my $l ($input =~ m/:  +((?:[0-9a-f]{2,4} +)+) /gms) {
-        for my $v ($l =~ m/[0-9a-f]{2}/g) {
-            $buffer .= chr(hex($v));
-        }
-    }
+	for my $l ($input =~ m/:  +((?:[0-9a-f]{2,4} +)+) /gms) {
+		for my $v ($l =~ m/[0-9a-f]{2}/g) {
+			$buffer .= chr(hex($v));
+		}
+	}
 
-    return $buffer;
+	return $buffer;
 }
 
 sub http_get_body {
-    my ($uri) = @_;
+	my ($uri) = @_;
 
-    return undef if !defined $uri;
+	return undef if !defined $uri;
 
-    my $text = http_get($uri);
+	my $text = http_get($uri);
 
-    if ($text !~ /(.*?)\x0d\x0a?\x0d\x0a?(.*)/ms) {
-        return undef;
-    }
+	if ($text !~ /(.*?)\x0d\x0a?\x0d\x0a?(.*)/ms) {
+		return undef;
+	}
 
-    return $2;
+	return $2;
 }
 
 ###############################################################################

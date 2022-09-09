@@ -80,40 +80,40 @@ like(http_get('/delayed.html'), qr/x{100}y{1024}SEE-THIS/, 'delayed');
 ###############################################################################
 
 sub http_daemon {
-    my ($t) = @_;
+	my ($t) = @_;
 
-    my $server = IO::Socket::INET->new(
-        Proto => 'tcp',
-        LocalHost => '127.0.0.1',
-        LocalPort => port(8081),
-        Listen => 5,
-        Reuse => 1
-    )
-        or die "Can't create listening socket: $!\n";
+	my $server = IO::Socket::INET->new(
+		Proto => 'tcp',
+		LocalHost => '127.0.0.1',
+		LocalPort => port(8081),
+		Listen => 5,
+		Reuse => 1
+	)
+		or die "Can't create listening socket: $!\n";
 
-    local $SIG{PIPE} = 'IGNORE';
+	local $SIG{PIPE} = 'IGNORE';
 
-    my $data = ('y' x 1024) . 'SEE-THIS';
+	my $data = ('y' x 1024) . 'SEE-THIS';
 
-    while (my $client = $server->accept()) {
-        $client->autoflush(1);
+	while (my $client = $server->accept()) {
+		$client->autoflush(1);
 
-        my $headers = '';
+		my $headers = '';
 
-        while (<$client>) {
-            $headers .= $_;
-            last if (/^\x0d?\x0a?$/);
-        }
+		while (<$client>) {
+			$headers .= $_;
+			last if (/^\x0d?\x0a?$/);
+		}
 
-        select undef, undef, undef, 0.5;
+		select undef, undef, undef, 0.5;
 
-        print $client <<EOF;
+		print $client <<EOF;
 HTTP/1.1 200 OK
 Connection: close
 
 $data
 EOF
-    }
+	}
 }
 
 ###############################################################################

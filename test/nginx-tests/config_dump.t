@@ -101,13 +101,13 @@ $t->write_file('map.conf', '#map.conf;');
 ###############################################################################
 
 sub getconf {
-    my ($t, $string, $conf) = @_;
-    my $prefix = "# configuration file $d/$conf:\n";
-    my $offset = index($string, $prefix) + length($prefix);
-    my $len = length($t->read_file($conf));
-    my $s = substr($string, $offset, $len);
-    $s =~ tr/\r//d;
-    return $s;
+	my ($t, $string, $conf) = @_;
+	my $prefix = "# configuration file $d/$conf:\n";
+	my $offset = index($string, $prefix) + length($prefix);
+	my $len = length($t->read_file($conf));
+	my $s = substr($string, $offset, $len);
+	$s =~ tr/\r//d;
+	return $s;
 }
 
 ###############################################################################

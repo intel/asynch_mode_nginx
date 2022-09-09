@@ -27,15 +27,18 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 eval {
-    require Net::SSLeay;
-    Net::SSLeay::load_error_strings();
-    Net::SSLeay::SSLeay_add_ssl_algorithms();
-    Net::SSLeay::randomize();
+	require Net::SSLeay;
+	Net::SSLeay::load_error_strings();
+	Net::SSLeay::SSLeay_add_ssl_algorithms();
+	Net::SSLeay::randomize();
 };
 plan(skip_all => 'Net::SSLeay not installed') if $@;
 
+eval { exists &Net::SSLeay::P_alpn_selected or die; };
+plan(skip_all => 'Net::SSLeay with OpenSSL ALPN support required') if $@;
+
 my $t = Test::Nginx->new()->has(qw/mail mail_ssl imap pop3 smtp/)
-    ->has_daemon('openssl')->plan(20);
+	->has_daemon('openssl')->plan(22);
 
 $t->write_file_expand('nginx.conf', <<'EOF');
 
@@ -53,7 +56,7 @@ mail {
 
     ssl_password_file password;
 
-    auth_http  http://127.0.0.1:8080;    # unused
+    auth_http  http://127.0.0.1:8080;	# unused
 
     ssl_session_cache none;
 
@@ -148,15 +151,15 @@ EOF
 my $d = $t->testdir();
 
 foreach my $name ('localhost', 'inherits') {
-    system("openssl genrsa -out $d/$name.key -passout pass:localhost "
-        . "-aes128 2048 >>$d/openssl.out 2>&1") == 0
-        or die "Can't create private key: $!\n";
-    system('openssl req -x509 -new '
-        . "-config $d/openssl.conf -subj /CN=$name/ "
-        . "-out $d/$name.crt "
-        . "-key $d/$name.key -passin pass:localhost"
-        . ">>$d/openssl.out 2>&1") == 0
-        or die "Can't create certificate for $name: $!\n";
+	system("openssl genrsa -out $d/$name.key -passout pass:localhost "
+		. "-aes128 2048 >>$d/openssl.out 2>&1") == 0
+		or die "Can't create private key: $!\n";
+	system('openssl req -x509 -new '
+		. "-config $d/openssl.conf -subj /CN=$name/ "
+		. "-out $d/$name.crt "
+		. "-key $d/$name.key -passin pass:localhost"
+		. ">>$d/openssl.out 2>&1") == 0
+		or die "Can't create certificate for $name: $!\n";
 }
 
 my $ctx = Net::SSLeay::CTX_new() or die("Failed to create SSL_CTX $!");
@@ -211,6 +214,25 @@ like(Net::SSLeay::dump_peer_certificate($ssl), qr/CN=localhost/, 'CN');
 
 ($s, $ssl) = get_ssl_socket(8148);
 like(Net::SSLeay::dump_peer_certificate($ssl), qr/CN=inherits/, 'CN inner');
+
+# alpn
+
+ok(get_ssl_socket(8148, undef, ['imap']), 'alpn');
+
+SKIP: {
+$t->{_configure_args} =~ /LibreSSL ([\d\.]+)/;
+skip 'LibreSSL too old', 1 if defined $1 and $1 lt '3.4.0';
+$t->{_configure_args} =~ /OpenSSL ([\d\.]+)/;
+skip 'OpenSSL too old', 1 if defined $1 and $1 lt '1.1.0';
+
+TODO: {
+local $TODO = 'not yet' unless $t->has_version('1.21.4');
+
+ok(!get_ssl_socket(8148, undef, ['unknown']), 'alpn rejected');
+
+}
+
+}
 
 # starttls imap
 
@@ -293,14 +315,15 @@ $s->ok('smtp starttls only');
 ###############################################################################
 
 sub get_ssl_socket {
-    my ($port, $ses) = @_;
+	my ($port, $ses, $alpn) = @_;
 
-    my $s = IO::Socket::INET->new('127.0.0.1:' . port($port));
-    my $ssl = Net::SSLeay::new($ctx) or die("Failed to create SSL $!");
-    Net::SSLeay::set_session($ssl, $ses) if defined $ses;
-    Net::SSLeay::set_fd($ssl, fileno($s));
-    Net::SSLeay::connect($ssl) or die("ssl connect");
-    return ($s, $ssl);
+	my $s = IO::Socket::INET->new('127.0.0.1:' . port($port));
+	my $ssl = Net::SSLeay::new($ctx) or die("Failed to create SSL $!");
+	Net::SSLeay::set_session($ssl, $ses) if defined $ses;
+	Net::SSLeay::set_alpn_protos($ssl, $alpn) if defined $alpn;
+	Net::SSLeay::set_fd($ssl, fileno($s));
+	Net::SSLeay::connect($ssl) == 1 or return;
+	return ($s, $ssl);
 }
 
 ###############################################################################

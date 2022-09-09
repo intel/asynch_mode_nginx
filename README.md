@@ -80,40 +80,40 @@ Please download the QAT driver from the link https://01.org/intel-quickassist-te
 
 ## Additional Information
 
-* Asynch Mode for NGINX\* is developed based on Nginx-1.20.1.
+* Asynch Mode for NGINX\* is developed based on Nginx-1.22.0.
 
-* Generate patch against official Nginx-1.20.1.
+* Generate patch against official Nginx-1.22.0.
 
 ```bash
   git clone https://github.com/intel/asynch_mode_nginx.git
-  wget http://nginx.org/download/nginx-1.20.1.tar.gz
-  tar -xvzf nginx-1.20.1.tar.gz
-  diff -Naru -x .git nginx-1.20.1 asynch_mode_nginx > async_mode_nginx_1.20.1.patch
+  wget http://nginx.org/download/nginx-1.22.0.tar.gz
+  tar -xvzf nginx-1.22.0.tar.gz
+  diff -Naru -x .git nginx-1.22.0 asynch_mode_nginx > async_mode_nginx_1.22.0.patch
 ```
 
-* Apply patch to official Nginx-1.20.1.
+* Apply patch to official Nginx-1.22.0.
 
 ```bash
-  wget http://nginx.org/download/nginx-1.20.1.tar.gz
-  tar -xvzf nginx-1.20.1.tar.gz
-  patch -p0 < async_mode_nginx_1.20.1.patch
+  wget http://nginx.org/download/nginx-1.22.0.tar.gz
+  tar -xvzf nginx-1.22.0.tar.gz
+  patch -p0 < async_mode_nginx_1.22.0.patch
 ```
 
 * Generate patch against github official read-only mirror
 
 ```bash
   git clone https://github.com/intel/asynch_mode_nginx.git
-  wget https://github.com/nginx/nginx/archive/release-1.20.1.tar.gz
-  tar -xvzf release-1.20.1.tar.gz
-  diff -Naru -x .git -x .hgtags nginx-release-1.20.1 asynch_mode_nginx > async_mode_nginx_1.20.1.patch
+  wget https://github.com/nginx/nginx/archive/release-1.22.0.tar.gz
+  tar -xvzf release-1.22.0.tar.gz
+  diff -Naru -x .git -x .hgtags nginx-release-1.22.0 asynch_mode_nginx > async_mode_nginx_1.22.0.patch
 ```
 
 * Apply patch to the github release pachage.
 
 ```bash
-  wget https://github.com/nginx/nginx/archive/release-1.20.1.tar.gz
-  tar -xvzf release-1.20.1.tar.gz
-  patch -p0 < async_mode_nginx_1.20.1.patch
+  wget https://github.com/nginx/nginx/archive/release-1.22.0.tar.gz
+  tar -xvzf release-1.22.0.tar.gz
+  patch -p0 < async_mode_nginx_1.22.0.patch
 ```
 
 * Asynch Mode for NGINX\* SSL engine framework provides new directives:
@@ -293,7 +293,8 @@ is configured as
 
 **Configure nginx for compilation:**
 
-```bash
+    Configure Nginx against OpenSSL 1.1.1
+    ```bash
     ./configure \
         --prefix=$NGINX_INSTALL_DIR \
         --with-http_ssl_module \
@@ -301,7 +302,18 @@ is configured as
         --add-dynamic-module=modules/nginx_qat_module/ \
         --with-cc-opt="-DNGX_SECURE_MEM -I$OPENSSL_LIB/include -I$ICP_ROOT/quickassist/include -I$ICP_ROOT/quickassist/include/dc -I$QZ_ROOT/include -Wno-error=deprecated-declarations" \
         --with-ld-opt="-Wl,-rpath=$OPENSSL_LIB/lib -L$OPENSSL_LIB/lib -L$QZ_ROOT/src -lqatzip -lz"
-```
+    ```
+
+    Configure Nginx against OpenSSL 3.0
+    ```bash
+    ./configure \
+        --prefix=$NGINX_INSTALL_DIR \
+        --with-http_ssl_module \
+        --add-dynamic-module=modules/nginx_qatzip_module \
+        --add-dynamic-module=modules/nginx_qat_module/ \
+        --with-cc-opt="-DNGX_SECURE_MEM -I$OPENSSL_LIB/include -I$ICP_ROOT/quickassist/include -I$ICP_ROOT/quickassist/include/dc -I$QZ_ROOT/include -Wno-error=deprecated-declarations" \
+        --with-ld-opt="-Wl,-rpath=$OPENSSL_LIB/lib64 -L$OPENSSL_LIB/lib64 -L$QZ_ROOT/src -lqatzip -lz"
+    ```
 
 **Compile and Install:**
 
@@ -652,6 +664,9 @@ This is a sample configure file shows how to configure QAT in nginx.conf. This f
 **TLS1.3 Early data function may failed when enable HKDF offload in QAT Engine**<br/>
    When enable HKDF offload in QAT Engine, and enable early data function with TLS1.3 protocol in
    Nginx configuration, early data operation in session reuse case may failed.
+
+**Performance drop under OpenSSL 3.0**<br/>
+   Both ECDH and PRF cause performance drop under OpenSSL 3.0.
 
 ## Intended Audience
 

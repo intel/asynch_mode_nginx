@@ -156,10 +156,10 @@ $t->run();
 ###############################################################################
 
 my $s = IO::Socket::INET->new(
-    Proto => 'udp',
-    LocalAddr => '127.0.0.1:' . port(8984)
+	Proto => 'udp',
+	LocalAddr => '127.0.0.1:' . port(8984)
 )
-    or die "Can't open syslog socket: $!";
+	or die "Can't open syslog socket: $!";
 
 parse_syslog_message('error_log', get_syslog('/e'));
 parse_syslog_message('access_log', get_syslog('/a'));
@@ -174,8 +174,8 @@ like(get_syslog('/at'), qr/SEETHIS:/, 'access_log tag');
 
 
 like(get_syslog('/e'),
-    qr/nginx: \d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} \[error\]/,
-    'error_log format');
+	qr/nginx: \d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} \[error\]/,
+	'error_log format');
 like(get_syslog('/a_logf'), qr/nginx: \/a_logf:404$/, 'access_log log_format');
 
 my @lines = split /<\d+>/, get_syslog('/a2');
@@ -227,12 +227,12 @@ like($t->read_file('s_if.log'), qr/work:404/s, 'syslog if success 2');
 unlike($t->read_file('s_if.log'), qr/(if:|empty:|zero:)404/, 'syslog if fail');
 
 like(get_syslog('/nohostname'),
-    qr/^<(\d{1,3})>                         # PRI
-    ([A-Z][a-z]{2})\s                       # mon
-    ([ \d]\d)\s(\d{2}):(\d{2}):(\d{2})\s    # date
-    (\w{1,32}):\s                           # tag
-    (.*)/x,                                 # MSG
-    'nohostname');
+	qr/^<(\d{1,3})>				# PRI
+	([A-Z][a-z]{2})\s			# mon
+	([ \d]\d)\s(\d{2}):(\d{2}):(\d{2})\s	# date
+	(\w{1,32}):\s				# tag
+	(.*)/x,					# MSG
+	'nohostname');
 
 # send error handling
 
@@ -244,111 +244,111 @@ get_syslog('/a');
 get_syslog('/a');
 
 $s = IO::Socket::INET->new(
-    Proto => 'udp',
-    LocalAddr => '127.0.0.1:' . port(8984)
+	Proto => 'udp',
+	LocalAddr => '127.0.0.1:' . port(8984)
 )
-    or die "Can't open syslog socket: $!";
+	or die "Can't open syslog socket: $!";
 
 ok(get_syslog('/a'), 'send error - recover');
 
 ###############################################################################
 
 sub syslog_lines {
-    my ($uri, $pattern, $port) = @_;
-    return map { $_ =~ /\Q$pattern\E/g } (get_syslog($uri));
+	my ($uri, $pattern, $port) = @_;
+	return map { $_ =~ /\Q$pattern\E/g } (get_syslog($uri));
 }
 
 sub levels {
-    my ($t, $file) = @_;
-    my %levels_hash;
+	my ($t, $file) = @_;
+	my %levels_hash;
 
-    map { $levels_hash{$_}++; } ($t->read_file($file) =~ /(\[\w+\])/g);
+	map { $levels_hash{$_}++; } ($t->read_file($file) =~ /(\[\w+\])/g);
 
-    return \%levels_hash;
+	return \%levels_hash;
 }
 
 sub get_syslog {
-    my ($uri) = @_;
-    my $data = '';
+	my ($uri) = @_;
+	my $data = '';
 
-    http_get($uri);
+	http_get($uri);
 
-    IO::Select->new($s)->can_read(1);
-    while (IO::Select->new($s)->can_read(0.1)) {
-        my $buffer;
-        sysread($s, $buffer, 4096);
-        $data .= $buffer;
-    }
-    return $data;
+	IO::Select->new($s)->can_read(1);
+	while (IO::Select->new($s)->can_read(0.1)) {
+		my $buffer;
+		sysread($s, $buffer, 4096);
+		$data .= $buffer;
+	}
+	return $data;
 }
 
 sub parse_syslog_message {
-    my ($desc, $line) = @_;
+	my ($desc, $line) = @_;
 
-    unless ($line) {
-        fail("$desc timeout in receiving syslog");
-    }
+	unless ($line) {
+		fail("$desc timeout in receiving syslog");
+	}
 
-    my @months = ('Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug',
-        'Sep', 'Oct', 'Nov', 'Dec');
+	my @months = ('Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug',
+		'Sep', 'Oct', 'Nov', 'Dec');
 
-    my ($pri, $mon, $mday, $hour, $minute, $sec, $host, $tag, $msg) =
-        $line =~ /^<(\d{1,3})>                      # PRI
-            ([A-Z][a-z]{2})\s                       # mon
-            ([ \d]\d)\s(\d{2}):(\d{2}):(\d{2})\s    # date
-            ([\S]*)\s                               # host
-            (\w{1,32}):\s                           # tag
-            (.*)/x;                                 # MSG
+	my ($pri, $mon, $mday, $hour, $minute, $sec, $host, $tag, $msg) =
+		$line =~ /^<(\d{1,3})>				# PRI
+			([A-Z][a-z]{2})\s			# mon
+			([ \d]\d)\s(\d{2}):(\d{2}):(\d{2})\s	# date
+			([\S]*)\s				# host
+			(\w{1,32}):\s				# tag
+			(.*)/x;					# MSG
 
-    my $sev = $pri & 0x07;
-    my $fac = ($pri & 0x03f8) >> 3;
+	my $sev = $pri & 0x07;
+	my $fac = ($pri & 0x03f8) >> 3;
 
-    ok(defined($pri), "$desc has PRI");
-    ok($sev >= 0 && $sev <= 7, "$desc valid severity");
-    ok($fac >= 0 && $fac < 24, "$desc valid facility");
+	ok(defined($pri), "$desc has PRI");
+	ok($sev >= 0 && $sev <= 7, "$desc valid severity");
+	ok($fac >= 0 && $fac < 24, "$desc valid facility");
 
-    ok(defined($mon), "$desc has month");
-    ok((grep $mon, @months), "$desc valid month");
+	ok(defined($mon), "$desc has month");
+	ok((grep $mon, @months), "$desc valid month");
 
-    ok(defined($mday), "$desc has day");
-    ok($mday <= 31, "$desc valid day");
+	ok(defined($mday), "$desc has day");
+	ok($mday <= 31, "$desc valid day");
 
-    ok(defined($hour), "$desc has hour");
-    ok($hour < 24, "$desc valid hour");
+	ok(defined($hour), "$desc has hour");
+	ok($hour < 24, "$desc valid hour");
 
-    ok(defined($minute), "$desc has minutes");
-    ok($minute < 60, "$desc valid minutes");
+	ok(defined($minute), "$desc has minutes");
+	ok($minute < 60, "$desc valid minutes");
 
-    ok(defined($sec), "$desc has seconds");
-    ok($sec < 60, "$desc valid seconds");
+	ok(defined($sec), "$desc has seconds");
+	ok($sec < 60, "$desc valid seconds");
 
-    ok(defined($host), "$desc has host");
-    is($host, lc(hostname()), "$desc valid host");
+	ok(defined($host), "$desc has host");
+	is($host, lc(hostname()), "$desc valid host");
 
-    ok(defined($tag), "$desc has tag");
-    like($tag, qr'\w+', "$desc valid tag");
+	ok(defined($tag), "$desc has tag");
+	like($tag, qr'\w+', "$desc valid tag");
 
-    ok(length($msg) > 0, "$desc valid CONTENT");
+	ok(length($msg) > 0, "$desc valid CONTENT");
 }
 
 ###############################################################################
 
 sub syslog_daemon {
-    my ($port, $t, $file) = @_;
+	my ($port, $t, $file) = @_;
 
-    my $s = IO::Socket::INET->new(
-        Proto => 'udp',
-        LocalAddr => "127.0.0.1:$port"
-    );
+	my $s = IO::Socket::INET->new(
+		Proto => 'udp',
+		LocalAddr => "127.0.0.1:$port"
+	);
 
-    open my $fh, '>', $t->testdir() . '/' . $file;
-    select $fh; $| = 1;
+	open my $fh, '>', $t->testdir() . '/' . $file;
+	select $fh; $| = 1;
 
-    while (1) {
-        my $buffer;
-        $s->recv($buffer, 4096);
-        print $fh $buffer . "\n";
-    }
+	while (1) {
+		my $buffer;
+		$s->recv($buffer, 4096);
+		print $fh $buffer . "\n";
+	}
 }
 
 ###############################################################################

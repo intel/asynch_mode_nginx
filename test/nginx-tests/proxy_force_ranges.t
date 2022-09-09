@@ -27,7 +27,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http proxy cache/)->plan(7)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -87,42 +87,37 @@ $t->run();
 # serving range requests requires Accept-Ranges by default
 
 unlike(http_get_range('/t.html', 'Range: bytes=4-'), qr/^THIS/m,
-    'range without Accept-Ranges');
+	'range without Accept-Ranges');
 
 like(http_get_range('/cache/t.html', 'Range: bytes=4-'), qr/^THIS/m,
-    'uncached range');
+	'uncached range');
 like(http_get_range('/cache/t.html', 'Range: bytes=4-'), qr/^THIS/m,
-    'cached range');
+	'cached range');
 like(http_get_range('/cache/t.html', 'Range: bytes=0-2,4-'), qr/^SEE.*^THIS/ms,
-    'cached multipart range');
+	'cached multipart range');
 
 # If-Range HTTP-date request
 
 like(http_get_range('/proxy/t.html',
-    "Range: bytes=4-\nIf-Range: Mon, 28 Sep 1970 06:00:00 GMT"),
-    qr/^THIS/m, 'if-range last-modified proxy');
+	"Range: bytes=4-\nIf-Range: Mon, 28 Sep 1970 06:00:00 GMT"),
+	qr/^THIS/m, 'if-range last-modified proxy');
 
 # If-Range entity-tag request
 
 like(http_get_range('/proxy/t.html',
-    "Range: bytes=4-\nIf-Range: \"59a5401c-8\""),
-    qr/^THIS/m, 'if-range etag proxy');
+	"Range: bytes=4-\nIf-Range: \"59a5401c-8\""),
+	qr/^THIS/m, 'if-range etag proxy');
 
 # range sent using chunked transfer encoding
 
-TODO: {
-local $TODO = 'not yet' unless $t->has_version('1.17.0');
-
 like(http_get_range('/proxy/t.html', 'Range: bytes=-2'),
-    qr/2${CRLF}IS${CRLF}0$CRLF$CRLF$/, 'no dublicate final chunk');
-
-}
+	qr/2${CRLF}IS${CRLF}0$CRLF$CRLF$/, 'no dublicate final chunk');
 
 ###############################################################################
 
 sub http_get_range {
-    my ($url, $extra) = @_;
-    return http(<<EOF);
+	my ($url, $extra) = @_;
+	return http(<<EOF);
 GET $url HTTP/1.1
 Host: localhost
 Connection: close

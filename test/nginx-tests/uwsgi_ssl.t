@@ -25,8 +25,8 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http uwsgi http_ssl/)
-    ->has_daemon('uwsgi')->has_daemon('openssl')->plan(7)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->has_daemon('uwsgi')->has_daemon('openssl')->plan(7)
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -75,11 +75,11 @@ my $crt = "$d/uwsgi.crt";
 my $key = "$d/uwsgi.key";
 
 foreach my $name ('uwsgi') {
-    system('openssl req -x509 -new '
-        . "-config $d/openssl.conf -subj /CN=$name/ "
-        . "-out $d/$name.crt -keyout $d/$name.key "
-        . ">>$d/openssl.out 2>&1") == 0
-        or die "Can't create certificate for $name: $!\n";
+	system('openssl req -x509 -new '
+		. "-config $d/openssl.conf -subj /CN=$name/ "
+		. "-out $d/$name.crt -keyout $d/$name.key "
+		. ">>$d/openssl.out 2>&1") == 0
+		or die "Can't create certificate for $name: $!\n";
 }
 
 $t->write_file('uwsgi_test_app.py', <<END);
@@ -94,48 +94,43 @@ my $uwsgihelp = `uwsgi -h`;
 my @uwsgiopts = ();
 
 if ($uwsgihelp !~ /--wsgi-file/) {
-    # uwsgi has no python support, maybe plugin load is necessary
-    push @uwsgiopts, '--plugin', 'python';
-    push @uwsgiopts, '--plugin', 'python3';
+	# uwsgi has no python support, maybe plugin load is necessary
+	push @uwsgiopts, '--plugin', 'python';
+	push @uwsgiopts, '--plugin', 'python3';
 }
 
 open OLDERR, ">&", \*STDERR; close STDERR;
 $t->run_daemon('uwsgi', @uwsgiopts,
-    '--ssl-socket', '127.0.0.1:' . port(8081) . ",$crt,$key",
-    '--wsgi-file', $d . '/uwsgi_test_app.py',
-    '--logto', $d . '/uwsgi_log');
+	'--ssl-socket', '127.0.0.1:' . port(8081) . ",$crt,$key",
+	'--wsgi-file', $d . '/uwsgi_test_app.py',
+	'--logto', $d . '/uwsgi_log');
 open STDERR, ">&", \*OLDERR;
 
 $t->run();
 
 $t->waitforsocket('127.0.0.1:' . port(8081))
-    or die "Can't start uwsgi";
+	or die "Can't start uwsgi";
 
 ###############################################################################
-
-TODO: {
-todo_skip 'not yet', 7 unless $t->has_version('1.19.1');
 
 like(http_get('/'), qr/SEE-THIS/, 'uwsgi request');
 like(http_head('/head'), qr/200 OK(?!.*SEE-THIS)/s, 'no data in HEAD');
 
 like(http_get_headers('/headers'), qr/SEE-THIS/,
-    'uwsgi request with many ignored headers');
+	'uwsgi request with many ignored headers');
 
 like(http_get('/var?b=127.0.0.1:' . port(8081)), qr/SEE-THIS/,
-    'uwsgi with variables');
+	'uwsgi with variables');
 like(http_get('/var?b=u'), qr/SEE-THIS/, 'uwsgi with variables to upstream');
 
 like(http_post('/'), qr/SEE-THIS/, 'uwsgi post');
 like(http_post_big('/'), qr/SEE-THIS/, 'uwsgi big post');
 
-}
-
 ###############################################################################
 
 sub http_get_headers {
-    my ($url, %extra) = @_;
-    return http(<<EOF, %extra);
+	my ($url, %extra) = @_;
+	return http(<<EOF, %extra);
 GET $url HTTP/1.0
 Host: localhost
 X-Blah: ignored header
@@ -162,27 +157,27 @@ EOF
 }
 
 sub http_post {
-    my ($url, %extra) = @_;
+	my ($url, %extra) = @_;
 
-    my $p = "POST $url HTTP/1.0" . CRLF .
-        "Host: localhost" . CRLF .
-        "Content-Length: 10" . CRLF .
-        CRLF .
-        "1234567890";
+	my $p = "POST $url HTTP/1.0" . CRLF .
+		"Host: localhost" . CRLF .
+		"Content-Length: 10" . CRLF .
+		CRLF .
+		"1234567890";
 
-    return http($p, %extra);
+	return http($p, %extra);
 }
 
 sub http_post_big {
-    my ($url, %extra) = @_;
+	my ($url, %extra) = @_;
 
-    my $p = "POST $url HTTP/1.0" . CRLF .
-        "Host: localhost" . CRLF .
-        "Content-Length: 10240" . CRLF .
-        CRLF .
-        ("1234567890" x 1024);
+	my $p = "POST $url HTTP/1.0" . CRLF .
+		"Host: localhost" . CRLF .
+		"Content-Length: 10240" . CRLF .
+		CRLF .
+		("1234567890" x 1024);
 
-    return http($p, %extra);
+	return http($p, %extra);
 }
 
 ###############################################################################

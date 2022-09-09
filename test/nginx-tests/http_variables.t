@@ -83,13 +83,7 @@ http_get('/');
 http_get('/../bad_uri');
 http_get('/redefine');
 
-TODO: {
-todo_skip 'overflow', 1 unless $ENV{TEST_NGINX_UNSAFE}
-    or $t->has_version('1.19.0');
-
 like(http_get('/arg?l=42'), qr/42:$/, 'arg');
-
-}
 
 # $limit_rate is a special variable that has its own set_handler / get_handler
 
@@ -102,7 +96,7 @@ my $log = $t->read_file('cc.log');
 like($log, qr!^: -$!m, 'no uri');
 like($log, qr!^/: -$!m, 'no header');
 like($log, qr!^/set: max-age=3600, private, must-revalidate$!m,
-    'multi headers');
+	'multi headers');
 
 like($log, qr!^/redefine: no-cache$!m, 'ignoring headers with (hash == 0)');
 

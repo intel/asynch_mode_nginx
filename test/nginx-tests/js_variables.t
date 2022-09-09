@@ -24,7 +24,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http rewrite/)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -36,26 +36,26 @@ events {
 http {
     %%TEST_GLOBALS_HTTP%%
 
-    js_set $test_var   test_var;
+    js_set $test_var   test.variable;
 
-    js_include test.js;
+    js_import test.js;
 
     server {
         listen       127.0.0.1:8080;
         server_name  localhost;
 
-        set $foo       foo_orig;
+        set $foo       test.foo_orig;
 
         location /var_set {
             return 200 $test_var$foo;
         }
 
         location /content_set {
-            js_content content_set;
+            js_content test.content_set;
         }
 
         location /not_found_set {
-            js_content not_found_set;
+            js_content test.not_found_set;
         }
     }
 }
@@ -63,7 +63,7 @@ http {
 EOF
 
 $t->write_file('test.js', <<EOF);
-    function test_var(r) {
+    function variable(r) {
         r.variables.foo = r.variables.arg_a;
         return 'test_var';
     }
@@ -80,6 +80,8 @@ $t->write_file('test.js', <<EOF);
             r.return(500, e);
         }
     }
+
+    export default {variable, content_set, not_found_set};
 
 EOF
 

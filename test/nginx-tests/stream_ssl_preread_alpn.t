@@ -25,8 +25,8 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/stream stream_map stream_ssl_preread/)
-    ->has(qw/stream_ssl stream_return/)->has_daemon('openssl')
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->has(qw/stream_ssl stream_return/)->has_daemon('openssl')
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -98,11 +98,11 @@ EOF
 my $d = $t->testdir();
 
 foreach my $name ('localhost') {
-    system('openssl req -x509 -new '
-        . "-config $d/openssl.conf -subj /CN=$name/ "
-        . "-out $d/$name.crt -keyout $d/$name.key "
-        . ">>$d/openssl.out 2>&1") == 0
-        or die "Can't create certificate for $name: $!\n";
+	system('openssl req -x509 -new '
+		. "-config $d/openssl.conf -subj /CN=$name/ "
+		. "-out $d/$name.crt -keyout $d/$name.key "
+		. ">>$d/openssl.out 2>&1") == 0
+		or die "Can't create certificate for $name: $!\n";
 }
 
 $t->run();
@@ -124,28 +124,28 @@ get_ssl(8081, '');
 ###############################################################################
 
 sub get_ssl {
-    my ($port, @alpn) = @_;
-    my $s = stream('127.0.0.1:' . port($port));
+	my ($port, @alpn) = @_;
+	my $s = stream('127.0.0.1:' . port($port));
 
-    eval {
-        local $SIG{ALRM} = sub { die "timeout\n" };
-        local $SIG{PIPE} = sub { die "sigpipe\n" };
-        alarm(8);
-        IO::Socket::SSL->start_SSL($s->{_socket},
-            SSL_alpn_protocols => [ @alpn ],
-            SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_NONE(),
-            SSL_error_trap => sub { die $_[1] }
-        );
-        alarm(0);
-    };
-    alarm(0);
+	eval {
+		local $SIG{ALRM} = sub { die "timeout\n" };
+		local $SIG{PIPE} = sub { die "sigpipe\n" };
+		alarm(8);
+		IO::Socket::SSL->start_SSL($s->{_socket},
+			SSL_alpn_protocols => [ @alpn ],
+			SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_NONE(),
+			SSL_error_trap => sub { die $_[1] }
+		);
+		alarm(0);
+	};
+	alarm(0);
 
-    if ($@) {
-        log_in("died: $@");
-        return undef;
-    }
+	if ($@) {
+		log_in("died: $@");
+		return undef;
+	}
 
-    return $s->read();
+	return $s->read();
 }
 
 ###############################################################################

@@ -25,7 +25,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/stream stream_return/)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -70,7 +70,7 @@ $t->try_run('no stream js_var')->plan(2);
 ###############################################################################
 
 is(stream('127.0.0.1:' . port(8081))->io('###'), 'a:127.0.0.1',
-    'default value');
+	'default value');
 is(stream('127.0.0.1:' . port(8082))->io('###'), 'xxx', 'value set');
 
 ###############################################################################

@@ -26,7 +26,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http proxy limit_conn limit_req/)
-    ->plan(4);
+	->plan(4);
 
 $t->write_file_expand('nginx.conf', <<'EOF');
 

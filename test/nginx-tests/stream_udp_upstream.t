@@ -25,7 +25,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/stream udp/)->plan(5)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -99,8 +99,7 @@ my @ports = my ($port4, $port5) = (port(8984), port(8985));
 is(many(10, port(8980)), "$port4: 5, $port5: 5", 'balanced');
 
 is(dgram('127.0.0.1:' . port(8981))->io('.', read_timeout => 0.5), '',
-    'no next upstream for dgram');
-
+	'no next upstream for dgram');
 
 is(many(10, port(8981)), "$port4: 5, $port5: 5", 'failures');
 
@@ -110,42 +109,42 @@ is(many(10, port(8983)), "$port4: 10", 'backup');
 ###############################################################################
 
 sub many {
-    my ($count, $port) = @_;
-    my (%ports);
+	my ($count, $port) = @_;
+	my (%ports);
 
-    for (1 .. $count) {
-        if (dgram("127.0.0.1:$port")->io('.') =~ /(\d+)/) {
-            $ports{$1} = 0 unless defined $ports{$1};
-            $ports{$1}++;
-        }
-    }
+	for (1 .. $count) {
+		if (dgram("127.0.0.1:$port")->io('.') =~ /(\d+)/) {
+			$ports{$1} = 0 unless defined $ports{$1};
+			$ports{$1}++;
+		}
+	}
 
-    my @keys = map { my $p = $_; grep { $p == $_ } keys %ports } @ports;
-    return join ', ', map { $_ . ": " . $ports{$_} } @keys;
+	my @keys = map { my $p = $_; grep { $p == $_ } keys %ports } @ports;
+	return join ', ', map { $_ . ": " . $ports{$_} } @keys;
 }
 
 ###############################################################################
 
 sub udp_daemon {
-    my ($port, $t) = @_;
+	my ($port, $t) = @_;
 
-    my $server = IO::Socket::INET->new(
-        Proto => 'udp',
-        LocalAddr => '127.0.0.1:' . $port,
-        Reuse => 1,
-    )
-        or die "Can't create listening socket: $!\n";
+	my $server = IO::Socket::INET->new(
+		Proto => 'udp',
+		LocalAddr => '127.0.0.1:' . $port,
+		Reuse => 1,
+	)
+		or die "Can't create listening socket: $!\n";
 
-    # signal we are ready
+	# signal we are ready
 
-    open my $fh, '>', $t->testdir() . '/' . $port;
-    close $fh;
+	open my $fh, '>', $t->testdir() . '/' . $port;
+	close $fh;
 
-    while (1) {
-        $server->recv(my $buffer, 65536);
-        $buffer = $server->sockport();
-        $server->send($buffer);
-    }
+	while (1) {
+		$server->recv(my $buffer, 65536);
+		$buffer = $server->sockport();
+		$server->send($buffer);
+	}
 }
 
 ###############################################################################

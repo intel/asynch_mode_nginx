@@ -24,7 +24,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http rewrite/)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -115,13 +115,13 @@ like(http_body('/b/404'), $re, 'tokens build 404 body');
 ###############################################################################
 
 sub http_body {
-    my ($uri) = shift;
-    return http_get($uri) =~ /.*?\x0d\x0a?\x0d\x0a?(.*)/ms && $1;
+	my ($uri) = shift;
+	return http_get($uri) =~ /.*?\x0d\x0a?\x0d\x0a?(.*)/ms && $1;
 }
 
 sub http_get_server {
-    my ($url) = @_;
-    return http_get($url) =~ /^Server:\s(.+?)\x0d?$/mi && $1 || undef;
+	my ($url) = @_;
+	return http_get($url) =~ /^Server:\s(.+?)\x0d?$/mi && $1 || undef;
 }
 
 ###############################################################################

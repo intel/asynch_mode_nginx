@@ -115,107 +115,102 @@ $t->run();
 unlike(http_get('/'), qr/X-Body:/ms, 'no body');
 
 like(http_get_body('/', '0123456789'),
-    qr/X-Body: 0123456789\x0d?$/ms, 'body');
+	qr/X-Body: 0123456789\x0d?$/ms, 'body');
 
 like(http_get_body('/', '0123456789' x 128),
-    qr/X-Body: (0123456789){128}\x0d?$/ms, 'body in two buffers');
+	qr/X-Body: (0123456789){128}\x0d?$/ms, 'body in two buffers');
 
 like(http_get_body('/', '0123456789' x 512),
-    qr/X-Body-File/ms, 'body in file');
+	qr/X-Body-File/ms, 'body in file');
 
 like(read_body_file(http_get_body('/b', '0123456789' x 512)),
-    qr/^(0123456789){512}$/s, 'body in file only');
+	qr/^(0123456789){512}$/s, 'body in file only');
 
 like(http_get_body('/single', '0123456789' x 128),
-    qr/X-Body: (0123456789){128}\x0d?$/ms, 'body in single buffer');
+	qr/X-Body: (0123456789){128}\x0d?$/ms, 'body in single buffer');
 
 like(http_get_body('/large', '0123456789' x 128), qr/ 413 /, 'body too large');
 
 # pipelined requests
 
 like(http_get_body('/', '0123456789', '0123456789' x 128, '0123456789' x 512,
-    'foobar'), qr/X-Body: foobar\x0d?$/ms, 'body pipelined');
+	'foobar'), qr/X-Body: foobar\x0d?$/ms, 'body pipelined');
 like(http_get_body('/', '0123456789' x 128, '0123456789' x 512, '0123456789',
-    'foobar'), qr/X-Body: foobar\x0d?$/ms, 'body pipelined 2');
+	'foobar'), qr/X-Body: foobar\x0d?$/ms, 'body pipelined 2');
 
 like(http_get_body('/discard', '0123456789', '0123456789' x 128,
-    '0123456789' x 512, 'foobar'), qr/(TEST.*){4}/ms,
-    'body discard');
+	'0123456789' x 512, 'foobar'), qr/(TEST.*){4}/ms,
+	'body discard');
 like(http_get_body('/discard', '0123456789' x 128, '0123456789' x 512,
-    '0123456789', 'foobar'), qr/(TEST.*){4}/ms,
-    'body discard 2');
+	'0123456789', 'foobar'), qr/(TEST.*){4}/ms,
+	'body discard 2');
 
 # proxy with file only
 
 like(http_get_body('/small', '0123456789'),
-    qr/X-Body: 0123456789\x0d?$/ms, 'small body in file only');
+	qr/X-Body: 0123456789\x0d?$/ms, 'small body in file only');
 
 # proxy with file only - reuse of r->header_in
 
 like(
-    http(
-        'GET /small HTTP/1.0' . CRLF
-        . 'Content-Length: 10' . CRLF . CRLF
-        . '01234',
-        sleep => 0.1,
-        body => '56789'
-    ),
-    qr!X-Body: 0123456789\x0d?\x0a.*X-Original-Uri: /small!ms,
-    'small body in file only, not preread'
+	http(
+		'GET /small HTTP/1.0' . CRLF
+		. 'Content-Length: 10' . CRLF . CRLF
+		. '01234',
+		sleep => 0.1,
+		body => '56789'
+	),
+	qr!X-Body: 0123456789\x0d?\x0a.*X-Original-Uri: /small!ms,
+	'small body in file only, not preread'
 );
 
 # proxy_next_upstream
 
 like(http_get_body('/next', '0123456789'),
-    qr/X-Body: 0123456789\x0d?$/ms, 'body next upstream');
+	qr/X-Body: 0123456789\x0d?$/ms, 'body next upstream');
 
 # discarded request body in redirect via error_page
 
-TODO: {
-local $TODO = 'not yet' unless $t->has_version('1.17.7');
-
 unlike(
-    http(
-        'POST /redirect HTTP/1.1' . CRLF
-        . 'Host: localhost' . CRLF
-        . 'Content-Length: 10' . CRLF . CRLF
-        . '0123456789' .
-        'GET /next HTTP/1.0' . CRLF . CRLF
-    ),
-    qr/400 Bad Request/ms, 'redirect - discard request body'
+	http(
+		'POST /redirect HTTP/1.1' . CRLF
+		. 'Host: localhost' . CRLF
+		. 'Content-Length: 10' . CRLF . CRLF
+		. '0123456789' .
+		'GET /next HTTP/1.0' . CRLF . CRLF
+	),
+	qr/400 Bad Request/ms, 'redirect - discard request body'
 );
-
-}
 
 ###############################################################################
 
 sub read_body_file {
-    my ($r) = @_;
-    return '' unless $r =~ m/X-Body-File: (.*)/;
-    open FILE, $1
-        or return "$!";
-    local $/;
-    my $content = <FILE>;
-    close FILE;
-    return $content;
+	my ($r) = @_;
+	return '' unless $r =~ m/X-Body-File: (.*)/;
+	open FILE, $1
+		or return "$!";
+	local $/;
+	my $content = <FILE>;
+	close FILE;
+	return $content;
 }
 
 sub http_get_body {
-    my $uri = shift;
-    my $last = pop;
-    return http( join '', (map {
-        my $body = $_;
-        "GET $uri HTTP/1.1" . CRLF
-        . "Host: localhost" . CRLF
-        . "Content-Length: " . (length $body) . CRLF . CRLF
-        . $body
-    } @_),
-        "GET $uri HTTP/1.1" . CRLF
-        . "Host: localhost" . CRLF
-        . "Connection: close" . CRLF
-        . "Content-Length: " . (length $last) . CRLF . CRLF
-        . $last
-    );
+	my $uri = shift;
+	my $last = pop;
+	return http( join '', (map {
+		my $body = $_;
+		"GET $uri HTTP/1.1" . CRLF
+		. "Host: localhost" . CRLF
+		. "Content-Length: " . (length $body) . CRLF . CRLF
+		. $body
+	} @_),
+		"GET $uri HTTP/1.1" . CRLF
+		. "Host: localhost" . CRLF
+		. "Connection: close" . CRLF
+		. "Content-Length: " . (length $last) . CRLF . CRLF
+		. $last
+	);
 }
 
 ###############################################################################

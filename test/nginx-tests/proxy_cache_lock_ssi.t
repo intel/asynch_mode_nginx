@@ -23,7 +23,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http proxy cache ssi/)
-    ->write_file_expand('nginx.conf', <<'EOF')->plan(2);
+	->write_file_expand('nginx.conf', <<'EOF')->plan(2);
 
 %%TEST_GLOBALS%%
 
@@ -70,9 +70,9 @@ http {
 EOF
 
 $t->write_file('ssi.html',
-    '<!--#include virtual="/active" -->' .
-    '<!--#include virtual="/locked" -->' .
-    'end'
+	'<!--#include virtual="/active" -->' .
+	'<!--#include virtual="/locked" -->' .
+	'end'
 );
 
 $t->write_file('active', 'active');

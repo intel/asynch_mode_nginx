@@ -94,16 +94,16 @@ eval { require IO::Socket::SSL; die if $IO::Socket::SSL::VERSION < 1.56; };
 plan(skip_all => 'IO::Socket::SSL version >= 1.56 required') if $@;
 
 eval {
-    if (IO::Socket::SSL->can('can_client_sni')) {
-        IO::Socket::SSL->can_client_sni() or die;
-    }
+	if (IO::Socket::SSL->can('can_client_sni')) {
+		IO::Socket::SSL->can_client_sni() or die;
+	}
 };
 plan(skip_all => 'IO::Socket::SSL with OpenSSL SNI support required') if $@;
 
 eval {
-    my $ctx = Net::SSLeay::CTX_new() or die;
-    my $ssl = Net::SSLeay::new($ctx) or die;
-    Net::SSLeay::set_tlsext_host_name($ssl, 'example.org') == 1 or die;
+	my $ctx = Net::SSLeay::CTX_new() or die;
+	my $ssl = Net::SSLeay::new($ctx) or die;
+	Net::SSLeay::set_tlsext_host_name($ssl, 'example.org') == 1 or die;
 };
 plan(skip_all => 'Net::SSLeay with OpenSSL SNI support required') if $@;
 
@@ -118,11 +118,11 @@ EOF
 my $d = $t->testdir();
 
 foreach my $name ('localhost') {
-    system('openssl req -x509 -new '
-        . "-config $d/openssl.conf -subj /CN=$name/ "
-        . "-out $d/$name.crt -keyout $d/$name.key "
-        . ">>$d/openssl.out 2>&1") == 0
-        or die "Can't create certificate for $name: $!\n";
+	system('openssl req -x509 -new '
+		. "-config $d/openssl.conf -subj /CN=$name/ "
+		. "-out $d/$name.crt -keyout $d/$name.key "
+		. ">>$d/openssl.out 2>&1") == 0
+		or die "Can't create certificate for $name: $!\n";
 }
 
 $t->write_file('ticket1.key', '1' x 48);
@@ -131,8 +131,8 @@ $t->write_file('ticket2.key', '2' x 48);
 $t->run();
 
 plan(skip_all => 'no TLS 1.3 sessions')
-    if get('default', port(8080), get_ssl_context()) =~ /TLSv1.3/
-    && ($Net::SSLeay::VERSION < 1.88 || $IO::Socket::SSL::VERSION < 2.061);
+	if get('default', port(8080), get_ssl_context()) =~ /TLSv1.3/
+	&& ($Net::SSLeay::VERSION < 1.88 || $IO::Socket::SSL::VERSION < 2.061);
 
 $t->plan(6);
 
@@ -171,52 +171,52 @@ like(get('tickets', port(8081), $ctx), qr!tickets:r!, 'tickets reused');
 ###############################################################################
 
 sub get_ssl_context {
-    return IO::Socket::SSL::SSL_Context->new(
-        SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_NONE(),
-        SSL_session_cache_size => 100
-    );
+	return IO::Socket::SSL::SSL_Context->new(
+		SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_NONE(),
+		SSL_session_cache_size => 100
+	);
 }
 
 sub get_ssl_socket {
-    my ($host, $port, $ctx) = @_;
-    my $s;
+	my ($host, $port, $ctx) = @_;
+	my $s;
 
-    eval {
-        local $SIG{ALRM} = sub { die "timeout\n" };
-        local $SIG{PIPE} = sub { die "sigpipe\n" };
-        alarm(8);
-        $s = IO::Socket::SSL->new(
-            Proto => 'tcp',
-            PeerAddr => '127.0.0.1',
-            PeerPort => $port,
-            SSL_hostname => $host,
-            SSL_reuse_ctx => $ctx,
-            SSL_error_trap => sub { die $_[1] }
-        );
-        alarm(0);
-    };
-    alarm(0);
+	eval {
+		local $SIG{ALRM} = sub { die "timeout\n" };
+		local $SIG{PIPE} = sub { die "sigpipe\n" };
+		alarm(8);
+		$s = IO::Socket::SSL->new(
+			Proto => 'tcp',
+			PeerAddr => '127.0.0.1',
+			PeerPort => $port,
+			SSL_hostname => $host,
+			SSL_reuse_ctx => $ctx,
+			SSL_error_trap => sub { die $_[1] }
+		);
+		alarm(0);
+	};
+	alarm(0);
 
-    if ($@) {
-        log_in("died: $@");
-        return undef;
-    }
+	if ($@) {
+		log_in("died: $@");
+		return undef;
+	}
 
-    return $s;
+	return $s;
 }
 
 sub get {
-    my ($host, $port, $ctx) = @_;
+	my ($host, $port, $ctx) = @_;
 
-    my $s = get_ssl_socket($host, $port, $ctx) or return;
-    my $r = http(<<EOF, socket => $s);
+	my $s = get_ssl_socket($host, $port, $ctx) or return;
+	my $r = http(<<EOF, socket => $s);
 GET / HTTP/1.0
 Host: $host
 
 EOF
 
-    $s->close();
-    return $r;
+	$s->close();
+	return $r;
 }
 
 ###############################################################################

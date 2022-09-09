@@ -24,7 +24,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http proxy ssi/)->plan(4)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -65,8 +65,8 @@ http {
 EOF
 
 $t->write_file('ssi.html',
-    '<!--#include virtual="/$arg_c" set="x" -->' .
-    'set: <!--#echo var="x" -->');
+	'<!--#include virtual="/$arg_c" set="x" -->' .
+	'set: <!--#echo var="x" -->');
 
 $t->write_file('length', 'TEST-OK-IF-YOU-SEE-THIS');
 $t->write_file('long', 'x' x 400);

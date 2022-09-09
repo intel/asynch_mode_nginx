@@ -105,9 +105,9 @@ Content-Length: 10
 EOF
 
 like($r, qr/201 Created.*(Content-Length|\x0d\0a0\x0d\x0a)/ms,
-    'put file extra data');
+	'put file extra data');
 is(-s $t->testdir() . '/file', 10,
-    'put file extra data size');
+	'put file extra data size');
 
 TODO: {
 local $TODO = 'not yet' unless $t->has_version('1.21.0');
@@ -138,12 +138,7 @@ like($r, qr/201 Created.*(Content-Length|\x0d\0a0\x0d\x0a)/ms, 'mkcol');
 SKIP: {
 skip 'perl too old', 1 if !$^V or $^V lt v5.12.0;
 
-TODO: {
-local $TODO = 'not yet' unless $t->has_version('1.17.7');
-
 like($r, qr!(?(?{ $r =~ /Location/ })Location: /test/)!, 'mkcol location');
-
-}
 
 }
 
@@ -226,7 +221,6 @@ EOF
 
 like($r, qr/415 Unsupported/, 'copy body');
 
-
 $r = http(<<EOF . '0123456789');
 DELETE /file HTTP/1.1
 Host: localhost
@@ -236,9 +230,6 @@ Content-Length: 10
 EOF
 
 like($r, qr/415 Unsupported/, 'delete body');
-
-TODO: {
-local $TODO = 'not yet' unless $t->has_version('1.17.7');
 
 $r = http(<<EOF);
 MKCOL /test/ HTTP/1.1
@@ -282,7 +273,5 @@ a
 EOF
 
 like($r, qr/415 Unsupported/, 'delete body chunked');
-
-}
 
 ###############################################################################

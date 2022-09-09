@@ -24,7 +24,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http rewrite ssi/)->plan(5)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -84,8 +84,8 @@ unlike(get('/ssi.html'), qr/^0\x0d\x0a?\x0d\x0a?\w/m, 'only final chunk');
 ###############################################################################
 
 sub get {
-    my ($url, $extra) = @_;
-    return http(<<EOF);
+	my ($url, $extra) = @_;
+	return http(<<EOF);
 GET $url HTTP/1.1
 Host: localhost
 Connection: close

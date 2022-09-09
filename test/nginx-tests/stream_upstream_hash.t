@@ -103,80 +103,75 @@ like(many(10, port(8081)), qr/($port2|$port3): 10/, 'hash consistent');
 
 # fallback to round-robin
 
-TODO: {
-local $TODO = 'not yet' unless $t->has_version('1.17.1');
-
 like(many(4, port(8084)), qr/$port2: 2, $port3: 2/, 'empty key');
 like(many(4, port(8085)), qr/$port2: 2, $port3: 2/, 'empty key - consistent');
-
-}
 
 ###############################################################################
 
 sub many {
-    my ($count, $port) = @_;
-    my (%ports);
+	my ($count, $port) = @_;
+	my (%ports);
 
-    for (1 .. $count) {
-        if (stream("127.0.0.1:$port")->io('.') =~ /(\d+)/) {
-            $ports{$1} = 0 unless defined $ports{$1};
-            $ports{$1}++;
-        }
-    }
+	for (1 .. $count) {
+		if (stream("127.0.0.1:$port")->io('.') =~ /(\d+)/) {
+			$ports{$1} = 0 unless defined $ports{$1};
+			$ports{$1}++;
+		}
+	}
 
-    my @keys = map { my $p = $_; grep { $p == $_ } keys %ports } @ports;
-    return join ', ', map { $_ . ": " . $ports{$_} } @keys;
+	my @keys = map { my $p = $_; grep { $p == $_ } keys %ports } @ports;
+	return join ', ', map { $_ . ": " . $ports{$_} } @keys;
 }
 
 ###############################################################################
 
 sub stream_daemon {
-    my ($port) = @_;
+	my ($port) = @_;
 
-    my $server = IO::Socket::INET->new(
-        Proto => 'tcp',
-        LocalAddr => '127.0.0.1',
-        LocalPort => $port,
-        Listen => 5,
-        Reuse => 1
-    )
-        or die "Can't create listening socket: $!\n";
+	my $server = IO::Socket::INET->new(
+		Proto => 'tcp',
+		LocalAddr => '127.0.0.1',
+		LocalPort => $port,
+		Listen => 5,
+		Reuse => 1
+	)
+		or die "Can't create listening socket: $!\n";
 
-    my $sel = IO::Select->new($server);
+	my $sel = IO::Select->new($server);
 
-    local $SIG{PIPE} = 'IGNORE';
+	local $SIG{PIPE} = 'IGNORE';
 
-    while (my @ready = $sel->can_read) {
-        foreach my $fh (@ready) {
-            if ($server == $fh) {
-                my $new = $fh->accept;
-                $new->autoflush(1);
-                $sel->add($new);
+	while (my @ready = $sel->can_read) {
+		foreach my $fh (@ready) {
+			if ($server == $fh) {
+				my $new = $fh->accept;
+				$new->autoflush(1);
+				$sel->add($new);
 
-            } elsif (stream_handle_client($fh)) {
-                $sel->remove($fh);
-                $fh->close;
-            }
-        }
-    }
+			} elsif (stream_handle_client($fh)) {
+				$sel->remove($fh);
+				$fh->close;
+			}
+		}
+	}
 }
 
 sub stream_handle_client {
-    my ($client) = @_;
+	my ($client) = @_;
 
-    log2c("(new connection $client)");
+	log2c("(new connection $client)");
 
-    $client->sysread(my $buffer, 65536) or return 1;
+	$client->sysread(my $buffer, 65536) or return 1;
 
-    log2i("$client $buffer");
+	log2i("$client $buffer");
 
-    $buffer = $client->sockport();
+	$buffer = $client->sockport();
 
-    log2o("$client $buffer");
+	log2o("$client $buffer");
 
-    $client->syswrite($buffer);
+	$client->syswrite($buffer);
 
-    return 1;
+	return 1;
 }
 
 sub log2i { Test::Nginx::log_core('|| <<', @_); }

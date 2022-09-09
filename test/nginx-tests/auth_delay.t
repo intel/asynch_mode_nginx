@@ -26,7 +26,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http auth_basic/)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -56,7 +56,7 @@ EOF
 $t->write_file('index.html', '');
 $t->write_file('htpasswd', 'user:' . '{PLAIN}good' . "\n");
 
-$t->try_run('no auth_delay')->plan(4);
+$t->run()->plan(4);
 
 ###############################################################################
 
@@ -71,11 +71,11 @@ cmp_ok(time() - $t1, '<', 2, 'no delay');
 ###############################################################################
 
 sub http_get_auth {
-    my ($url, $user, $password) = @_;
+	my ($url, $user, $password) = @_;
 
-    my $auth = encode_base64($user . ':' . $password, '');
+	my $auth = encode_base64($user . ':' . $password, '');
 
-    return http(<<EOF);
+	return http(<<EOF);
 GET $url HTTP/1.0
 Host: localhost
 Authorization: Basic $auth

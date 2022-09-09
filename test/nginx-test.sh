@@ -9,6 +9,7 @@
 
 SCRIPT=$(readlink -f "$0")
 SCRIPTPATH=`dirname "$SCRIPT"`
+IGNORE_LIST="proxy_ssl_conf_command.t uwsgi_ssl_certificate.t uwsgi_ssl_certificate_vars.t ssl_stapling.t ssl_ocsp.t"
 
 if [ ! -d "$NGINX_INSTALL_DIR" ]; then
     echo -e "NGINX_INSTALL_DIR not set. Run:\n\t export NGINX_INSTALL_DIR=<asynch_mode_nginx installation directory>\n"
@@ -42,7 +43,7 @@ fi
 
 function printHelp ()
 {
-    echo -e "Usage ./nginx-test.sh X\n" "X can be:\n" "\t qat -- qatengine\n" "\t dasync -- openssl async engine\n" "\t official -- original nginx-tests"
+    echo -e "Usage ./nginx-test.sh X [case name]\n" "X can be:\n" "\t qat -- qatengine\n" "\t dasync -- openssl async engine\n" "\t official -- original nginx-tests"
 }
 
 if [ "$#" == '1' ];then
@@ -50,9 +51,21 @@ if [ "$#" == '1' ];then
         printHelp
         exit 0
     fi
+elif [ "$#" == '2' ];then
+    echo "----------- specify test case --------------"
+    echo $2
 else
     printHelp
     exit 0
+fi
+
+if test "`grep "define OPENSSL_VERSION_MAJOR" $OPENSSL_LIB/include/openssl/opensslv.h | awk '{print $4}'`" = "3"
+then
+    echo "Run official test against OpenSSL 3.0"
+    openssl_lib=$OPENSSL_LIB/lib64
+else
+    echo "Run official test against OpenSSL 1.1.1"
+    openssl_lib=$OPENSSL_LIB/lib
 fi
 
 cd $NGINX_SRC_DIR
@@ -87,12 +100,13 @@ cd $NGINX_SRC_DIR
 --with-stream \
 --with-stream_ssl_module \
 --with-stream_ssl_preread_module \
+--with-stream_realip_module \
 --add-dynamic-module=$NGINX_SRC_DIR/modules/nginx_qat_module \
 --add-dynamic-module=$NGINX_SRC_DIR/modules/nginx_qatzip_module \
 --with-cc-opt="-DNGX_SECURE_MEM -DNGX_INTEL_SDL -I$OPENSSL_LIB/include -I$ICP_ROOT/quickassist/include -I$ICP_ROOT/quickassist/include/dc -I$QZ_ROOT/include -Wno-error=deprecated-declarations" \
---with-ld-opt="-Wl,-rpath=$OPENSSL_LIB/lib -L$OPENSSL_LIB/lib -L$QZ_ROOT/src -lqatzip -lz"
+--with-ld-opt="-Wl,-rpath=$openssl_lib -L$openssl_lib -L$QZ_ROOT/src -lqatzip -lz"
 
-make && make install
+make -j$(nproc) && make install
 
 #Only for Centos 7, prepare env..."
 
@@ -162,10 +176,27 @@ fi
 # Start to platform tests...
 
 SELF=$$
-rm $SCRIPTPATH/nginx-test.log -f
-CASES=`find  $NGINX_SRC_DIR/ -name *.t`
+: > $SCRIPTPATH/nginx-test.log
+
+if [ $2 ]
+then
+    CASES=`find  $NGINX_SRC_DIR/ -name $2`
+else
+    CASES=`find  $NGINX_SRC_DIR/ -name *.t`
+fi
+
 for CASE in $CASES
 do
+    echo "case $CASE start to run" >> $SCRIPTPATH/nginx-test.log
+
+    # Ignore the case if it's in the ignore list
+    CASE_NAME=`basename $CASE`
+    if [[ $IGNORE_LIST =~ (^|[[:space:]])"$CASE_NAME"($|[[:space:]]) ]]
+    then
+        echo "case $CASE .. ignored" >> $SCRIPTPATH/nginx-test.log
+        continue
+    fi
+
     TEST_NGINX_BINARY=$NGINX_INSTALL_DIR/sbin/nginx-for-test prove $CASE >> $SCRIPTPATH/nginx-test.log 2>&1 &
     CASEPID=$!
     ( sleep 60; kill -9 $CASEPID > /dev/null 2>&1 && echo "case $CASE failed" && echo -e "Nginx Official Test RESULT:FAIL" && kill -9 $SELF ) &

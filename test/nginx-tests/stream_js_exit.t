@@ -25,7 +25,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http stream/)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -107,7 +107,7 @@ $t->waitforsocket('127.0.0.1:' . port(8090));
 ###############################################################################
 
 local $TODO = 'not yet'
-    unless http_get('/njs') =~ /^([.0-9]+)$/m && $1 ge '0.5.2';
+	unless http_get('/njs') =~ /^([.0-9]+)$/m && $1 ge '0.5.2';
 
 stream('127.0.0.1:' . port(8081))->io('###');
 stream('127.0.0.1:' . port(8082))->io('###');
@@ -120,33 +120,33 @@ ok(index($t->read_file('error.log'), 's:502 C: 0/0 U: 0/0') > 0, 'failed conn');
 ###############################################################################
 
 sub stream_daemon {
-    my $server = IO::Socket::INET->new(
-        Proto => 'tcp',
-        LocalAddr => '127.0.0.1:' . port(8090),
-        Listen => 5,
-        Reuse => 1
-    )
-        or die "Can't create listening socket: $!\n";
+	my $server = IO::Socket::INET->new(
+		Proto => 'tcp',
+		LocalAddr => '127.0.0.1:' . port(8090),
+		Listen => 5,
+		Reuse => 1
+	)
+		or die "Can't create listening socket: $!\n";
 
-    local $SIG{PIPE} = 'IGNORE';
+	local $SIG{PIPE} = 'IGNORE';
 
-    while (my $client = $server->accept()) {
-        $client->autoflush(1);
+	while (my $client = $server->accept()) {
+		$client->autoflush(1);
 
-        log2c("(new connection $client)");
+		log2c("(new connection $client)");
 
-        $client->sysread(my $buffer, 65536) or next;
+		$client->sysread(my $buffer, 65536) or next;
 
-        log2i("$client $buffer");
+		log2i("$client $buffer");
 
-        $buffer = $buffer . $buffer;
+		$buffer = $buffer . $buffer;
 
-        log2o("$client $buffer");
+		log2o("$client $buffer");
 
-        $client->syswrite($buffer);
+		$client->syswrite($buffer);
 
-        close $client;
-    }
+		close $client;
+	}
 }
 
 sub log2i { Test::Nginx::log_core('|| <<', @_); }

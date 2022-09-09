@@ -24,7 +24,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http proxy rewrite http_ssl/)
-    ->has_daemon('openssl')->plan(15);
+	->has_daemon('openssl')->plan(15);
 
 $t->write_file_expand('nginx.conf', <<'EOF')->todo_alerts();
 
@@ -170,11 +170,11 @@ EOF
 my $d = $t->testdir();
 
 foreach my $name ('localhost') {
-    system('openssl req -x509 -new '
-        . "-config $d/openssl.conf -subj /CN=$name/ "
-        . "-out $d/$name.crt -keyout $d/$name.key "
-        . ">>$d/openssl.out 2>&1") == 0
-        or die "Can't create certificate for $name: $!\n";
+	system('openssl req -x509 -new '
+		. "-config $d/openssl.conf -subj /CN=$name/ "
+		. "-out $d/$name.crt -keyout $d/$name.key "
+		. ">>$d/openssl.out 2>&1") == 0
+		or die "Can't create certificate for $name: $!\n";
 }
 
 $t->run();
@@ -184,61 +184,61 @@ $t->run();
 like(http_get('/'), qr!uri:/$!, 'proxy request');
 
 like(http_get('/proxy-pass-uri'), qr!uri:/replacement$!,
-    'proxy_pass uri changed');
+	'proxy_pass uri changed');
 
 # due to missing information about an original location where
 # proxy_pass was specified, this used to pass request with
 # original unmodified uri
 
 like(http_get('/proxy-pass-uri?if=1'), qr!uri:/replacement$!,
-    'proxy_pass uri changed in if');
+	'proxy_pass uri changed in if');
 
 like(http_get('/proxy-pass-uri/inner'), qr!404 Not Found!,
-    'proxy_pass uri changed inner');
+	'proxy_pass uri changed inner');
 like(http_get('/proxy-pass-uri/inner?if=1'), qr!404 Not Found!,
-    'proxy_pass uri changed inner in if');
+	'proxy_pass uri changed inner in if');
 
 # limit_except
 
 like(http_get('/proxy-pass-uri-lmt'), qr!uri:/replacement$!,
-    'proxy_pass uri and limit_except');
+	'proxy_pass uri and limit_except');
 
 # special handling of limit_except resulted in wrong handling
 # of requests in nested locations
 
 like(http_get('/proxy-pass-uri-lmt/inner'), qr!404 Not Found!,
-    'proxy_pass uri and limit_except, inner');
+	'proxy_pass uri and limit_except, inner');
 
 like(http_get('/proxy-pass-uri-lmt-different'),
-    qr!uri:/proxy-pass-uri-lmt-different!,
-    'proxy_pass and limit_except with different proxy_pass');
+	qr!uri:/proxy-pass-uri-lmt-different!,
+	'proxy_pass and limit_except with different proxy_pass');
 
 # segmentation fault in old versions,
 # fixed to return 500 Internal Error in nginx 1.3.10
 
 like(http_get('/proxy-inside-if-crash'), qr!500 Internal Server Error!,
-    'proxy_pass inside if');
+	'proxy_pass inside if');
 
 # normal proxy_pass and proxy_pass with variables
 # use distinct field, and inheritance should be mutually
 # exclusive, see ticket #645
 
 like(http_get('/variables'), qr!uri:/outer!,
-    'proxy_pass variables');
+	'proxy_pass variables');
 like(http_get('/variables?if=1'), qr!uri:/variables!,
-    'proxy_pass variables if');
+	'proxy_pass variables if');
 like(http_get('/variables/inner'), qr!uri:/variables/inner!,
-    'proxy_pass variables nested');
+	'proxy_pass variables nested');
 
 # ssl context shouldn't be inherited into nested
 # locations with different proxy_pass, but should
 # be correctly inherited into if's
 
 like(http_get('/ssl'), qr!uri:/outer!,
-    'proxy_pass ssl');
+	'proxy_pass ssl');
 like(http_get('/ssl?if=1'), qr!uri:/outer!,
-    'proxy_pass ssl inside if');
+	'proxy_pass ssl inside if');
 like(http_get('/ssl/inner'), qr!uri:/ssl/inner!,
-    'proxy_pass nossl inside ssl');
+	'proxy_pass nossl inside ssl');
 
 ###############################################################################

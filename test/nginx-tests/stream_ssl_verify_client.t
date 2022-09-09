@@ -26,15 +26,15 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 eval {
-    require Net::SSLeay;
-    Net::SSLeay::load_error_strings();
-    Net::SSLeay::SSLeay_add_ssl_algorithms();
-    Net::SSLeay::randomize();
+	require Net::SSLeay;
+	Net::SSLeay::load_error_strings();
+	Net::SSLeay::SSLeay_add_ssl_algorithms();
+	Net::SSLeay::randomize();
 };
 plan(skip_all => 'Net::SSLeay not installed') if $@;
 
 my $t = Test::Nginx->new()->has(qw/stream stream_ssl stream_return/)
-    ->has_daemon('openssl');
+	->has_daemon('openssl');
 
 $t->write_file_expand('nginx.conf', <<'EOF');
 
@@ -106,11 +106,11 @@ EOF
 my $d = $t->testdir();
 
 foreach my $name ('1.example.com', '2.example.com', '3.example.com') {
-    system('openssl req -x509 -new '
-        . "-config $d/openssl.conf -subj /CN=$name/ "
-        . "-out $d/$name.crt -keyout $d/$name.key "
-        . ">>$d/openssl.out 2>&1") == 0
-        or die "Can't create certificate for $name: $!\n";
+	system('openssl req -x509 -new '
+		. "-config $d/openssl.conf -subj /CN=$name/ "
+		. "-out $d/$name.crt -keyout $d/$name.key "
+		. ">>$d/openssl.out 2>&1") == 0
+		or die "Can't create certificate for $name: $!\n";
 }
 
 $t->run()->plan(10);
@@ -143,27 +143,27 @@ is($t->read_file('status.log'), "500\n200\n", 'log');
 ###############################################################################
 
 sub get {
-    my ($port, $cert) = @_;
+	my ($port, $cert) = @_;
 
-    my $s = IO::Socket::INET->new('127.0.0.1:' . port($port));
-    my $ctx = Net::SSLeay::CTX_new() or die("Failed to create SSL_CTX $!");
-    Net::SSLeay::set_cert_and_key($ctx, "$d/$cert.crt", "$d/$cert.key")
-        or die if $cert;
-    my $ssl = Net::SSLeay::new($ctx) or die("Failed to create SSL $!");
-    Net::SSLeay::set_fd($ssl, fileno($s));
-    Net::SSLeay::connect($ssl) or die("ssl connect");
+	my $s = IO::Socket::INET->new('127.0.0.1:' . port($port));
+	my $ctx = Net::SSLeay::CTX_new() or die("Failed to create SSL_CTX $!");
+	Net::SSLeay::set_cert_and_key($ctx, "$d/$cert.crt", "$d/$cert.key")
+		or die if $cert;
+	my $ssl = Net::SSLeay::new($ctx) or die("Failed to create SSL $!");
+	Net::SSLeay::set_fd($ssl, fileno($s));
+	Net::SSLeay::connect($ssl) or die("ssl connect");
 
-    my $buf = Net::SSLeay::read($ssl);
-    log_in($buf);
-    return $buf unless wantarray();
+	my $buf = Net::SSLeay::read($ssl);
+	log_in($buf);
+	return $buf unless wantarray();
 
-    my $list = Net::SSLeay::get_client_CA_list($ssl);
-    my @names;
-    for my $i (0 .. Net::SSLeay::sk_X509_NAME_num($list) - 1) {
-        my $name = Net::SSLeay::sk_X509_NAME_value($list, $i);
-        push @names, Net::SSLeay::X509_NAME_oneline($name);
-    }
-    return @names;
+	my $list = Net::SSLeay::get_client_CA_list($ssl);
+	my @names;
+	for my $i (0 .. Net::SSLeay::sk_X509_NAME_num($list) - 1) {
+		my $name = Net::SSLeay::sk_X509_NAME_value($list, $i);
+		push @names, Net::SSLeay::X509_NAME_oneline($name);
+	}
+	return @names;
 }
 
 ###############################################################################

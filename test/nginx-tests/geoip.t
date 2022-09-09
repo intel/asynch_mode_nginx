@@ -24,7 +24,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http http_geoip/)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -81,16 +81,16 @@ my $d = $t->testdir();
 my $data = '';
 
 for my $i (0 .. 156) {
-    # skip to offset 32 if 1st bit set in ipv6 address wins
-    $data .= pack_node($i + 1) . pack_node(32), next if $i == 2;
-    # otherwise default to RU
-    $data .= pack_node(0xffffb9) . pack_node(0xffff00), next if $i == 31;
-    # continue checking bits set in ipv6 address
-    $data .= pack_node(0xffff00) . pack_node($i + 1), next
-        if grep $_ == $i, (44, 49, 50, 52, 53, 55, 56, 57);
-    # last bit set in ipv6 address
-    $data .= pack_node(0xffffe1) . pack_node(0xffff00), next if $i == 156;
-    $data .= pack_node($i + 1) . pack_node(0xffff00);
+	# skip to offset 32 if 1st bit set in ipv6 address wins
+	$data .= pack_node($i + 1) . pack_node(32), next if $i == 2;
+	# otherwise default to RU
+	$data .= pack_node(0xffffb9) . pack_node(0xffff00), next if $i == 31;
+	# continue checking bits set in ipv6 address
+	$data .= pack_node(0xffff00) . pack_node($i + 1), next
+		if grep $_ == $i, (44, 49, 50, 52, 53, 55, 56, 57);
+	# last bit set in ipv6 address
+	$data .= pack_node(0xffffe1) . pack_node(0xffff00), next if $i == 156;
+	$data .= pack_node($i + 1) . pack_node(0xffff00);
 }
 
 $data .= chr(0x00) x 3;
@@ -106,9 +106,9 @@ $t->write_file('country.dat', $data);
 $data = '';
 
 for my $i (0 .. 31) {
-    $data .= pack_node(32) . pack_node($i + 1), next if $i == 4 or $i == 6;
-    $data .= pack_node(32) . pack_node($i + 2), next if $i == 31;
-    $data .= pack_node($i + 1) . pack_node(32);
+	$data .= pack_node(32) . pack_node($i + 1), next if $i == 4 or $i == 6;
+	$data .= pack_node(32) . pack_node($i + 2), next if $i == 31;
+	$data .= pack_node($i + 1) . pack_node(32);
 }
 
 $data .= chr(42);
@@ -132,9 +132,9 @@ $t->write_file('city.dat', $data);
 $data = '';
 
 for my $i (0 .. 31) {
-    $data .= pack_org(32) . pack_org($i + 1), next if $i == 4 or $i == 6;
-    $data .= pack_org(32) . pack_org($i + 2), next if $i == 31;
-    $data .= pack_org($i + 1) . pack_org(32);
+	$data .= pack_org(32) . pack_org($i + 1), next if $i == 4 or $i == 6;
+	$data .= pack_org(32) . pack_org($i + 2), next if $i == 31;
+	$data .= pack_org($i + 1) . pack_org(32);
 }
 
 $data .= chr(42);
@@ -179,8 +179,8 @@ like($r, qr/X-Country-Name: United States/, 'geoip ipv6 country name');
 ###############################################################################
 
 sub http_xff {
-    my ($xff) = @_;
-    return http(<<EOF);
+	my ($xff) = @_;
+	return http(<<EOF);
 GET / HTTP/1.0
 Host: localhost
 X-Forwarded-For: $xff
@@ -189,11 +189,11 @@ EOF
 }
 
 sub pack_node {
-    substr pack('V', shift), 0, 3;
+	substr pack('V', shift), 0, 3;
 }
 
 sub pack_org {
-    pack('V', shift);
+	pack('V', shift);
 }
 
 ###############################################################################

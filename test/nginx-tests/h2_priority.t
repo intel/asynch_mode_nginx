@@ -25,7 +25,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http http_v2/)->plan(20)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -50,7 +50,7 @@ $t->run();
 # file size is slightly beyond initial window size: 2**16 + 80 bytes
 
 $t->write_file('t1.html',
-    join('', map { sprintf "X%04dXXX", $_ } (1 .. 8202)));
+	join('', map { sprintf "X%04dXXX", $_ } (1 .. 8202)));
 
 $t->write_file('t2.html', 'SEE-THIS');
 
@@ -73,8 +73,8 @@ $s->h2_window(2**17, $sid2);
 $s->h2_window(2**17);
 
 my $frames = $s->read(all => [
-    { sid => $sid, fin => 1 },
-    { sid => $sid2, fin => 1 }
+	{ sid => $sid, fin => 1 },
+	{ sid => $sid2, fin => 1 }
 ]);
 
 my @data = grep { $_->{type} eq "DATA" } @$frames;
@@ -97,8 +97,8 @@ $s->h2_window(2**17, $sid2);
 $s->h2_window(2**17);
 
 $frames = $s->read(all => [
-    { sid => $sid, fin => 1 },
-    { sid => $sid2, fin => 1 }
+	{ sid => $sid, fin => 1 },
+	{ sid => $sid2, fin => 1 }
 ]);
 
 @data = grep { $_->{type} eq "DATA" } @$frames;
@@ -118,8 +118,8 @@ $s->h2_window(2**17, $sid2);
 $s->h2_window(2**17);
 
 $frames = $s->read(all => [
-    { sid => $sid, fin => 1 },
-    { sid => $sid2, fin => 1 }
+	{ sid => $sid, fin => 1 },
+	{ sid => $sid2, fin => 1 }
 ]);
 
 @data = grep { $_->{type} eq "DATA" } @$frames;
@@ -140,8 +140,8 @@ $s->h2_window(2**17, $sid2);
 $s->h2_window(2**17);
 
 $frames = $s->read(all => [
-    { sid => $sid, fin => 1 },
-    { sid => $sid2, fin => 1 }
+	{ sid => $sid, fin => 1 },
+	{ sid => $sid2, fin => 1 }
 ]);
 
 @data = grep { $_->{type} eq "DATA" } @$frames;
@@ -168,8 +168,8 @@ $s->h2_window(2**17, $sid2);
 $s->h2_window(2**17);
 
 $frames = $s->read(all => [
-    { sid => $sid, fin => 1 },
-    { sid => $sid2, fin => 1 },
+	{ sid => $sid, fin => 1 },
+	{ sid => $sid2, fin => 1 },
 ]);
 
 @data = grep { $_->{type} eq "DATA" } @$frames;
@@ -194,8 +194,8 @@ $s->h2_window(2**17, $sid2);
 $s->h2_window(2**17);
 
 $frames = $s->read(all => [
-    { sid => $sid, fin => 1 },
-    { sid => $sid2, fin => 1 },
+	{ sid => $sid, fin => 1 },
+	{ sid => $sid2, fin => 1 },
 ]);
 
 @data = grep { $_->{type} eq "DATA" } @$frames;
@@ -209,9 +209,6 @@ is($sids, "$sid $sid2", 'dependency - PRIORITY 2');
 #   stream error of type PROTOCOL_ERROR.
 # Instead, we respond with a connection error of type PROTOCOL_ERROR.
 
-TODO: {
-local $TODO = 'not yet' unless $t->has_version('1.17.4');
-
 $s = Test::Nginx::HTTP2->new();
 $sid = $s->new_stream();
 $s->read(all => [{ sid => $sid, fin => 1 }]);
@@ -222,8 +219,6 @@ $frames = $s->read(all => [{ type => 'GOAWAY' }]);
 my ($frame) = grep { $_->{type} eq "GOAWAY" } @$frames;
 is($frame->{last_sid}, $sid, 'dependency - PRIORITY self - GOAWAY');
 is($frame->{code}, 1, 'dependency - PRIORITY self - PROTOCOL_ERROR');
-
-}
 
 # HEADERS PRIORITY flag, reprioritize prior PRIORITY frame records
 
@@ -243,8 +238,8 @@ $s->h2_window(2**17, $sid2);
 $s->h2_window(2**17);
 
 $frames = $s->read(all => [
-    { sid => $sid, fin => 1 },
-    { sid => $sid2, fin => 1 },
+	{ sid => $sid, fin => 1 },
+	{ sid => $sid2, fin => 1 },
 ]);
 
 @data = grep { $_->{type} eq "DATA" } @$frames;
@@ -269,8 +264,8 @@ $s->h2_window(2**17, $sid2);
 $s->h2_window(2**17);
 
 $frames = $s->read(all => [
-    { sid => $sid, fin => 1 },
-    { sid => $sid2, fin => 1 },
+	{ sid => $sid, fin => 1 },
+	{ sid => $sid2, fin => 1 },
 ]);
 
 @data = grep { $_->{type} eq "DATA" } @$frames;
@@ -279,18 +274,13 @@ is($sids, "$sid $sid2", 'dependency - HEADERS PRIORITY 2');
 
 # HEADERS - self dependency
 
-TODO: {
-local $TODO = 'not yet' unless $t->has_version('1.17.4');
-
 $s = Test::Nginx::HTTP2->new();
 $sid = $s->new_stream({ dep => 1 });
 $frames = $s->read(all => [{ type => 'GOAWAY' }]);
 
-my ($frame) = grep { $_->{type} eq "GOAWAY" } @$frames;
+($frame) = grep { $_->{type} eq "GOAWAY" } @$frames;
 is($frame->{last_sid}, 0, 'dependency - HEADERS self - GOAWAY');
 is($frame->{code}, 1, 'dependency - HEADERS self - PROTOCOL_ERROR');
-
-}
 
 # PRIORITY frame, weighted dependencies
 
@@ -315,9 +305,9 @@ $s->h2_window(2**16, 5);
 $s->h2_window(2**16);
 
 $frames = $s->read(all => [
-    { sid => $sid, fin => 1 },
-    { sid => $sid2, fin => 1 },
-    { sid => $sid3, fin => 1 },
+	{ sid => $sid, fin => 1 },
+	{ sid => $sid2, fin => 1 },
+	{ sid => $sid3, fin => 1 },
 ]);
 
 @data = grep { $_->{type} eq "DATA" } @$frames;
@@ -347,9 +337,9 @@ $s->h2_window(2**16, 5);
 $s->h2_window(2**16);
 
 $frames = $s->read(all => [
-    { sid => $sid, fin => 1 },
-    { sid => $sid2, fin => 1 },
-    { sid => $sid3, fin => 1 },
+	{ sid => $sid, fin => 1 },
+	{ sid => $sid2, fin => 1 },
+	{ sid => $sid3, fin => 1 },
 ]);
 
 @data = grep { $_->{type} eq "DATA" } @$frames;
@@ -384,7 +374,7 @@ $sids = join ' ', map { $_->{sid} } grep { $_->{type} eq "DATA" } @$frames;
 is($sids, $sid2, 'removed dependency');
 
 for (1 .. 40) {
-    $s->read(all => [{ sid => $s->new_stream(), fin => 1 }]);
+	$s->read(all => [{ sid => $s->new_stream(), fin => 1 }]);
 }
 
 # make circular dependency
@@ -399,11 +389,11 @@ $s->h2_window(2**16, $sid);
 $s->h2_window(2**16, $sid3);
 
 $frames = $s->read(all => [
-    { sid => $sid, fin => 1 },
-    { sid => $sid3, fin => 1 },
+	{ sid => $sid, fin => 1 },
+	{ sid => $sid3, fin => 1 },
 ]);
 
-my ($frame) = grep { $_->{type} eq "DATA" && $_->{sid} == $sid } @$frames;
+($frame) = grep { $_->{type} eq "DATA" && $_->{sid} == $sid } @$frames;
 is($frame->{length}, 81, 'removed dependency - first stream');
 
 ($frame) = grep { $_->{type} eq "DATA" && $_->{sid} == $sid3 } @$frames;
@@ -445,8 +435,8 @@ $s->h2_window(2**16, $sid2);
 $s->h2_window(2**16, $sid3);
 
 $frames = $s->read(all => [
-    { sid => $sid2, fin => 1 },
-    { sid => $sid3, fin => 1 },
+	{ sid => $sid2, fin => 1 },
+	{ sid => $sid3, fin => 1 },
 ]);
 
 ($frame) = grep { $_->{type} eq "DATA" && $_->{sid} == $sid2 } @$frames;

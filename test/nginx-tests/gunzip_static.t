@@ -82,14 +82,14 @@ $t->run()->plan(12);
 pass('runs');
 
 like(http_get('/t1'), qr/(?!Content-Encoding).*^(X\d\d\dXXXXXX){100}$/m,
-    'correct gunzipped response');
+	'correct gunzipped response');
 like(http_gzip_request('/t1'), qr/Content-Encoding: gzip.*\Q$out\E/ms,
-    'gzip still works');
+	'gzip still works');
 
 like(http_get('/double'), qr/(?!Content-Encoding).^(X\d\d\dXXXXXX){100}$/ms,
-    'gunzip with gzip_tested');
+	'gunzip with gzip_tested');
 like(http_gzip_request('/double'), qr/Content-Encoding: gzip.*\Q$out\E/ms,
-    'gzip still works with gzip_tested');
+	'gzip still works with gzip_tested');
 
 like(http_get('/t2'), qr/^(X\d\d\dXXXXXX){200}$/m, 'multiple gzip members');
 

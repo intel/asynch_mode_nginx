@@ -86,7 +86,7 @@ is(http_get_uc('tc	=	content     ;'), undef, 'tabbed');
 is(http_get_uc('tc="content"'), '"content"', 'dquoted');
 is(http_get_uc('tc=content'), 'content', 'normal');
 is(http_get_uc('tc=con  tent; Domain=example.com'), 'con  tent',
-    'internal_space');
+	'internal_space');
 is(http_get_uc('tc = content'), 'content', 'separated');
 
 is(http_get_uc('tc=1.2.3'), '1.2.3', 'dots');
@@ -97,16 +97,16 @@ is(http_get_uc('tc=first,tc=second'), 'first,tc=second', 'two_comma');
 is(http_get_uc('tc=first;tc=second'), 'first', 'two_semicolon');
 
 like(http_get('/mcomma'), qr/^X-Upstream-Cookie: one,two,three\x0d?$/mi,
-    'multiline comma');
+	'multiline comma');
 like(http_get('/msemicolon'), qr/^X-Upstream-Cookie: one\x0d?$/mi,
-    'multiline semicolon');
+	'multiline semicolon');
 
 ###############################################################################
 
 sub http_get_uc {
-    my ($cookie) = @_;
+	my ($cookie) = @_;
 
-    http(<<EOF) =~ qr/^X-Upstream-Cookie:\s(.+?)\x0d?$/mi;
+	http(<<EOF) =~ qr/^X-Upstream-Cookie:\s(.+?)\x0d?$/mi;
 GET / HTTP/1.1
 Host: localhost
 Connection: close
@@ -114,7 +114,7 @@ X-Test-Cookie: $cookie
 
 EOF
 
-    return $1;
+	return $1;
 }
 
 ###############################################################################

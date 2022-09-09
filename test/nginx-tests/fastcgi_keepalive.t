@@ -23,7 +23,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http fastcgi upstream_keepalive/)->plan(6)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -80,94 +80,94 @@ like(http_get('/after'), qr/^connection: 2$/m, 'new connection after HEAD');
 # http://www.fastcgi.com/devkit/doc/fcgi-spec.html
 
 sub fastcgi_read_record($) {
-    my ($socket) = @_;
+	my ($socket) = @_;
 
-    my ($n, $h, $header);
+	my ($n, $h, $header);
 
-    $n = $socket->read($header, 8);
-    return undef if !defined $n or $n != 8;
+	$n = $socket->read($header, 8);
+	return undef if !defined $n or $n != 8;
 
-    @{$h}{qw/ version type id clen plen /} = unpack("CCnnC", $header);
+	@{$h}{qw/ version type id clen plen /} = unpack("CCnnC", $header);
 
-    $n = $socket->read($h->{content}, $h->{clen});
-    return undef if $n != $h->{clen};
+	$n = $socket->read($h->{content}, $h->{clen});
+	return undef if $n != $h->{clen};
 
-    $n = $socket->read($h->{padding}, $h->{plen});
-    return undef if $n != $h->{plen};
+	$n = $socket->read($h->{padding}, $h->{plen});
+	return undef if $n != $h->{plen};
 
-    $h->{socket} = $socket;
-    return $h;
+	$h->{socket} = $socket;
+	return $h;
 }
 
 sub fastcgi_respond($$) {
-    my ($h, $body) = @_;
+	my ($h, $body) = @_;
 
-    # stdout
-    $h->{socket}->write(pack("CCnnCx", $h->{version}, 6, $h->{id},
-        length($body), 8));
-    $h->{socket}->write($body);
-    select(undef, undef, undef, 0.1);
-    $h->{socket}->write(pack("xxxxxxxx"));
-    select(undef, undef, undef, 0.1);
+	# stdout
+	$h->{socket}->write(pack("CCnnCx", $h->{version}, 6, $h->{id},
+		length($body), 8));
+	$h->{socket}->write($body);
+	select(undef, undef, undef, 0.1);
+	$h->{socket}->write(pack("xxxxxxxx"));
+	select(undef, undef, undef, 0.1);
 
-    # write some text to stdout and stderr split over multiple network
-    # packets to test if we correctly set pipe length in various places
+	# write some text to stdout and stderr split over multiple network
+	# packets to test if we correctly set pipe length in various places
 
-    my $tt = "test text, just for test";
+	my $tt = "test text, just for test";
 
-    $h->{socket}->write(pack("CCnnCx", $h->{version}, 6, $h->{id},
-        length($tt . $tt), 0) . $tt);
-    select(undef, undef, undef, 0.1);
-    $h->{socket}->write($tt . pack("CC", $h->{version}, 7));
-    select(undef, undef, undef, 0.1);
-    $h->{socket}->write(pack("nnCx", $h->{id}, length($tt), 0));
-    select(undef, undef, undef, 0.1);
-    $h->{socket}->write($tt);
-    select(undef, undef, undef, 0.1);
+	$h->{socket}->write(pack("CCnnCx", $h->{version}, 6, $h->{id},
+		length($tt . $tt), 0) . $tt);
+	select(undef, undef, undef, 0.1);
+	$h->{socket}->write($tt . pack("CC", $h->{version}, 7));
+	select(undef, undef, undef, 0.1);
+	$h->{socket}->write(pack("nnCx", $h->{id}, length($tt), 0));
+	select(undef, undef, undef, 0.1);
+	$h->{socket}->write($tt);
+	select(undef, undef, undef, 0.1);
 
-    # close stdout
-    $h->{socket}->write(pack("CCnnCx", $h->{version}, 6, $h->{id}, 0, 0));
+	# close stdout
+	$h->{socket}->write(pack("CCnnCx", $h->{version}, 6, $h->{id}, 0, 0));
 
-    select(undef, undef, undef, 0.1);
+	select(undef, undef, undef, 0.1);
 
-    # end request
-    $h->{socket}->write(pack("CCnnCx", $h->{version}, 3, $h->{id}, 8, 0));
-    select(undef, undef, undef, 0.1);
-    $h->{socket}->write(pack("NCxxx", 0, 0));
+	# end request
+	$h->{socket}->write(pack("CCnnCx", $h->{version}, 3, $h->{id}, 8, 0));
+	select(undef, undef, undef, 0.1);
+	$h->{socket}->write(pack("NCxxx", 0, 0));
 }
 
 sub fastcgi_test_daemon {
-    my $server = IO::Socket::INET->new(
-        Proto => 'tcp',
-        LocalAddr => '127.0.0.1:' . port(8081),
-        Listen => 5,
-        Reuse => 1
-    )
-        or die "Can't create listening socket: $!\n";
+	my $server = IO::Socket::INET->new(
+		Proto => 'tcp',
+		LocalAddr => '127.0.0.1:' . port(8081),
+		Listen => 5,
+		Reuse => 1
+	)
+		or die "Can't create listening socket: $!\n";
 
-    local $SIG{PIPE} = 'IGNORE';
+	local $SIG{PIPE} = 'IGNORE';
 
-    my $ccount = 0;
-    my $rcount = 0;
+	my $ccount = 0;
+	my $rcount = 0;
 
-    while (my $client = $server->accept()) {
-        $client->autoflush(1);
-        Test::Nginx::log_core('||', "fastcgi connection");
+	while (my $client = $server->accept()) {
+		$client->autoflush(1);
+		Test::Nginx::log_core('||', "fastcgi connection");
 
-        $ccount++;
+		$ccount++;
 
-        while (my $h = fastcgi_read_record($client)) {
-            Test::Nginx::log_core('||', "fastcgi record: "
-                . " $h->{version}, $h->{type}, $h->{id}, "
-                . "'$h->{content}'");
+		while (my $h = fastcgi_read_record($client)) {
+			Test::Nginx::log_core('||', "fastcgi record: "
+				. " $h->{version}, $h->{type}, $h->{id}, "
+				. "'$h->{content}'");
 
-            # skip everything unless stdin, then respond
-            next if $h->{type} != 5;
+			# skip everything unless stdin, then respond
+			next if $h->{type} != 5;
 
-            $rcount++;
+			$rcount++;
 
-            # respond
-            fastcgi_respond($h, <<EOF);
+			# respond
+			fastcgi_respond($h, <<EOF);
 Location: http://localhost/redirect
 Content-Type: text/html
 
@@ -175,12 +175,12 @@ SEE-THIS
 request: $rcount
 connection: $ccount
 EOF
-        }
+		}
 
-        $ccount-- unless $rcount;
+		$ccount-- unless $rcount;
 
-        close $client;
-    }
+		close $client;
+	}
 }
 
 ###############################################################################

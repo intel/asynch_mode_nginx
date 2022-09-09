@@ -32,7 +32,7 @@ eval { IO::Socket::SSL::SSL_VERIFY_NONE(); };
 plan(skip_all => 'IO::Socket::SSL too old') if $@;
 
 my $t = Test::Nginx->new()->has(qw/http http_ssl rewrite proxy/)
-    ->has_daemon('openssl')->plan(26);
+	->has_daemon('openssl')->plan(28);
 
 $t->write_file_expand('nginx.conf', <<'EOF');
 
@@ -198,29 +198,29 @@ $t->write_file('certserial', '1000');
 $t->write_file('certindex', '');
 
 system('openssl req -x509 -new '
-    . "-config $d/openssl.conf -subj /CN=issuer/ "
-    . "-out $d/issuer.crt -keyout $d/issuer.key "
-    . ">>$d/openssl.out 2>&1") == 0
-    or die "Can't create certificate for issuer: $!\n";
+	. "-config $d/openssl.conf -subj /CN=issuer/ "
+	. "-out $d/issuer.crt -keyout $d/issuer.key "
+	. ">>$d/openssl.out 2>&1") == 0
+	or die "Can't create certificate for issuer: $!\n";
 
 system("openssl req -new "
-    . "-config $d/openssl.conf -subj /CN=subject/ "
-    . "-out $d/subject.csr -keyout $d/subject.key "
-    . ">>$d/openssl.out 2>&1") == 0
-    or die "Can't create certificate for subject: $!\n";
+	. "-config $d/openssl.conf -subj /CN=subject/ "
+	. "-out $d/subject.csr -keyout $d/subject.key "
+	. ">>$d/openssl.out 2>&1") == 0
+	or die "Can't create certificate for subject: $!\n";
 
 system("openssl ca -batch -config $d/ca.conf "
-    . "-keyfile $d/issuer.key -cert $d/issuer.crt "
-    . "-subj /CN=subject/ -in $d/subject.csr -out $d/subject.crt "
-    . ">>$d/openssl.out 2>&1") == 0
-    or die "Can't sign certificate for subject: $!\n";
+	. "-keyfile $d/issuer.key -cert $d/issuer.crt "
+	. "-subj /CN=subject/ -in $d/subject.csr -out $d/subject.crt "
+	. ">>$d/openssl.out 2>&1") == 0
+	or die "Can't sign certificate for subject: $!\n";
 
 foreach my $name ('localhost', 'inner') {
-    system('openssl req -x509 -new '
-        . "-config $d/openssl.conf -subj /CN=$name/ "
-        . "-out $d/$name.crt -keyout $d/$name.key "
-        . ">>$d/openssl.out 2>&1") == 0
-        or die "Can't create certificate for $name: $!\n";
+	system('openssl req -x509 -new '
+		. "-config $d/openssl.conf -subj /CN=$name/ "
+		. "-out $d/$name.crt -keyout $d/$name.key "
+		. ">>$d/openssl.out 2>&1") == 0
+		or die "Can't create certificate for $name: $!\n";
 }
 
 # suppress deprecation warning
@@ -235,7 +235,7 @@ my $ctx;
 
 SKIP: {
 skip 'no TLS 1.3 sessions', 6 if get('/protocol', 8085) =~ /TLSv1.3/
-    && ($Net::SSLeay::VERSION < 1.88 || $IO::Socket::SSL::VERSION < 2.061);
+	&& ($Net::SSLeay::VERSION < 1.88 || $IO::Socket::SSL::VERSION < 2.061);
 
 $ctx = get_ssl_context();
 
@@ -307,7 +307,7 @@ like(cert('/time', 8085), qr/^body [:\s\w]+![:\s\w]+![23]$/m, 'time');
 # c->read->ready handling bug in ngx_ssl_recv(), triggered with chunked body
 
 like(get_body('/body', '0123456789', 20, 5), qr/X-Body: (0123456789){100}/,
-    'request body chunked');
+	'request body chunked');
 
 # pipelined requests
 
@@ -323,107 +323,103 @@ $req x= 1000;
 my $r = http($req, socket => $s) || "";
 is(() = $r =~ /(200 OK)/g, 1000, 'pipelined requests');
 
-# close_notify is sent before lingering close
+# OpenSSL 3.0 error "unexpected eof while reading" seen as a critical error
 
-TODO: {
-local $TODO = 'not yet' unless $t->has_version('1.19.5');
+ok(get_ssl_socket(8085), 'ssl unexpected eof');
+
+# close_notify is sent before lingering close
 
 is(get_ssl_shutdown(8085), 1, 'ssl shutdown on lingering close');
 
-}
-
 $t->stop();
 
-TODO: {
-local $TODO = 'not yet' if $t->has_version('1.19.5');
-
 like($t->read_file('ssl.log'), qr/^(TLS|SSL)v(\d|\.)+$/m,
-    'log ssl variable on lingering close');
+	'log ssl variable on lingering close');
 
-}
+like(`grep -F '[crit]' ${\($t->testdir())}/error.log`, qr/^$/s, 'no crit');
 
 ###############################################################################
 
 sub get {
-    my ($uri, $port, $ctx) = @_;
-    my $s = get_ssl_socket($port, $ctx) or return;
-    my $r = http_get($uri, socket => $s);
-    $s->close();
-    return $r;
+	my ($uri, $port, $ctx) = @_;
+	my $s = get_ssl_socket($port, $ctx) or return;
+	my $r = http_get($uri, socket => $s);
+	$s->close();
+	return $r;
 }
 
 sub get_body {
-    my ($uri, $body, $len, $n) = @_;
-    my $s = get_ssl_socket(8085) or return;
-    http("GET /body HTTP/1.1" . CRLF
-        . "Host: localhost" . CRLF
-        . "Connection: close" . CRLF
-        . "Transfer-Encoding: chunked" . CRLF . CRLF,
-        socket => $s, start => 1);
-    my $chs = unpack("H*", pack("C", length($body) * $len));
-    http($chs . CRLF . $body x $len . CRLF, socket => $s, start => 1)
-        for 1 .. $n;
-    my $r = http("0" . CRLF . CRLF, socket => $s);
-    $s->close();
-    return $r;
+	my ($uri, $body, $len, $n) = @_;
+	my $s = get_ssl_socket(8085) or return;
+	http("GET /body HTTP/1.1" . CRLF
+		. "Host: localhost" . CRLF
+		. "Connection: close" . CRLF
+		. "Transfer-Encoding: chunked" . CRLF . CRLF,
+		socket => $s, start => 1);
+	my $chs = unpack("H*", pack("C", length($body) * $len));
+	http($chs . CRLF . $body x $len . CRLF, socket => $s, start => 1)
+		for 1 .. $n;
+	my $r = http("0" . CRLF . CRLF, socket => $s);
+	$s->close();
+	return $r;
 }
 
 sub cert {
-    my ($uri, $port) = @_;
-    my $s = get_ssl_socket($port, undef,
-        SSL_cert_file => "$d/subject.crt",
-        SSL_key_file => "$d/subject.key") or return;
-    http_get($uri, socket => $s);
+	my ($uri, $port) = @_;
+	my $s = get_ssl_socket($port, undef,
+		SSL_cert_file => "$d/subject.crt",
+		SSL_key_file => "$d/subject.key") or return;
+	http_get($uri, socket => $s);
 }
 
 sub get_ssl_context {
-    return IO::Socket::SSL::SSL_Context->new(
-        SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_NONE(),
-        SSL_session_cache_size => 100
-    );
+	return IO::Socket::SSL::SSL_Context->new(
+		SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_NONE(),
+		SSL_session_cache_size => 100
+	);
 }
 
 sub get_ssl_socket {
-    my ($port, $ctx, %extra) = @_;
-    my $s;
+	my ($port, $ctx, %extra) = @_;
+	my $s;
 
-    eval {
-        local $SIG{ALRM} = sub { die "timeout\n" };
-        local $SIG{PIPE} = sub { die "sigpipe\n" };
-        alarm(8);
-        $s = IO::Socket::SSL->new(
-            Proto => 'tcp',
-            PeerAddr => '127.0.0.1',
-            PeerPort => port($port),
-            SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_NONE(),
-            SSL_reuse_ctx => $ctx,
-            SSL_error_trap => sub { die $_[1] },
-            %extra
-        );
-        alarm(0);
-    };
-    alarm(0);
+	eval {
+		local $SIG{ALRM} = sub { die "timeout\n" };
+		local $SIG{PIPE} = sub { die "sigpipe\n" };
+		alarm(8);
+		$s = IO::Socket::SSL->new(
+			Proto => 'tcp',
+			PeerAddr => '127.0.0.1',
+			PeerPort => port($port),
+			SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_NONE(),
+			SSL_reuse_ctx => $ctx,
+			SSL_error_trap => sub { die $_[1] },
+			%extra
+		);
+		alarm(0);
+	};
+	alarm(0);
 
-    if ($@) {
-        log_in("died: $@");
-        return undef;
-    }
+	if ($@) {
+		log_in("died: $@");
+		return undef;
+	}
 
-    return $s;
+	return $s;
 }
 
 sub get_ssl_shutdown {
-    my ($port) = @_;
+	my ($port) = @_;
 
-    my $s = IO::Socket::INET->new('127.0.0.1:' . port($port));
-    my $ctx = Net::SSLeay::CTX_new() or die("Failed to create SSL_CTX $!");
-    my $ssl = Net::SSLeay::new($ctx) or die("Failed to create SSL $!");
-    Net::SSLeay::set_fd($ssl, fileno($s));
-    Net::SSLeay::connect($ssl) or die("ssl connect");
-    Net::SSLeay::write($ssl, 'GET /' . CRLF . 'extra');
-    Net::SSLeay::read($ssl);
-    Net::SSLeay::set_shutdown($ssl, 1);
-    Net::SSLeay::shutdown($ssl);
+	my $s = IO::Socket::INET->new('127.0.0.1:' . port($port));
+	my $ctx = Net::SSLeay::CTX_new() or die("Failed to create SSL_CTX $!");
+	my $ssl = Net::SSLeay::new($ctx) or die("Failed to create SSL $!");
+	Net::SSLeay::set_fd($ssl, fileno($s));
+	Net::SSLeay::connect($ssl) or die("ssl connect");
+	Net::SSLeay::write($ssl, 'GET /' . CRLF . 'extra');
+	Net::SSLeay::read($ssl);
+	Net::SSLeay::set_shutdown($ssl, 1);
+	Net::SSLeay::shutdown($ssl);
 }
 
 ###############################################################################

@@ -26,7 +26,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http rewrite/)->plan(10)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -94,15 +94,15 @@ todo_skip 'overflow', 2 unless $ENV{TEST_NGINX_UNSAFE};
 # number of buffers configured, hc->busy will be overflowed
 
 like(http(
-    "GET / HTTP/1.0" . CRLF .
-    "X-Foo: " . ("1234567890" x 20) . CRLF .
-    "Host: ten" . CRLF .
-    "X-Foo: " . ("1234567890" x 20) . CRLF .
-    "X-Foo: " . ("1234567890" x 20) . CRLF .
-    "X-Foo: " . ("1234567890" x 20) . CRLF .
-    "X-Foo: " . ("1234567890" x 20) . CRLF .
-    "X-Foo: " . ("1234567890" x 20) . CRLF .
-    CRLF
+	"GET / HTTP/1.0" . CRLF .
+	"X-Foo: " . ("1234567890" x 20) . CRLF .
+	"Host: ten" . CRLF .
+	"X-Foo: " . ("1234567890" x 20) . CRLF .
+	"X-Foo: " . ("1234567890" x 20) . CRLF .
+	"X-Foo: " . ("1234567890" x 20) . CRLF .
+	"X-Foo: " . ("1234567890" x 20) . CRLF .
+	"X-Foo: " . ("1234567890" x 20) . CRLF .
+	CRLF
 ), qr/204|400/, 'additional buffers in virtual server');
 
 # for pipelined requests large header buffers are saved to hc->free;
@@ -111,18 +111,18 @@ like(http(
 # allocatad before the virtual server was selected
 
 like(http(
-    "GET / HTTP/1.1" . CRLF .
-    "X-Foo: " . ("1234567890" x 20) . CRLF .
-    "X-Foo: " . ("1234567890" x 20) . CRLF .
-    "X-Foo: " . ("1234567890" x 20) . CRLF .
-    "X-Foo: " . ("1234567890" x 20) . CRLF .
-    "X-Foo: " . ("1234567890" x 20) . CRLF .
-    "Host: one" . CRLF .
-    CRLF .
-    "GET / HTTP/1.1" . CRLF .
-    "Host: one" . CRLF .
-    "Connection: close" . CRLF .
-    CRLF
+	"GET / HTTP/1.1" . CRLF .
+	"X-Foo: " . ("1234567890" x 20) . CRLF .
+	"X-Foo: " . ("1234567890" x 20) . CRLF .
+	"X-Foo: " . ("1234567890" x 20) . CRLF .
+	"X-Foo: " . ("1234567890" x 20) . CRLF .
+	"X-Foo: " . ("1234567890" x 20) . CRLF .
+	"Host: one" . CRLF .
+	CRLF .
+	"GET / HTTP/1.1" . CRLF .
+	"Host: one" . CRLF .
+	"Connection: close" . CRLF .
+	CRLF
 ), qr/204/, 'pipelined with too many buffers');
 
 }
@@ -131,78 +131,78 @@ like(http(
 # when nginx allocates a long header buffer
 
 like(http(
-    "GET / HTTP/1.0" . CRLF .
-    "Host: foo" . CRLF .
-    "X-Foo: foo" . ("1234567890" x 20) . "bar" . CRLF .
-    CRLF
+	"GET / HTTP/1.0" . CRLF .
+	"Host: foo" . CRLF .
+	"X-Foo: foo" . ("1234567890" x 20) . "bar" . CRLF .
+	CRLF
 ), qr/X-Foo: foo(1234567890){20}bar/, 'long header');
 
 like(http(
-    "GET /foo" . ("1234567890" x 20) . "bar HTTP/1.0" . CRLF .
-    "Host: foo" . CRLF .
-    CRLF
+	"GET /foo" . ("1234567890" x 20) . "bar HTTP/1.0" . CRLF .
+	"Host: foo" . CRLF .
+	CRLF
 ), qr!X-URI: /foo(1234567890){20}bar!, 'long request line');
 
 # the same as the above, but with pipelining, so there is a buffer
 # allocated in the previous request
 
 like(http(
-    "GET / HTTP/1.1" . CRLF .
-    "Host: foo" . CRLF .
-    "X-Foo: " . ("1234567890" x 20) . CRLF .
-    "X-Foo: " . ("1234567890" x 20) . CRLF .
-    "X-Foo: " . ("1234567890" x 20) . CRLF .
-    CRLF .
-    "GET / HTTP/1.1" . CRLF .
-    "Host: foo" . CRLF .
-    "Connection: close" . CRLF .
-    "X-Foo: foo" . ("1234567890" x 20) . "bar" . CRLF .
-    CRLF
+	"GET / HTTP/1.1" . CRLF .
+	"Host: foo" . CRLF .
+	"X-Foo: " . ("1234567890" x 20) . CRLF .
+	"X-Foo: " . ("1234567890" x 20) . CRLF .
+	"X-Foo: " . ("1234567890" x 20) . CRLF .
+	CRLF .
+	"GET / HTTP/1.1" . CRLF .
+	"Host: foo" . CRLF .
+	"Connection: close" . CRLF .
+	"X-Foo: foo" . ("1234567890" x 20) . "bar" . CRLF .
+	CRLF
 ), qr/X-Foo: foo(1234567890){20}bar/, 'long header after pipelining');
 
 like(http(
-    "GET / HTTP/1.1" . CRLF .
-    "Host: foo" . CRLF .
-    "X-Foo: " . ("1234567890" x 20) . CRLF .
-    "X-Foo: " . ("1234567890" x 20) . CRLF .
-    "X-Foo: " . ("1234567890" x 20) . CRLF .
-    CRLF .
-    "GET /foo" . ("1234567890" x 20) . "bar HTTP/1.1" . CRLF .
-    "Host: foo" . CRLF .
-    "Connection: close" . CRLF .
-    CRLF
+	"GET / HTTP/1.1" . CRLF .
+	"Host: foo" . CRLF .
+	"X-Foo: " . ("1234567890" x 20) . CRLF .
+	"X-Foo: " . ("1234567890" x 20) . CRLF .
+	"X-Foo: " . ("1234567890" x 20) . CRLF .
+	CRLF .
+	"GET /foo" . ("1234567890" x 20) . "bar HTTP/1.1" . CRLF .
+	"Host: foo" . CRLF .
+	"Connection: close" . CRLF .
+	CRLF
 ), qr!X-URI: /foo(1234567890){20}bar!, 'long request line after pipelining');
 
 # the same as the above, but with keepalive; this ensures that previously
 # allocated buffers are properly cleaned up when we set keepalive handler
 
 like(http(
-    "GET / HTTP/1.1" . CRLF .
-    "Host: foo" . CRLF .
-    "X-Foo: " . ("1234567890" x 20) . CRLF .
-    "X-Foo: " . ("1234567890" x 20) . CRLF .
-    "X-Foo: " . ("1234567890" x 20) . CRLF .
-    CRLF,
+	"GET / HTTP/1.1" . CRLF .
+	"Host: foo" . CRLF .
+	"X-Foo: " . ("1234567890" x 20) . CRLF .
+	"X-Foo: " . ("1234567890" x 20) . CRLF .
+	"X-Foo: " . ("1234567890" x 20) . CRLF .
+	CRLF,
 sleep => 0.1, body =>
-    "GET / HTTP/1.1" . CRLF .
-    "Host: foo" . CRLF .
-    "Connection: close" . CRLF .
-    "X-Foo: foo" . ("1234567890" x 20) . "bar" . CRLF .
-    CRLF
+	"GET / HTTP/1.1" . CRLF .
+	"Host: foo" . CRLF .
+	"Connection: close" . CRLF .
+	"X-Foo: foo" . ("1234567890" x 20) . "bar" . CRLF .
+	CRLF
 ), qr/X-Foo: foo(1234567890){20}bar/, 'long header after keepalive');
 
 like(http(
-    "GET / HTTP/1.1" . CRLF .
-    "Host: foo" . CRLF .
-    "X-Foo: " . ("1234567890" x 20) . CRLF .
-    "X-Foo: " . ("1234567890" x 20) . CRLF .
-    "X-Foo: " . ("1234567890" x 20) . CRLF .
-    CRLF,
+	"GET / HTTP/1.1" . CRLF .
+	"Host: foo" . CRLF .
+	"X-Foo: " . ("1234567890" x 20) . CRLF .
+	"X-Foo: " . ("1234567890" x 20) . CRLF .
+	"X-Foo: " . ("1234567890" x 20) . CRLF .
+	CRLF,
 sleep => 0.1, body =>
-    "GET /foo" . ("1234567890" x 20) . "bar HTTP/1.1" . CRLF .
-    "Host: foo" . CRLF .
-    "Connection: close" . CRLF .
-    CRLF
+	"GET /foo" . ("1234567890" x 20) . "bar HTTP/1.1" . CRLF .
+	"Host: foo" . CRLF .
+	"Connection: close" . CRLF .
+	CRLF
 ), qr!X-URI: /foo(1234567890){20}bar!, 'long request line after keepalive');
 
 # the same as the above, but with pipelining and then keepalive;
@@ -210,40 +210,40 @@ sleep => 0.1, body =>
 # up when we set keepalive handler, including hc->free
 
 like(http(
-    "GET / HTTP/1.1" . CRLF .
-    "Host: foo" . CRLF .
-    "X-Foo: " . ("1234567890" x 20) . CRLF .
-    "X-Foo: " . ("1234567890" x 20) . CRLF .
-    "X-Foo: " . ("1234567890" x 20) . CRLF .
-    CRLF .
-    "GET / HTTP/1.1" . CRLF .
-    "Host: foo" . CRLF .
-    "X-Foo: " . ("1234567890" x 20) . CRLF .
-    CRLF,
+	"GET / HTTP/1.1" . CRLF .
+	"Host: foo" . CRLF .
+	"X-Foo: " . ("1234567890" x 20) . CRLF .
+	"X-Foo: " . ("1234567890" x 20) . CRLF .
+	"X-Foo: " . ("1234567890" x 20) . CRLF .
+	CRLF .
+	"GET / HTTP/1.1" . CRLF .
+	"Host: foo" . CRLF .
+	"X-Foo: " . ("1234567890" x 20) . CRLF .
+	CRLF,
 sleep => 0.1, body =>
-    "GET / HTTP/1.1" . CRLF .
-    "Host: foo" . CRLF .
-    "Connection: close" . CRLF .
-    "X-Foo: foo" . ("1234567890" x 20) . "bar" . CRLF .
-    CRLF
+	"GET / HTTP/1.1" . CRLF .
+	"Host: foo" . CRLF .
+	"Connection: close" . CRLF .
+	"X-Foo: foo" . ("1234567890" x 20) . "bar" . CRLF .
+	CRLF
 ), qr/X-Foo: foo(1234567890){20}bar/, 'long header after both');
 
 like(http(
-    "GET / HTTP/1.1" . CRLF .
-    "Host: foo" . CRLF .
-    "X-Foo: " . ("1234567890" x 20) . CRLF .
-    "X-Foo: " . ("1234567890" x 20) . CRLF .
-    "X-Foo: " . ("1234567890" x 20) . CRLF .
-    CRLF .
-    "GET / HTTP/1.1" . CRLF .
-    "Host: foo" . CRLF .
-    "X-Foo: " . ("1234567890" x 20) . CRLF .
-    CRLF,
+	"GET / HTTP/1.1" . CRLF .
+	"Host: foo" . CRLF .
+	"X-Foo: " . ("1234567890" x 20) . CRLF .
+	"X-Foo: " . ("1234567890" x 20) . CRLF .
+	"X-Foo: " . ("1234567890" x 20) . CRLF .
+	CRLF .
+	"GET / HTTP/1.1" . CRLF .
+	"Host: foo" . CRLF .
+	"X-Foo: " . ("1234567890" x 20) . CRLF .
+	CRLF,
 sleep => 0.1, body =>
-    "GET /foo" . ("1234567890" x 20) . "bar HTTP/1.1" . CRLF .
-    "Host: foo" . CRLF .
-    "Connection: close" . CRLF .
-    CRLF
+	"GET /foo" . ("1234567890" x 20) . "bar HTTP/1.1" . CRLF .
+	"Host: foo" . CRLF .
+	"Connection: close" . CRLF .
+	CRLF
 ), qr!X-URI: /foo(1234567890){20}bar!, 'long request line after both');
 
 ###############################################################################

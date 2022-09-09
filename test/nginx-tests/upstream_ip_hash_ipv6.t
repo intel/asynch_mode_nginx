@@ -27,7 +27,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http proxy upstream_ip_hash realip unix/)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -99,7 +99,7 @@ EOF
 $t->try_run('no inet6 support');
 
 plan(skip_all => 'no 127.0.0.1 on host')
-    if http_get('/') !~ /X-IP: 127.0.0.1/m;
+	if http_get('/') !~ /X-IP: 127.0.0.1/m;
 
 $t->plan(4);
 
@@ -116,39 +116,39 @@ like(many('/unix/none', 30), qr/($port1|$port2): 30/, 'ip_hash unix');
 ###############################################################################
 
 sub many {
-    my ($uri, $count) = @_;
-    my %ports;
+	my ($uri, $count) = @_;
+	my %ports;
 
-    for my $i (1 .. $count) {
-        my $req = "GET $uri HTTP/1.0" . CRLF
-            . "X-Real-IP: 127.0.$i.2" . CRLF . CRLF;
+	for my $i (1 .. $count) {
+		my $req = "GET $uri HTTP/1.0" . CRLF
+			. "X-Real-IP: 127.0.$i.2" . CRLF . CRLF;
 
-        if (http($req) =~ /X-Port: (\d+)/) {
-            $ports{$1} = 0 unless defined $ports{$1};
-            $ports{$1}++;
-        }
-    }
+		if (http($req) =~ /X-Port: (\d+)/) {
+			$ports{$1} = 0 unless defined $ports{$1};
+			$ports{$1}++;
+		}
+	}
 
-    my @keys = map { my $p = $_; grep { $p == $_ } keys %ports } @ports;
-    return join ', ', map { $_ . ": " . $ports{$_} } @keys;
+	my @keys = map { my $p = $_; grep { $p == $_ } keys %ports } @ports;
+	return join ', ', map { $_ . ": " . $ports{$_} } @keys;
 }
 
 sub many_ip6 {
-    my ($uri, $count) = @_;
-    my %ports;
+	my ($uri, $count) = @_;
+	my %ports;
 
-    for my $i (1 .. $count) {
-        my $req = "GET $uri HTTP/1.0" . CRLF
-            . "X-Real-IP: ::$i" . CRLF . CRLF;
+	for my $i (1 .. $count) {
+		my $req = "GET $uri HTTP/1.0" . CRLF
+			. "X-Real-IP: ::$i" . CRLF . CRLF;
 
-        if (http($req) =~ /X-Port: (\d+)/) {
-            $ports{$1} = 0 unless defined $ports{$1};
-            $ports{$1}++;
-        }
-    }
+		if (http($req) =~ /X-Port: (\d+)/) {
+			$ports{$1} = 0 unless defined $ports{$1};
+			$ports{$1}++;
+		}
+	}
 
-    my @keys = map { my $p = $_; grep { $p == $_ } keys %ports } @ports;
-    return join ', ', map { $_ . ": " . $ports{$_} } @keys;
+	my @keys = map { my $p = $_; grep { $p == $_ } keys %ports } @ports;
+	return join ', ', map { $_ . ": " . $ports{$_} } @keys;
 }
 
 ###############################################################################

@@ -23,7 +23,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http proxy cache/)->plan(2)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -85,19 +85,13 @@ $t->todo_alerts();
 
 http_get('/t.html');
 
-TODO: {
-todo_skip 'leaves coredump', 1 unless $ENV{TEST_NGINX_UNSAFE}
-    or $t->has_version('1.17.1');
-
 like(http_match_get('/t.html'), qr//, 'request 412 cached');
-
-}
 
 ###############################################################################
 
 sub http_match_get {
-    my ($url, %extra) = @_;
-    return http(<<EOF, %extra);
+	my ($url, %extra) = @_;
+	return http(<<EOF, %extra);
 GET $url HTTP/1.0
 Host: localhost
 If-Match: tt

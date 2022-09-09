@@ -25,8 +25,8 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http http_ssl sni proxy/)
-    ->has_daemon('openssl')
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->has_daemon('openssl')
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -37,15 +37,14 @@ events {
 
 http {
     %%TEST_GLOBALS_HTTP%%
+    %%PROXY_ASYNCH_ENABLE%%
 
     upstream backend {
         server 127.0.0.1:8081;
-        %%PROXY_ASYNCH_ENABLE%%
     }
 
     upstream backend2 {
         server 127.0.0.1:8081;
-        %%PROXY_ASYNCH_ENABLE%%
     }
 
     server {
@@ -104,7 +103,7 @@ http {
     }
 
     server {
-        listen 127.0.0.1:8081 ssl %%SSL_ASYNCH%;
+        listen 127.0.0.1:8081 ssl %%SSL_ASYNCH%%;
         listen [::1]:%%PORT_8081%% ssl %%SSL_ASYNCH%%;
         server_name 1.example.com;
 
@@ -128,11 +127,11 @@ EOF
 my $d = $t->testdir();
 
 foreach my $name ('localhost') {
-    system('openssl req -x509 -new '
-        . "-config $d/openssl.conf -subj /commonName=$name/ "
-        . "-out $d/$name.crt -keyout $d/$name.key "
-        . ">>$d/openssl.out 2>&1") == 0
-        or die "Can't create certificate for $name: $!\n";
+	system('openssl req -x509 -new '
+		. "-config $d/openssl.conf -subj /commonName=$name/ "
+		. "-out $d/$name.crt -keyout $d/$name.key "
+		. ">>$d/openssl.out 2>&1") == 0
+		or die "Can't create certificate for $name: $!\n";
 }
 
 $t->write_file('index.html', '');

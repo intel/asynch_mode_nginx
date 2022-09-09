@@ -24,7 +24,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http rewrite gzip/)->plan(19)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -41,9 +41,9 @@ http {
     log_format addr "$remote_addr:$remote_port:$server_addr:$server_port";
     log_format binary $binary_remote_addr;
 
-    log_format default  escape=default  $arg_a$arg_b$arg_c;
-    log_format none     escape=none     $arg_a$arg_b$arg_c;
-    log_format json     escape=json     $arg_a$arg_b$arg_c;
+    log_format default  escape=default  $uri$arg_b$arg_c;
+    log_format none     escape=none     $uri$arg_b$arg_c;
+    log_format json     escape=json     $uri$arg_b$arg_c;
 
     server {
         listen       127.0.0.1:8080;
@@ -170,7 +170,8 @@ my $sport = $s->peerport();
 
 http_get('/binary');
 
-http_get('/escape?a="1 \\ ' . pack("n", 0x1b1c) . ' "&c=2');
+# /escape/"1 %1B%1C "?c=2
+http_get('/escape/%221%20%1B%1C%20%22?c=2');
 
 http_get('/cache?logname=lru');
 http_get('/cache?logname=lru');
@@ -192,8 +193,8 @@ rename "$d/dir_moved",  "$d/dir";
 # wait for file to appear with nonzero size thanks to the flush parameter
 
 for (1 .. 10) {
-    last if -s "$d/compressed.log";
-    select undef, undef, undef, 0.1;
+	last if -s "$d/compressed.log";
+	select undef, undef, undef, 0.1;
 }
 
 # verify that "gzip" parameter turns on compression
@@ -201,12 +202,12 @@ for (1 .. 10) {
 my $log;
 
 SKIP: {
-    eval { require IO::Uncompress::Gunzip; };
-    skip("IO::Uncompress::Gunzip not installed", 1) if $@;
+	eval { require IO::Uncompress::Gunzip; };
+	skip("IO::Uncompress::Gunzip not installed", 1) if $@;
 
-    my $gzipped = $t->read_file('compressed.log');
-    IO::Uncompress::Gunzip::gunzip(\$gzipped => \$log);
-    like($log, qr!^/compressed:200!s, 'compressed log - flush time');
+	my $gzipped = $t->read_file('compressed.log');
+	IO::Uncompress::Gunzip::gunzip(\$gzipped => \$log);
+	like($log, qr!^/compressed:200!s, 'compressed log - flush time');
 }
 
 # now verify all other logs
@@ -217,9 +218,9 @@ $t->stop();
 # verify that by default, 'combined' format is used, 'off' disables logging
 
 like($t->read_file('combined.log'),
-    qr!^\Q$addr - - [\E .*
-        \Q] "GET /combined HTTP/1.0" 200 2 "-" "-"\E$!x,
-    'default log format');
+	qr!^\Q$addr - - [\E .*
+		\Q] "GET /combined HTTP/1.0" 200 2 "-" "-"\E$!x,
+	'default log format');
 
 # verify that log filtering works
 
@@ -243,7 +244,7 @@ is($t->read_file('complex.log'), $exp_complex, 'if with complex value');
 
 $log = $t->read_file('noreuse.log');
 is($log, "/filtered/noreuse1/good:200\n/filtered/noreuse2/good:200\n",
-    'log filtering with buffering');
+	'log filtering with buffering');
 
 # multiple logs in a same location
 
@@ -272,11 +273,11 @@ is($t->read_file('binary.log'), "$expected\n", 'binary');
 # characters escaping
 
 is($t->read_file('test.log'),
-    '\x221 \x5C \x1B\x1C \x22-2' . "\n", 'escape - default');
+	'/escape/\x221 \x1B\x1C \x22-2' . "\n", 'escape - default');
 is($t->read_file('none.log'),
-    '"1 \\ ' . pack("n", 0x1b1c) . " \"2\n", 'escape - none');
+	"/escape/\"1 \x1B\x1C \"2\n", 'escape - none');
 is($t->read_file('json.log'),
-    '\"1 \\\\ \u001B\u001C \"2' . "\n", 'escape - json');
+	'/escape/\"1 \u001B\u001C \"2' . "\n", 'escape - json');
 
 SKIP: {
 skip 'win32', 4 if $^O eq 'MSWin32';

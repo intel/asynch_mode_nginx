@@ -23,7 +23,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http proxy rewrite/)->plan(10)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -119,6 +119,6 @@ like(http_get('/dir-file/'), qr!404 Not!, 'dir does not match file');
 
 like(http_get('/alias-re.html'), qr!SEE THIS!, 'alias in regex location');
 like(http_get('/alias-nested/found.html'), qr!SEE THIS!,
-    'alias with nested location');
+	'alias with nested location');
 
 ###############################################################################

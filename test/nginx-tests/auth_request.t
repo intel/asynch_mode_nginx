@@ -25,8 +25,8 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()
-    ->has(qw/http rewrite proxy cache fastcgi auth_basic auth_request/)
-    ->plan(19);
+	->has(qw/http rewrite proxy cache fastcgi auth_basic auth_request/)
+	->plan(20);
 
 $t->write_file_expand('nginx.conf', <<'EOF');
 
@@ -130,6 +130,20 @@ http {
             proxy_cache_valid 1m;
         }
 
+        location /proxy-multi {
+            auth_request /auth-proxy-multi;
+        }
+        location = /auth-proxy-multi {
+            proxy_pass http://127.0.0.1:8080/auth-multi;
+            proxy_pass_request_body off;
+            proxy_set_header Content-Length "";
+        }
+        location = /auth-multi {
+            add_header WWW-Authenticate foo always;
+            add_header WWW-Authenticate bar always;
+            return 401;
+        }
+
         location /fastcgi {
             auth_request /auth-fastcgi;
         }
@@ -163,7 +177,7 @@ unlike(http_get('/open-static'), qr/INVISIBLE/, 'auth static no content');
 
 like(http_get('/proxy'), qr/ 401 /, 'proxy auth unauthorized');
 like(http_get('/proxy'), qr/WWW-Authenticate: Basic realm="restricted"/,
-    'proxy auth has www-authenticate');
+	'proxy auth has www-authenticate');
 like(http_get_auth('/proxy'), qr/ 404 /, 'proxy auth pass');
 unlike(http_get_auth('/proxy'), qr/INVISIBLE/, 'proxy auth no content');
 
@@ -188,23 +202,33 @@ like(http_get('/proxy-cache'), qr/ 404 /, 'proxy auth cached');
 
 like(http_post_big('/proxy-double'), qr/ 204 /, 'proxy auth with body read');
 
+# Multiple WWW-Authenticate headers (ticket #485).
+
+TODO: {
+local $TODO = 'not yet' unless $t->has_version('1.23.0');
+
+like(http_get('/proxy-multi-auth'), qr/WWW-Authenticate: foo.*bar/s,
+	'multiple www-authenticate headers');
+
+}
+
 SKIP: {
-    eval { require FCGI; };
-    skip 'FCGI not installed', 2 if $@;
-    skip 'win32', 2 if $^O eq 'MSWin32';
+	eval { require FCGI; };
+	skip 'FCGI not installed', 2 if $@;
+	skip 'win32', 2 if $^O eq 'MSWin32';
 
-    $t->run_daemon(\&fastcgi_daemon);
-    $t->waitforsocket('127.0.0.1:' . port(8081));
+	$t->run_daemon(\&fastcgi_daemon);
+	$t->waitforsocket('127.0.0.1:' . port(8081));
 
-    like(http_get('/fastcgi'), qr/ 404 /, 'fastcgi auth open');
-    unlike(http_get('/fastcgi'), qr/INVISIBLE/, 'fastcgi auth no content');
+	like(http_get('/fastcgi'), qr/ 404 /, 'fastcgi auth open');
+	unlike(http_get('/fastcgi'), qr/INVISIBLE/, 'fastcgi auth no content');
 }
 
 ###############################################################################
 
 sub http_get_auth {
-    my ($url, %extra) = @_;
-    return http(<<EOF, %extra);
+	my ($url, %extra) = @_;
+	return http(<<EOF, %extra);
 GET $url HTTP/1.0
 Host: localhost
 Authorization: Basic dXNlcjpzZWNyZXQ=
@@ -213,45 +237,45 @@ EOF
 }
 
 sub http_post {
-    my ($url, %extra) = @_;
+	my ($url, %extra) = @_;
 
-    my $p = "POST $url HTTP/1.0" . CRLF .
-        "Host: localhost" . CRLF .
-        "Content-Length: 10" . CRLF .
-        CRLF .
-        "1234567890";
+	my $p = "POST $url HTTP/1.0" . CRLF .
+		"Host: localhost" . CRLF .
+		"Content-Length: 10" . CRLF .
+		CRLF .
+		"1234567890";
 
-    return http($p, %extra);
+	return http($p, %extra);
 }
 
 sub http_post_big {
-    my ($url, %extra) = @_;
+	my ($url, %extra) = @_;
 
-    my $p = "POST $url HTTP/1.0" . CRLF .
-        "Host: localhost" . CRLF .
-        "Content-Length: 10240" . CRLF .
-        CRLF .
-        ("1234567890" x 1024);
+	my $p = "POST $url HTTP/1.0" . CRLF .
+		"Host: localhost" . CRLF .
+		"Content-Length: 10240" . CRLF .
+		CRLF .
+		("1234567890" x 1024);
 
-    return http($p, %extra);
+	return http($p, %extra);
 }
 
 ###############################################################################
 
 sub fastcgi_daemon {
-    my $socket = FCGI::OpenSocket('127.0.0.1:' . port(8081), 5);
-    my $request = FCGI::Request(\*STDIN, \*STDOUT, \*STDERR, \%ENV,
-        $socket);
+	my $socket = FCGI::OpenSocket('127.0.0.1:' . port(8081), 5);
+	my $request = FCGI::Request(\*STDIN, \*STDOUT, \*STDERR, \%ENV,
+		$socket);
 
-    while ($request->Accept() >= 0) {
-        print <<EOF;
+	while ($request->Accept() >= 0) {
+		print <<EOF;
 Content-Type: text/html
 
 INVISIBLE
 EOF
-    }
+	}
 
-    FCGI::CloseSocket($socket);
+	FCGI::CloseSocket($socket);
 }
 
 ###############################################################################

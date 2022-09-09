@@ -25,7 +25,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/stream stream_return stream_access/)
-    ->has(qw/stream_limit_conn/);
+	->has(qw/stream_limit_conn/);
 
 $t->write_file_expand('nginx.conf', <<'EOF');
 

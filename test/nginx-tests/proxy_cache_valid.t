@@ -25,7 +25,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http proxy cache rewrite/)->plan(12)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -120,8 +120,8 @@ like(http_get('/'), qr/200 OK/, 'error no-cache - not cacheable');
 ###############################################################################
 
 sub get {
-    my ($url, $extra) = @_;
-    return http(<<EOF);
+	my ($url, $extra) = @_;
+	return http(<<EOF);
 GET $url HTTP/1.1
 Host: localhost
 Connection: close

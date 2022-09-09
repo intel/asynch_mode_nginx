@@ -23,8 +23,8 @@ use Test::Nginx;
 select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
-my $t = Test::Nginx->new()->has(qw/http rewrite/)->plan(17)
-    ->write_file_expand('nginx.conf', <<'EOF')->run();
+my $t = Test::Nginx->new()->has(qw/http rewrite/)->plan(19)
+	->write_file_expand('nginx.conf', <<'EOF')->run();
 
 %%TEST_GLOBALS%%
 
@@ -65,30 +65,32 @@ like(http_get('/foo/bar/..'), qr!x /foo/ x!, 'trailing dot dot');
 
 like(http_get('http://localhost'), qr!x / x!, 'absolute');
 like(http_get('http://localhost/'), qr!x / x!, 'absolute slash');
-
-TODO: {
-local $TODO = 'not yet' unless $t->has_version('1.19.6');
-
 like(http_get('http://localhost?args'), qr!x / x.*y args y!ms,
-    'absolute args');
+	'absolute args');
 like(http_get('http://localhost?args#frag'), qr!x / x.*y args y!ms,
-    'absolute args and frag');
-
-}
+	'absolute args and frag');
 
 like(http_get('http://localhost:8080'), qr!x / x!, 'port');
 like(http_get('http://localhost:8080/'), qr!x / x!, 'port slash');
+like(http_get('http://localhost:8080?args'), qr!x / x.*y args y!ms,
+	'port args');
+like(http_get('http://localhost:8080?args#frag'), qr!x / x.*y args y!ms,
+	'port args and frag');
 
 TODO: {
-local $TODO = 'not yet' unless $t->has_version('1.19.6');
+local $TODO = 'not yet' unless $t->has_version('1.21.1');
 
-like(http_get('http://localhost:8080?args'), qr!x / x.*y args y!ms,
-    'port args');
-like(http_get('http://localhost:8080?args#frag'), qr!x / x.*y args y!ms,
-    'port args and frag');
+like(http_get('/ /'), qr/400 Bad/, 'space');
 
 }
 
-like(http_get('/ /'), qr!x / / x!, 'space');
+TODO: {
+local $TODO = 'not yet' unless $t->has_version('1.21.1');
+
+like(http_get("/\x02"), qr/400 Bad/, 'control');
+
+}
+
+like(http_get('/%02'), qr!x /\x02 x!, 'control escaped');
 
 ###############################################################################

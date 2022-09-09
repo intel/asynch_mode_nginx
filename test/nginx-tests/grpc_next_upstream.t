@@ -141,7 +141,7 @@ unlike(http_get('/ok') . http_get('/ok'), qr/AND-THIS/, 'down after 500');
 # make sure all backends are tried once
 
 like(http_get('/all/rr'),
-    qr/^127.0.0.1:($p1, 127.0.0.1:$p2|$p2, 127.0.0.1:$p1)$/mi,
-    'all tried once');
+	qr/^127.0.0.1:($p1, 127.0.0.1:$p2|$p2, 127.0.0.1:$p1)$/mi,
+	'all tried once');
 
 ###############################################################################

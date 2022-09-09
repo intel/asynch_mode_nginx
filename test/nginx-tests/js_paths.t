@@ -24,7 +24,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http/)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -39,18 +39,18 @@ http {
     js_path "%%TESTDIR%%/lib1";
     js_path "lib2";
 
-    js_include test.js;
+    js_import test.js;
 
     server {
         listen       127.0.0.1:8080;
         server_name  localhost;
 
         location /test {
-            js_content test;
+            js_content test.test;
         }
 
         location /test2 {
-            js_content test2;
+            js_content test.test2;
         }
     }
 }
@@ -73,6 +73,8 @@ $t->write_file('test.js', <<EOF);
     function test3(r) {
         r.return(200, m3.sum(r.args.a, r.args.b));
     }
+
+    export default {test, test2};
 
 EOF
 

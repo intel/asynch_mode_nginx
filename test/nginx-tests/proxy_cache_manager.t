@@ -29,7 +29,7 @@ plan(skip_all => 'page size is not appropriate') unless
         POSIX::sysconf(&POSIX::_SC_PAGESIZE) == 4096;
 
 my $t = Test::Nginx->new()->has(qw/http proxy cache/)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -110,11 +110,11 @@ is(files("$d/cache"), 1, 'manager sleep');
 ###############################################################################
 
 sub files {
-    my ($path) = @_;
-    my $dh;
+	my ($path) = @_;
+	my $dh;
 
-    opendir($dh, $path);
-    return scalar grep { ! /^\./ } readdir($dh);
+	opendir($dh, $path);
+	return scalar grep { ! /^\./ } readdir($dh);
 }
 
 ###############################################################################

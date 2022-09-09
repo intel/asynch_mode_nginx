@@ -25,8 +25,8 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http http_ssl uwsgi/)
-    ->has_daemon('uwsgi')->has_daemon('openssl')->plan(6)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->has_daemon('uwsgi')->has_daemon('openssl')->plan(6)
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -121,11 +121,11 @@ my $key1 = "$d/1.example.com.key";
 my $key2 = "$d/2.example.com.key";
 
 foreach my $name ('1.example.com', '2.example.com') {
-    system('openssl req -x509 -new '
-        . "-config $d/openssl.$name.conf "
-        . "-out $d/$name.crt -keyout $d/$name.key "
-        . ">>$d/openssl.out 2>&1") == 0
-        or die "Can't create certificate for $name: $!\n";
+	system('openssl req -x509 -new '
+		. "-config $d/openssl.$name.conf "
+		. "-out $d/$name.crt -keyout $d/$name.key "
+		. ">>$d/openssl.out 2>&1") == 0
+		or die "Can't create certificate for $name: $!\n";
 }
 
 $t->write_file('uwsgi_test_app.py', <<END);
@@ -140,28 +140,28 @@ my $uwsgihelp = `uwsgi -h`;
 my @uwsgiopts = ();
 
 if ($uwsgihelp !~ /--wsgi-file/) {
-    # uwsgi has no python support, maybe plugin load is necessary
-    push @uwsgiopts, '--plugin', 'python';
-    push @uwsgiopts, '--plugin', 'python3';
+	# uwsgi has no python support, maybe plugin load is necessary
+	push @uwsgiopts, '--plugin', 'python';
+	push @uwsgiopts, '--plugin', 'python3';
 }
 
 open OLDERR, ">&", \*STDERR; close STDERR;
 $t->run_daemon('uwsgi', @uwsgiopts,
-    '--ssl-socket', '127.0.0.1:' . port(8081) . ",$crt1,$key1",
-    '--wsgi-file', $d . '/uwsgi_test_app.py',
-    '--logto', $d . '/uwsgi_log');
+	'--ssl-socket', '127.0.0.1:' . port(8081) . ",$crt1,$key1",
+	'--wsgi-file', $d . '/uwsgi_test_app.py',
+	'--logto', $d . '/uwsgi_log');
 $t->run_daemon('uwsgi', @uwsgiopts,
-    '--ssl-socket', '127.0.0.1:' . port(8082) . ",$crt2,$key2",
-    '--wsgi-file', $d . '/uwsgi_test_app.py',
-    '--logto', $d . '/uwsgi_log');
+	'--ssl-socket', '127.0.0.1:' . port(8082) . ",$crt2,$key2",
+	'--wsgi-file', $d . '/uwsgi_test_app.py',
+	'--logto', $d . '/uwsgi_log');
 open STDERR, ">&", \*OLDERR;
 
 $t->run();
 
 $t->waitforsocket('127.0.0.1:' . port(8081))
-    or die "Can't start uwsgi";
+	or die "Can't start uwsgi";
 $t->waitforsocket('127.0.0.1:' . port(8082))
-    or die "Can't start uwsgi";
+	or die "Can't start uwsgi";
 
 ###############################################################################
 

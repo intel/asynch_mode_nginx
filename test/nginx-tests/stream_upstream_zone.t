@@ -25,7 +25,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/stream stream_return stream_upstream_zone/)
-    ->plan(2)->write_file_expand('nginx.conf', <<'EOF');
+	->plan(2)->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 

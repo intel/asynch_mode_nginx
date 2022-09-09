@@ -25,8 +25,8 @@ select STDOUT; $| = 1;
 eval { require SCGI; };
 plan(skip_all => 'SCGI not installed') if $@;
 
-my $t = Test::Nginx->new()->has(qw/http scgi/)->plan(7)
-    ->write_file_expand('nginx.conf', <<'EOF');
+my $t = Test::Nginx->new()->has(qw/http scgi/)->plan(10)
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -76,17 +76,44 @@ like(http_get('/'), qr/^3$/m, 'scgi third request');
 unlike(http_head('/'), qr/SEE-THIS/, 'no data in HEAD');
 
 like(http_get_headers('/headers'), qr/SEE-THIS/,
-    'scgi request with many ignored headers');
+	'scgi request with many ignored headers');
 
 like(http_get('/var?b=127.0.0.1:' . port(8081)), qr/SEE-THIS/,
-    'scgi with variables');
+	'scgi with variables');
 like(http_get('/var?b=u'), qr/SEE-THIS/, 'scgi with variables to upstream');
+
+TODO: {
+local $TODO = 'not yet' unless $t->has_version('1.23.0');
+
+my $r = http(<<EOF);
+GET / HTTP/1.0
+Host: localhost
+X-Forwarded-For: foo
+X-Forwarded-For: bar
+X-Forwarded-For: bazz
+Cookie: foo
+Cookie: bar
+Cookie: bazz
+Foo: foo
+Foo: bar
+Foo: bazz
+
+EOF
+
+like($r, qr/X-Forwarded-For: foo, bar, bazz/,
+	'scgi with multiple X-Forwarded-For headers');
+like($r, qr/X-Cookie: foo; bar; bazz/,
+	'scgi with multiple Cookie headers');
+like($r, qr/X-Foo: foo, bar, bazz/,
+	'scgi with multiple unknown headers');
+
+}
 
 ###############################################################################
 
 sub http_get_headers {
-    my ($url, %extra) = @_;
-    return http(<<EOF, %extra);
+	my ($url, %extra) = @_;
+	return http(<<EOF, %extra);
 GET $url HTTP/1.0
 Host: localhost
 X-Blah: ignored header
@@ -115,31 +142,38 @@ EOF
 ###############################################################################
 
 sub scgi_daemon {
-    my $server = IO::Socket::INET->new(
-        Proto => 'tcp',
-        LocalHost => '127.0.0.1:' . port(8081),
-        Listen => 5,
-        Reuse => 1
-    )
-        or die "Can't create listening socket: $!\n";
+	my $server = IO::Socket::INET->new(
+		Proto => 'tcp',
+		LocalHost => '127.0.0.1:' . port(8081),
+		Listen => 5,
+		Reuse => 1
+	)
+		or die "Can't create listening socket: $!\n";
 
-    my $scgi = SCGI->new($server, blocking => 1);
-    my $count = 0;
+	my $scgi = SCGI->new($server, blocking => 1);
+	my $count = 0;
 
-    while (my $request = $scgi->accept()) {
-        eval { $request->read_env(); };
-        next if $@;
+	while (my $request = $scgi->accept()) {
+		eval { $request->read_env(); };
+		next if $@;
 
-        $count++;
+		$count++;
 
-        $request->connection()->print(<<EOF);
+		my $xfwd = $request->env->{HTTP_X_FORWARDED_FOR} || '';
+		my $cookie = $request->env->{HTTP_COOKIE} || '';
+		my $foo = $request->env->{HTTP_FOO} || '';
+
+		$request->connection()->print(<<EOF);
 Location: http://localhost/redirect
 Content-Type: text/html
+X-Forwarded-For: $xfwd
+X-Cookie: $cookie
+X-Foo: $foo
 
 SEE-THIS
 $count
 EOF
-    }
+	}
 }
 
 ###############################################################################

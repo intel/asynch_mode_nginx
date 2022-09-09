@@ -27,7 +27,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/stream/)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -109,103 +109,103 @@ is(many(30, port(8083)), "$port4: 30", 'backup');
 $t->run_daemon(\&stream_daemon, port(8086));
 $t->waitforsocket('127.0.0.1:' . port(8086));
 
-sleep 2;    # wait till fail_timeout passes
+sleep 2;	# wait till fail_timeout passes
 is(parallel(30, port(8083)), "$port6: 30", 'recovery');
 
 $t->stop();
 
 like($t->read_file('u.log'), qr/127.0.0.1:$port6, 127.0.0.1:$port4!0, 1!0, 4/,
-    'per-upstream variables');
+	'per-upstream variables');
 
 ###############################################################################
 
 sub many {
-    my ($count, $port) = @_;
-    my (%ports);
+	my ($count, $port) = @_;
+	my (%ports);
 
-    for (1 .. $count) {
-        if (stream("127.0.0.1:$port")->io('.') =~ /(\d+)/) {
-            $ports{$1} = 0 unless defined $ports{$1};
-            $ports{$1}++;
-        }
-    }
+	for (1 .. $count) {
+		if (stream("127.0.0.1:$port")->io('.') =~ /(\d+)/) {
+			$ports{$1} = 0 unless defined $ports{$1};
+			$ports{$1}++;
+		}
+	}
 
-    my @keys = map { my $p = $_; grep { $p == $_ } keys %ports } @ports;
-    return join ', ', map { $_ . ": " . $ports{$_} } @keys;
+	my @keys = map { my $p = $_; grep { $p == $_ } keys %ports } @ports;
+	return join ', ', map { $_ . ": " . $ports{$_} } @keys;
 }
 
 sub parallel {
-    my ($count, $port) = @_;
-    my (%ports, @s);
+	my ($count, $port) = @_;
+	my (%ports, @s);
 
-    for (1 .. $count) {
-        my $s = stream("127.0.0.1:$port");
-        $s->write('keep');
-        $s->read();
-        push @s, $s;
-    }
+	for (1 .. $count) {
+		my $s = stream("127.0.0.1:$port");
+		$s->write('keep');
+		$s->read();
+		push @s, $s;
+	}
 
-    for (1 .. $count) {
-        if ((pop @s)->io('.') =~ /(\d+)/) {
-            $ports{$1} = 0 unless defined $ports{$1};
-            $ports{$1}++;
-        }
-    }
+	for (1 .. $count) {
+		if ((pop @s)->io('.') =~ /(\d+)/) {
+			$ports{$1} = 0 unless defined $ports{$1};
+			$ports{$1}++;
+		}
+	}
 
-    my @keys = map { my $p = $_; grep { $p == $_ } keys %ports } @ports;
-    return join ', ', map { $_ . ": " . $ports{$_} } @keys;
+	my @keys = map { my $p = $_; grep { $p == $_ } keys %ports } @ports;
+	return join ', ', map { $_ . ": " . $ports{$_} } @keys;
 }
 
 ###############################################################################
 
 sub stream_daemon {
-    my ($port) = @_;
+	my ($port) = @_;
 
-    my $server = IO::Socket::INET->new(
-        Proto => 'tcp',
-        LocalAddr => '127.0.0.1',
-        LocalPort => $port,
-        Listen => 5,
-        Reuse => 1
-    )
-        or die "Can't create listening socket: $!\n";
+	my $server = IO::Socket::INET->new(
+		Proto => 'tcp',
+		LocalAddr => '127.0.0.1',
+		LocalPort => $port,
+		Listen => 5,
+		Reuse => 1
+	)
+		or die "Can't create listening socket: $!\n";
 
-    my $sel = IO::Select->new($server);
+	my $sel = IO::Select->new($server);
 
-    local $SIG{PIPE} = 'IGNORE';
+	local $SIG{PIPE} = 'IGNORE';
 
-    while (my @ready = $sel->can_read) {
-        foreach my $fh (@ready) {
-            if ($server == $fh) {
-                my $new = $fh->accept;
-                $new->autoflush(1);
-                $sel->add($new);
+	while (my @ready = $sel->can_read) {
+		foreach my $fh (@ready) {
+			if ($server == $fh) {
+				my $new = $fh->accept;
+				$new->autoflush(1);
+				$sel->add($new);
 
-            } elsif (stream_handle_client($fh)) {
-                $sel->remove($fh);
-                $fh->close;
-            }
-        }
-    }
+			} elsif (stream_handle_client($fh)) {
+				$sel->remove($fh);
+				$fh->close;
+			}
+		}
+	}
 }
 
 sub stream_handle_client {
-    my ($client) = @_;
+	my ($client) = @_;
 
-    log2c("(new connection $client)");
+	log2c("(new connection $client)");
 
-    $client->sysread(my $buffer, 65536) or return 1;
+	$client->sysread(my $buffer, 65536) or return 1;
 
-    log2i("$client $buffer");
+	log2i("$client $buffer");
 
-    my $close = $buffer ne 'keep';
-    $buffer = $client->sockport();
+	my $close = $buffer ne 'keep';
+	$buffer = $client->sockport();
 
-    log2o("$client $buffer");
+	log2o("$client $buffer");
 
-    $client->syswrite($buffer);
+	$client->syswrite($buffer);
 
-    return $close;
+	return $close;
 }
 
 sub log2i { Test::Nginx::log_core('|| <<', @_); }

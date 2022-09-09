@@ -24,7 +24,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http proxy/)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -163,7 +163,7 @@ like(http_get('/buffer_type'), qr/AAABBCDDDD/, 'buffer type');
 like(http_get('/forward'), qr/AAABBCDDDD/, 'forward');
 like(http_get('/filter?len=3'), qr/AAA|DDDD|/, 'filter 3');
 like(http_get('/filter?len=2&dup=1'), qr/AAA|AAABB|BBDDDD|DDDD/,
-    'filter 2 dup');
+	'filter 2 dup');
 like(http_get('/prepend'), qr/XXXAAABBCDDDD/, 'prepend');
 
 ###############################################################################

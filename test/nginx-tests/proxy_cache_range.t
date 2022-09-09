@@ -23,7 +23,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http proxy cache/)->plan(7)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -76,41 +76,41 @@ $t->write_file('t.html', 'SEE-THIS');
 # should not fit in a single proxy buffer
 
 $t->write_file('tbig.html',
-    join('', map { sprintf "XX%06dXX", $_ } (1 .. 7000)));
+	join('', map { sprintf "XX%06dXX", $_ } (1 .. 7000)));
 
 $t->run();
 
 ###############################################################################
 
 like(http_get_range('/t.html?1', 'Range: bytes=4-'), qr/^THIS/m,
-    'range on first request');
+	'range on first request');
 
 {
 local $TODO = 'not yet';
 
 like(http_get_range('/t.html?2', 'Range: bytes=0-2,4-'), qr/^SEE.*^THIS/ms,
-    'multipart range on first request');
+	'multipart range on first request');
 }
 
 like(http_get_range('/t.html?1', 'Range: bytes=4-'), qr/^THIS/m,
-    'cached range');
+	'cached range');
 like(http_get_range('/t.html?1', 'Range: bytes=0-2,4-'), qr/^SEE.*^THIS/ms,
-    'cached multipart range');
+	'cached multipart range');
 
 like(http_get_range('/min_uses/t.html?3', 'Range: bytes=4-'),
-    qr/^THIS/m, 'range below min_uses');
+	qr/^THIS/m, 'range below min_uses');
 
 like(http_get_range('/min_uses/t.html?4', 'Range: bytes=0-2,4-'),
-    qr/^SEE.*^THIS/ms, 'multipart range below min_uses');
+	qr/^SEE.*^THIS/ms, 'multipart range below min_uses');
 
 like(http_get_range('/tbig.html', 'Range: bytes=0-19'),
-    qr/^XX000001XXXX000002XX$/ms, 'range of response received in parts');
+	qr/^XX000001XXXX000002XX$/ms, 'range of response received in parts');
 
 ###############################################################################
 
 sub http_get_range {
-    my ($url, $extra) = @_;
-    return http(<<EOF);
+	my ($url, $extra) = @_;
+	return http(<<EOF);
 GET $url HTTP/1.1
 Host: localhost
 Connection: close

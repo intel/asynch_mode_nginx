@@ -105,45 +105,40 @@ is(stream('127.0.0.1:' . port(8086))->io('.'), '', 'next down');
 
 $t->stop();
 
-TODO: {
-local $TODO = 'not yet' unless $t->has_version('1.19.6');
-
 is($t->read_file('test.log'), '127.0.0.1:' . port(8083) . "\n",
-    'next down log');
-
-}
+	'next down log');
 
 ###############################################################################
 
 sub stream_daemon {
-    my $server = IO::Socket::INET->new(
-        Proto => 'tcp',
-        LocalHost => '127.0.0.1:' . port(8085),
-        Listen => 5,
-        Reuse => 1
-    )
-        or die "Can't create listening socket: $!\n";
+	my $server = IO::Socket::INET->new(
+		Proto => 'tcp',
+		LocalHost => '127.0.0.1:' . port(8085),
+		Listen => 5,
+		Reuse => 1
+	)
+		or die "Can't create listening socket: $!\n";
 
-    local $SIG{PIPE} = 'IGNORE';
+	local $SIG{PIPE} = 'IGNORE';
 
-    while (my $client = $server->accept()) {
-        $client->autoflush(1);
+	while (my $client = $server->accept()) {
+		$client->autoflush(1);
 
-        log2c("(new connection $client)");
+		log2c("(new connection $client)");
 
-        $client->sysread(my $buffer, 65536) or next;
+		$client->sysread(my $buffer, 65536) or next;
 
-        log2i("$client $buffer");
+		log2i("$client $buffer");
 
-        $buffer = 'SEE-THIS';
+		$buffer = 'SEE-THIS';
 
-        log2o("$client $buffer");
+		log2o("$client $buffer");
 
-        $client->syswrite($buffer);
+		$client->syswrite($buffer);
 
-    } continue {
-        close $client;
-    }
+	} continue {
+		close $client;
+	}
 }
 
 sub log2i { Test::Nginx::log_core('|| <<', @_); }

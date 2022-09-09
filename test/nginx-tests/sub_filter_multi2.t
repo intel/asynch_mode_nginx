@@ -24,7 +24,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http rewrite sub/)->plan(7)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -66,18 +66,18 @@ $t->run();
 ###############################################################################
 
 like(http_get('/var/replacement?a=a&b=b&c=abXYaXbZ'),
-    qr/a\+b-XYa\+Xb-Z/, 'complex');
+	qr/a\+b-XYa\+Xb-Z/, 'complex');
 like(http_get('/var/replacement?a=patt&b=abyz&c=pattabyzXYpattXabyzZpatt'),
-    qr/patt\+abyz-XYpatt\+Xabyz-Zpatt\+/, 'complex 2');
+	qr/patt\+abyz-XYpatt\+Xabyz-Zpatt\+/, 'complex 2');
 like(http_get('/var/replacement?a=a&b=b&c=ABXYAXBZ'),
-    qr/a\+b-XYa\+Xb-Z/, 'case insensivity');
+	qr/a\+b-XYa\+Xb-Z/, 'case insensivity');
 like(http_get('/var/replacement?b=b&c=abXYaXbZ'),
-    qr/ab-XYaXb-Z/, 'one search string is empty');
+	qr/ab-XYaXb-Z/, 'one search string is empty');
 like(http_get('/var/replacement?c=abXYaXbZ'),
-    qr/abXYaXbZ/, 'all search strings are empty');
+	qr/abXYaXbZ/, 'all search strings are empty');
 like(http_get('/var/replacement2?a=aaa&b=bbb&c=yy&d=zz&e=AaaaAbbbZyyAAzzY'),
-    qr/A\+Z-Y/, 'multiple variables');
+	qr/A\+Z-Y/, 'multiple variables');
 like(http_get('/var/replacement2?b=bbb&c=yy&e=AAbbbZyyAAY'),
-    qr/A\+Z-Y/, 'multiple variables 2');
+	qr/A\+Z-Y/, 'multiple variables 2');
 
 ###############################################################################

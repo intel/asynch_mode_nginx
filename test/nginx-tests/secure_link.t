@@ -130,17 +130,17 @@ $t->run();
 # new style
 
 like(http_get('/test.html?hash=q-5vpkjBkRXXtkUMXiJVHA=='),
-    qr/PASSED/, 'request md5');
+	qr/PASSED/, 'request md5');
 like(http_get('/test.html?hash=q-5vpkjBkRXXtkUMXiJVHA'),
-    qr/PASSED/, 'request md5 no padding');
+	qr/PASSED/, 'request md5 no padding');
 like(http_get('/test.html?hash=q-5vpkjBkRXXtkUMXiJVHAQQ'),
-    qr/^HTTP.*403/, 'request md5 too long');
+	qr/^HTTP.*403/, 'request md5 too long');
 like(http_get('/test.html?hash=q-5vpkjBkRXXtkUMXiJVHA-TOOLONG'),
-    qr/^HTTP.*403/, 'request md5 too long encoding');
+	qr/^HTTP.*403/, 'request md5 too long encoding');
 like(http_get('/test.html?hash=BADHASHLENGTH'),
-    qr/^HTTP.*403/, 'request md5 decode error');
+	qr/^HTTP.*403/, 'request md5 decode error');
 like(http_get('/test.html?hash=q-5vpkjBkRXXtkUMXiJVHX=='),
-    qr/^HTTP.*403/, 'request md5 mismatch');
+	qr/^HTTP.*403/, 'request md5 mismatch');
 like(http_get('/test.html'), qr/^HTTP.*403/, 'request no hash');
 
 # new style with expires
@@ -150,30 +150,30 @@ my ($expires, $hash);
 $expires = time() + 86400;
 $hash = encode_base64url(md5("secret/expires.html$expires"));
 like(http_get('/expires.html?hash=' . $hash . '&expires=' . $expires),
-    qr/PASSED/, 'request md5 not expired');
+	qr/PASSED/, 'request md5 not expired');
 like(http_get('/expires.html?hash=' . $hash . '&expires=' . $expires),
-    qr/X-Expires: $expires/, 'secure_link_expires variable');
+	qr/X-Expires: $expires/, 'secure_link_expires variable');
 
 $expires = time() - 86400;
 $hash = encode_base64url(md5("secret/expires.html$expires"));
 like(http_get('/expires.html?hash=' . $hash . '&expires=' . $expires),
-    qr/^HTTP.*403/, 'request md5 expired');
+	qr/^HTTP.*403/, 'request md5 expired');
 
 $expires = 0;
 $hash = encode_base64url(md5("secret/expires.html$expires"));
 like(http_get('/expires.html?hash=' . $hash . '&expires=' . $expires),
-    qr/^HTTP.*403/, 'request md5 invalid expiration');
+	qr/^HTTP.*403/, 'request md5 invalid expiration');
 
 # old style
 
 like(http_get('/p/' . md5_hex('test.html' . 'secret') . '/test.html'),
-    qr/PASSED/, 'request old style');
+	qr/PASSED/, 'request old style');
 like(http_get('/p/' . md5_hex('fake') . '/test.html'), qr/^HTTP.*403/,
-    'request old style fake hash');
+	'request old style fake hash');
 like(http_get('/p/' . 'foo' . '/test.html'), qr/^HTTP.*403/,
-    'request old style short hash');
+	'request old style short hash');
 like(http_get('/p/' . 'x' x 32 . '/test.html'), qr/^HTTP.*403/,
-    'request old style corrupt hash');
+	'request old style corrupt hash');
 like(http_get('/p%2f'), qr/^HTTP.*403/, 'request old style bad uri');
 like(http_get('/p/test.html'), qr/^HTTP.*403/, 'request old style no hash');
 like(http_get('/inheritance/test'), qr/PASSED/, 'inheritance');
@@ -183,10 +183,10 @@ like(http_get('/stub'), qr/xx/, 'secure_link not found');
 ###############################################################################
 
 sub encode_base64url {
-    my $e = encode_base64(shift, "");
-    $e =~ s/=+\z//;
-    $e =~ tr[+/][-_];
-    return $e;
+	my $e = encode_base64(shift, "");
+	$e =~ s/=+\z//;
+	$e =~ tr[+/][-_];
+	return $e;
 }
 
 ###############################################################################

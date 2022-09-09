@@ -26,7 +26,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http/)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -60,7 +60,7 @@ select undef, undef, undef, 0.2;
 $t->reload();
 
 if (IO::Select->new($s)->can_read(5)) {
-    Test::Nginx::log_core('||', "select: can_read");
+	Test::Nginx::log_core('||', "select: can_read");
 }
 
 is(http_get('/', socket => $s) || '', '', 'worker_shutdown_timeout');

@@ -24,7 +24,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http proxy upstream_zone upstream_random/)
-    ->plan(12)->write_file_expand('nginx.conf', <<'EOF');
+	->plan(12)->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -181,79 +181,79 @@ like(many('/lc/close', 10), qr/$port2: 10/, 'failures two');
 ###############################################################################
 
 sub many {
-    my ($uri, $count, %opts) = @_;
-    my %ports;
+	my ($uri, $count, %opts) = @_;
+	my %ports;
 
-    for (1 .. $count) {
-        if (http_get($uri) =~ /X-Port: (\d+)/) {
-            $ports{$1} = 0 unless defined $ports{$1};
-            $ports{$1}++;
-        }
+	for (1 .. $count) {
+		if (http_get($uri) =~ /X-Port: (\d+)/) {
+			$ports{$1} = 0 unless defined $ports{$1};
+			$ports{$1}++;
+		}
 
-        select undef, undef, undef, $opts{delay} if $opts{delay};
-    }
+		select undef, undef, undef, $opts{delay} if $opts{delay};
+	}
 
-    my @keys = map { my $p = $_; grep { $p == $_ } keys %ports } @ports;
-    return join ', ', map { $_ . ": " . $ports{$_} } @keys;
+	my @keys = map { my $p = $_; grep { $p == $_ } keys %ports } @ports;
+	return join ', ', map { $_ . ": " . $ports{$_} } @keys;
 }
 
 sub parallel {
-    my ($uri, $n) = @_;
-    my %ports;
+	my ($uri, $n) = @_;
+	my %ports;
 
-    my @s = map { http_get($uri, start => 1, sleep => 0.1) } (1 .. $n);
+	my @s = map { http_get($uri, start => 1, sleep => 0.1) } (1 .. $n);
 
-    for (@s) {
-        if (http_end($_) =~ /X-Port: (\d+)/) {
-            $ports{$1} = 0 unless defined $ports{$1};
-            $ports{$1}++;
-        }
-    }
+	for (@s) {
+		if (http_end($_) =~ /X-Port: (\d+)/) {
+			$ports{$1} = 0 unless defined $ports{$1};
+			$ports{$1}++;
+		}
+	}
 
-    my @keys = map { my $p = $_; grep { $p == $_ } keys %ports } @ports;
-    return join ', ', map { $_ . ": " . $ports{$_} } @keys;
+	my @keys = map { my $p = $_; grep { $p == $_ } keys %ports } @ports;
+	return join ', ', map { $_ . ": " . $ports{$_} } @keys;
 }
 
 ###############################################################################
 
 sub http_daemon {
-    my ($port) = @_;
+	my ($port) = @_;
 
-    my $server = IO::Socket::INET->new(
-        Proto => 'tcp',
-        LocalHost => '127.0.0.1',
-        LocalPort => $port,
-        Listen => 5,
-        Reuse => 1
-    )
-        or die "Can't create listening socket: $!\n";
+	my $server = IO::Socket::INET->new(
+		Proto => 'tcp',
+		LocalHost => '127.0.0.1',
+		LocalPort => $port,
+		Listen => 5,
+		Reuse => 1
+	)
+		or die "Can't create listening socket: $!\n";
 
-    local $SIG{PIPE} = 'IGNORE';
+	local $SIG{PIPE} = 'IGNORE';
 
-    while (my $client = $server->accept()) {
-        $client->autoflush(1);
+	while (my $client = $server->accept()) {
+		$client->autoflush(1);
 
-        my $headers = '';
-        my $uri = '';
+		my $headers = '';
+		my $uri = '';
 
-        while (<$client>) {
-            $headers .= $_;
-            last if (/^\x0d?\x0a?$/);
-        }
+		while (<$client>) {
+			$headers .= $_;
+			last if (/^\x0d?\x0a?$/);
+		}
 
-        $uri = $1 if $headers =~ /^\S+\s+([^ ]+)\s+HTTP/i;
+		$uri = $1 if $headers =~ /^\S+\s+([^ ]+)\s+HTTP/i;
 
-        if ($uri eq '/w') {
-            Test::Nginx::log_core('||', "$port: sleep(2.5)");
-            select undef, undef, undef, 2.5;
-        }
+		if ($uri eq '/w') {
+			Test::Nginx::log_core('||', "$port: sleep(2.5)");
+			select undef, undef, undef, 2.5;
+		}
 
-        if ($uri eq '/close' && $port == port(8081)) {
-            next;
-        }
+		if ($uri eq '/close' && $port == port(8081)) {
+			next;
+		}
 
-        Test::Nginx::log_core('||', "$port: response, 200");
-        print $client <<EOF;
+		Test::Nginx::log_core('||', "$port: response, 200");
+		print $client <<EOF;
 HTTP/1.1 200 OK
 Connection: close
 X-Port: $port
@@ -261,8 +261,8 @@ X-Port: $port
 OK
 EOF
 
-        close $client;
-    }
+		close $client;
+	}
 }
 
 ###############################################################################

@@ -26,7 +26,7 @@ eval { require IO::Socket::SSL; };
 plan(skip_all => 'IO::Socket::SSL not installed') if $@;
 
 my $t = Test::Nginx->new()->has(qw/http proxy http_ssl/)->has_daemon('openssl')
-    ->plan(8)->write_file_expand('nginx.conf', <<'EOF');
+	->plan(8)->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -93,11 +93,11 @@ $t->write_file('index.html', '');
 my $d = $t->testdir();
 
 foreach my $name ('localhost') {
-    system('openssl req -x509 -new '
-        . "-config $d/openssl.conf -subj /CN=$name/ "
-        . "-out $d/$name.crt -keyout $d/$name.key "
-        . ">>$d/openssl.out 2>&1") == 0
-        or die "Can't create certificate for $name: $!\n";
+	system('openssl req -x509 -new '
+		. "-config $d/openssl.conf -subj /CN=$name/ "
+		. "-out $d/$name.crt -keyout $d/$name.key "
+		. ">>$d/openssl.out 2>&1") == 0
+		or die "Can't create certificate for $name: $!\n";
 }
 
 $t->run_daemon(\&http_daemon, port(8082));
@@ -124,67 +124,67 @@ like(http_get('/timeout'), qr/200 OK/, 'proxy connect timeout');
 like(http_get('/timeout_h'), qr/504 Gateway/, 'proxy handshake timeout');
 
 is(length(Test::Nginx::http_content(http_get('/ssl/big.html'))), 720000,
-    'big length');
+	'big length');
 
 ###############################################################################
 
 sub http_daemon {
-    my ($port) = @_;
-    my $server = IO::Socket::INET->new(
-        Proto => 'tcp',
-        LocalHost => '127.0.0.1:' . $port,
-        Listen => 5,
-        Reuse => 1
-    )
-        or die "Can't create listening socket: $!\n";
+	my ($port) = @_;
+	my $server = IO::Socket::INET->new(
+		Proto => 'tcp',
+		LocalHost => '127.0.0.1:' . $port,
+		Listen => 5,
+		Reuse => 1
+	)
+		or die "Can't create listening socket: $!\n";
 
-    local $SIG{PIPE} = 'IGNORE';
+	local $SIG{PIPE} = 'IGNORE';
 
-    while (my $client = $server->accept()) {
-        $client->autoflush(1);
+	while (my $client = $server->accept()) {
+		$client->autoflush(1);
 
-        if ($port == port(8083)) {
-            sleep 3;
+		if ($port == port(8083)) {
+			sleep 3;
 
-            close $client;
-            next;
-        }
+			close $client;
+			next;
+		}
 
-        my $headers = '';
-        my $uri = '';
+		my $headers = '';
+		my $uri = '';
 
-        # would fail on waitforsocket
+		# would fail on waitforsocket
 
-        eval {
-            IO::Socket::SSL->start_SSL($client,
-                SSL_server => 1,
-                SSL_cert_file => "$d/localhost.crt",
-                SSL_key_file => "$d/localhost.key",
-                SSL_error_trap => sub { die $_[1] }
-            );
-        };
-        next if $@;
+		eval {
+			IO::Socket::SSL->start_SSL($client,
+				SSL_server => 1,
+				SSL_cert_file => "$d/localhost.crt",
+				SSL_key_file => "$d/localhost.key",
+				SSL_error_trap => sub { die $_[1] }
+			);
+		};
+		next if $@;
 
-        while (<$client>) {
-            $headers .= $_;
-            last if (/^\x0d?\x0a?$/);
-        }
+		while (<$client>) {
+			$headers .= $_;
+			last if (/^\x0d?\x0a?$/);
+		}
 
-        $uri = $1 if $headers =~ /^\S+\s+([^ ]+)\s+HTTP/i;
-        next if $uri eq '';
+		$uri = $1 if $headers =~ /^\S+\s+([^ ]+)\s+HTTP/i;
+		next if $uri eq '';
 
-        if ($uri eq '/timeout') {
-            sleep 4;
+		if ($uri eq '/timeout') {
+			sleep 4;
 
-            print $client <<EOF;
+			print $client <<EOF;
 HTTP/1.1 200 OK
 Connection: close
 
 EOF
-        }
+		}
 
-        close $client;
-    }
+		close $client;
+	}
 }
 
 ###############################################################################

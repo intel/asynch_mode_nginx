@@ -25,7 +25,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http/)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -37,38 +37,38 @@ events {
 http {
     %%TEST_GLOBALS_HTTP%%
 
-    js_include test.js;
+    js_import test.js;
 
     server {
         listen       127.0.0.1:8080;
         server_name  localhost;
 
         location /to_string {
-            js_content to_string;
+            js_content test.to_string;
         }
 
         location /define_prop {
-            js_content define_prop;
+            js_content test.define_prop;
         }
 
         location /in_operator {
-            js_content in_operator;
+            js_content test.in_operator;
         }
 
         location /redefine_bind {
-            js_content redefine_bind;
+            js_content test.redefine_bind;
         }
 
         location /redefine_proxy {
-            js_content redefine_proxy;
+            js_content test.redefine_proxy;
         }
 
         location /redefine_proto {
-            js_content redefine_proto;
+            js_content test.redefine_proto;
         }
 
         location /get_own_prop_descs {
-            js_content get_own_prop_descs;
+            js_content test.get_own_prop_descs;
         }
     }
 }
@@ -114,6 +114,9 @@ $t->write_file('test.js', <<EOF);
                  Object.getOwnPropertyDescriptors(r)['log'].value === r.log);
     }
 
+    export default {to_string, define_prop, in_operator, redefine_bind,
+                    redefine_proxy, redefine_proto, get_own_prop_descs};
+
 EOF
 
 $t->try_run('no njs request object')->plan(7);
@@ -123,9 +126,9 @@ $t->try_run('no njs request object')->plan(7);
 like(http_get('/to_string'), qr/\[object Request\]/, 'toString');
 like(http_get('/define_prop'), qr/Foo: bar/, 'define_prop');
 like(http(
-    'GET /in_operator HTTP/1.0' . CRLF
-    . 'Foo: foo' . CRLF
-    . 'Host: localhost' . CRLF . CRLF
+	'GET /in_operator HTTP/1.0' . CRLF
+	. 'Foo: foo' . CRLF
+	. 'Host: localhost' . CRLF . CRLF
 ), qr/true/, 'in_operator');
 like(http_get('/redefine_bind'), qr/redefine_bind/, 'redefine_bind');
 like(http_get('/redefine_proxy'), qr/redefine_proxy/, 'redefine_proxy');

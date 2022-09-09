@@ -25,8 +25,8 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()
-    ->has(qw/http realip stream stream_realip stream_return unix/)
-    ->plan(5);
+	->has(qw/http realip stream stream_realip stream_return unix/)
+	->plan(5);
 
 $t->write_file_expand('nginx.conf', <<'EOF');
 
@@ -115,7 +115,7 @@ is(get(8082), '127.0.0.1:127.0.0.1', 'stream proxy_protocol realip');
 ###############################################################################
 
 sub get {
-    Test::Nginx::Stream->new(PeerPort => port(shift))->read();
+	Test::Nginx::Stream->new(PeerPort => port(shift))->read();
 }
 
 ###############################################################################

@@ -29,7 +29,7 @@ select STDOUT; $| = 1;
 local $SIG{PIPE} = 'IGNORE';
 
 my $t = Test::Nginx->new()->has(qw/mail pop3 http rewrite/)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -201,7 +201,7 @@ $s = Test::Nginx::POP3->new();
 $s->read();
 
 $s->send('INVALID COMMAND WITH ARGUMENTS' . CRLF
-    . 'NOOP');
+	. 'NOOP');
 $s->check(qr/^-ERR/, 'pipelined invalid command');
 
 TODO: {
@@ -212,8 +212,8 @@ $s->ok('pipelined noop after invalid command');
 }
 
 $s->send('USER test@example.com' . CRLF
-    . 'PASS secret' . CRLF
-    . 'QUIT');
+	. 'PASS secret' . CRLF
+	. 'QUIT');
 $s->ok('pipelined user');
 
 TODO: {
@@ -228,8 +228,8 @@ $s = Test::Nginx::POP3->new();
 $s->read();
 
 $s->send('AUTH LOGIN' . CRLF
-    . encode_base64('test@example.com', '') . CRLF
-    . encode_base64('secret', ''));
+	. encode_base64('test@example.com', '') . CRLF
+	. encode_base64('secret', ''));
 $s->check(qr/\+ VXNlcm5hbWU6/, 'pipelined auth username challenge');
 
 TODO: {
@@ -243,14 +243,14 @@ $s->ok('pipelined auth');
 ###############################################################################
 
 sub get_auth_caps {
-    my ($s) = @_;
-    my @meth;
+	my ($s) = @_;
+	my @meth;
 
-    while ($s->read()) {
-        last if /^\./;
-        push @meth, $1 if /(.*?)\x0d\x0a?/ms;
-    }
-    join ':', @meth;
+	while ($s->read()) {
+		last if /^\./;
+		push @meth, $1 if /(.*?)\x0d\x0a?/ms;
+	}
+	join ':', @meth;
 }
 
 ###############################################################################

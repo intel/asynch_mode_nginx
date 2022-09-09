@@ -23,7 +23,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http proxy rewrite/)->plan(4)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -73,15 +73,15 @@ $t->run();
 ###############################################################################
 
 like(http_get('/preserve'), qr/request_method=GET/,
-    'proxy_method from request');
+	'proxy_method from request');
 
 like(http_get('/const'), qr/request_method=POST/,
-    'proxy_method from constant');
+	'proxy_method from constant');
 
 like(http_get('/var?method=POST'), qr/request_method=POST/,
-    'proxy_method from variable');
+	'proxy_method from variable');
 
 like(http_get('/parent/child'), qr/request_method=POST/,
-    'proxy_method from parent');
+	'proxy_method from parent');
 
 ###############################################################################

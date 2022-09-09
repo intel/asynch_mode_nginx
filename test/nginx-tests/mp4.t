@@ -25,8 +25,8 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http mp4/)->has_daemon('ffprobe')
-    ->has_daemon('ffmpeg')
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->has_daemon('ffmpeg')
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -51,20 +51,20 @@ http {
 EOF
 
 plan(skip_all => 'no lavfi')
-    unless grep /lavfi/, `ffmpeg -loglevel quiet -formats`;
+	unless grep /lavfi/, `ffmpeg -loglevel quiet -formats`;
 system('ffmpeg -nostdin -loglevel quiet -y '
-    . '-f lavfi -i testsrc=duration=10:size=320x200:rate=15 '
-    . '-f lavfi -i testsrc=duration=20:size=320x200:rate=15 '
-    . '-map 0:0 -map 1:0 -pix_fmt yuv420p -g 15 -c:v libx264 '
-    . "${\($t->testdir())}/test.mp4") == 0
-    or die "Can't create mp4 file: $!";
+	. '-f lavfi -i testsrc=duration=10:size=320x200:rate=15 '
+	. '-f lavfi -i testsrc=duration=20:size=320x200:rate=15 '
+	. '-map 0:0 -map 1:0 -pix_fmt yuv420p -g 15 -c:v libx264 '
+	. "${\($t->testdir())}/test.mp4") == 0
+	or die "Can't create mp4 file: $!";
 system('ffmpeg -nostdin -loglevel quiet -y '
-    . '-f lavfi -i testsrc=duration=10:size=320x200:rate=15 '
-    . '-f lavfi -i testsrc=duration=20:size=320x200:rate=15 '
-    . '-map 0:0 -map 1:0 -pix_fmt yuv420p -g 15 -c:v libx264 '
-    . '-movflags +faststart '
-    . "${\($t->testdir())}/no_mdat.mp4") == 0
-    or die "Can't create mp4 file: $!";
+	. '-f lavfi -i testsrc=duration=10:size=320x200:rate=15 '
+	. '-f lavfi -i testsrc=duration=20:size=320x200:rate=15 '
+	. '-map 0:0 -map 1:0 -pix_fmt yuv420p -g 15 -c:v libx264 '
+	. '-movflags +faststart '
+	. "${\($t->testdir())}/no_mdat.mp4") == 0
+	or die "Can't create mp4 file: $!";
 
 my $sbad = <<'EOF';
 00000000:  00 00 00 1c 66 74 79 70  69 73 6f 6d 00 00 02 00  |....ftypisom....|
@@ -108,61 +108,53 @@ like(http_head("$test_uri?start=1&end=0"), qr/200 OK/, 'negative range');
 # start/end values exceeding track/file duration
 
 unlike(http_head("$test_uri?end=11"), qr!HTTP/1.1 500!,
-    'end beyond short track');
+	'end beyond short track');
 unlike(http_head("$test_uri?end=21"), qr!HTTP/1.1 500!, 'end beyond EOF');
 unlike(http_head("$test_uri?start=11"), qr!HTTP/1.1 500!,
-    'start beyond short track');
+	'start beyond short track');
 like(http_head("$test_uri?start=21"), qr!HTTP/1.1 500!, 'start beyond EOF');
 
 $test_uri = '/no_mdat.mp4', goto again unless $test_uri eq '/no_mdat.mp4';
 
 # corrupted formats
 
-TODO: {
-local $TODO = 'not yet' unless $t->has_version('1.17.9');
-
 like(http_get("/bad.mp4?start=0.5"), qr/500 Internal/, 'co64 chunk beyond EOF');
-
-}
-
-$t->todo_alerts() if $t->read_file('nginx.conf') =~ /sendfile on/
-    and !$t->has_version('1.17.9');
 
 ###############################################################################
 
 sub durations {
-    my ($t, $start, $end) = @_;
-    my $path = $t->{_testdir} . '/frag.mp4';
+	my ($t, $start, $end) = @_;
+	my $path = $t->{_testdir} . '/frag.mp4';
 
-    my $uri = $test_uri;
-    if (defined $start) {
-        $uri .= "?start=$start";
-        if (defined $end) {
-            $uri .= "&end=$end";
-        }
+	my $uri = $test_uri;
+	if (defined $start) {
+		$uri .= "?start=$start";
+		if (defined $end) {
+			$uri .= "&end=$end";
+		}
 
-    } elsif (defined $end) {
-        $uri .= "?end=$end";
-    }
+	} elsif (defined $end) {
+		$uri .= "?end=$end";
+	}
 
-    $t->write_file('frag.mp4', http_content(http_get($uri)));
+	$t->write_file('frag.mp4', http_content(http_get($uri)));
 
-    my $r = `ffprobe -show_streams $path 2>/dev/null`;
-    Test::Nginx::log_core('||', $r);
-    sprintf "%.1f %.1f", $r =~ /duration=(\d+\.\d+)/g;
+	my $r = `ffprobe -show_streams $path 2>/dev/null`;
+	Test::Nginx::log_core('||', $r);
+	sprintf "%.1f %.1f", $r =~ /duration=(\d+\.\d+)/g;
 }
 
 sub unhex {
-    my ($input) = @_;
-    my $buffer = '';
+	my ($input) = @_;
+	my $buffer = '';
 
-    for my $l ($input =~ m/:  +((?:[0-9a-f]{2,4} +)+) /gms) {
-        for my $v ($l =~ m/[0-9a-f]{2}/g) {
-            $buffer .= chr(hex($v));
-        }
-    }
+	for my $l ($input =~ m/:  +((?:[0-9a-f]{2,4} +)+) /gms) {
+		for my $v ($l =~ m/[0-9a-f]{2}/g) {
+			$buffer .= chr(hex($v));
+		}
+	}
 
-    return $buffer;
+	return $buffer;
 }
 
 ###############################################################################

@@ -25,7 +25,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http http_v2 rewrite/)->plan(6)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -105,10 +105,10 @@ is($frame->{data}, 'body ', 'https variable');
 
 $s = Test::Nginx::HTTP2->new();
 $sid = $s->new_stream({ headers => [
-    { name => ':method', value => 'GET', mode => 0 },        # 1
-    { name => ':scheme', value => 'http', mode => 0 },        # 1
-    { name => ':authority', value => 'localhost', mode => 1 },    # 1+1+9
-    { name => ':path', value => '/rl', mode => 1 }]});        # 1+1+3
+	{ name => ':method', value => 'GET', mode => 0 },		# 1
+	{ name => ':scheme', value => 'http', mode => 0 },		# 1
+	{ name => ':authority', value => 'localhost', mode => 1 },	# 1+1+9
+	{ name => ':path', value => '/rl', mode => 1 }]});		# 1+1+3
 $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq "DATA" } @$frames;
@@ -118,11 +118,11 @@ is($frame->{data}, '18', 'request length');
 
 $s = Test::Nginx::HTTP2->new();
 $sid = $s->new_stream({ continuation => 1, headers => [
-    { name => ':method', value => 'GET', mode => 0 },        # 1
-    { name => ':authority', value => 'localhost', mode => 1 },    # 1+1+9
-    { name => ':path', value => '/rl', mode => 1 }]});        # 1+1+3
+	{ name => ':method', value => 'GET', mode => 0 },		# 1
+	{ name => ':authority', value => 'localhost', mode => 1 },	# 1+1+9
+	{ name => ':path', value => '/rl', mode => 1 }]});		# 1+1+3
 $s->h2_continue($sid, { headers => [
-    { name => ':scheme', value => 'http', mode => 0 }]});        # 1
+	{ name => ':scheme', value => 'http', mode => 0 }]});		# 1
 $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq "DATA" } @$frames;

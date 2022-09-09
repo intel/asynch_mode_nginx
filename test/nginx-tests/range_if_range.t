@@ -53,11 +53,11 @@ http {
 EOF
 
 $t->write_file('t1.html',
-    join('', map { sprintf "X%03dXXXXXX", $_ } (0 .. 99)));
+	join('', map { sprintf "X%03dXXXXXX", $_ } (0 .. 99)));
 $t->write_file('t2.html',
-    join('', map { sprintf "X%03dXXXXXX", $_ } (0 .. 99)));
+	join('', map { sprintf "X%03dXXXXXX", $_ } (0 .. 99)));
 $t->write_file('t3.html',
-    join('', map { sprintf "X%03dXXXXXX", $_ } (0 .. 99)));
+	join('', map { sprintf "X%03dXXXXXX", $_ } (0 .. 99)));
 $t->run();
 
 ###############################################################################
@@ -87,17 +87,17 @@ unlike($t1, qr/Last-Modified: /, 'if-range notime - no last modified');
 $t1 = http_get_range('/t3.html', "Range: bytes=0-9\nIf-Range: wrong");
 like($t1, qr/200 OK/, 'if-range time wrong');
 like($t1, qr/Last-Modified: Mon, 28 Sep 1970 06:00:00 GMT/,
-    'if-range time wrong - last modified');
+	'if-range time wrong - last modified');
 
 $t1 = http_get_range('/t3.html',
-    "Range: bytes=0-9\nIf-Range: Mon, 28 Sep 1970 06:00:00 GMT");
+	"Range: bytes=0-9\nIf-Range: Mon, 28 Sep 1970 06:00:00 GMT");
 like($t1, qr/ 206 /, 'if-range time');
 
 ###############################################################################
 
 sub http_get_range {
-    my ($url, $extra) = @_;
-    return http(<<EOF);
+	my ($url, $extra) = @_;
+	return http(<<EOF);
 GET $url HTTP/1.1
 Host: localhost
 Connection: close

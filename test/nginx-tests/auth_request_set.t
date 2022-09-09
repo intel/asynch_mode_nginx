@@ -23,7 +23,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http rewrite proxy auth_request/)
-    ->plan(6);
+	->plan(6);
 
 $t->write_file_expand('nginx.conf', <<'EOF');
 
@@ -129,9 +129,9 @@ $t->run();
 like(http_get('/t1.html'), qr/X-Set-Username: username/, 'set normal');
 like(http_get('/t2.html'), qr/X-Set-Username: username/, 'set after redirect');
 like(http_get('/t3.html'), qr/X-Set-Username: username/,
-    'set after named location');
+	'set after named location');
 like(http_get('/t4.html'), qr/X-Set-Username: username2/,
-    'set on second auth');
+	'set on second auth');
 
 # there are two variables with set_handler: $args and $limit_rate
 # we do test $args as it's a bit more simple thing to do

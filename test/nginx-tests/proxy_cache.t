@@ -23,7 +23,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http proxy cache gzip/)->plan(15)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -43,7 +43,7 @@ http {
         server_name  localhost;
 
         gzip on;
-        %%GZIP_MIN_LENGTH_0%%
+        gzip_min_length 0;
         %%QATZIP_ENABLE%%
         %%QATZIP_MIN_LENGTH_0%%
 
@@ -101,7 +101,7 @@ like(http_head('/empty.html?head'), qr/HIT/, 'empty head second');
 
 like(http_get_range('/t.html', 'Range: bytes=4-'), qr/^THIS/m, 'cached range');
 like(http_get_range('/t.html', 'Range: bytes=0-2,4-'), qr/^SEE.*^THIS/ms,
-    'cached multipart range');
+	'cached multipart range');
 
 like(http_get('/empty.html'), qr/MISS/, 'empty get first');
 like(http_get('/empty.html'), qr/HIT/, 'empty get second');
@@ -109,13 +109,13 @@ like(http_get('/empty.html'), qr/HIT/, 'empty get second');
 select(undef, undef, undef, 3.1);
 unlink $t->testdir() . '/t.html';
 like(http_gzip_request('/t.html'),
-    qr/HTTP.*STALE.*1c\x0d\x0a.{28}\x0d\x0a0\x0d\x0a\x0d\x0a\z/s,
-    'non-empty get stale');
+	qr/HTTP.*STALE.*1c\x0d\x0a.{28}\x0d\x0a0\x0d\x0a\x0d\x0a\z/s,
+	'non-empty get stale');
 
 unlink $t->testdir() . '/empty.html';
 like(http_gzip_request('/empty.html'),
-    qr/HTTP.*STALE.*14\x0d\x0a.{20}\x0d\x0a0\x0d\x0a\x0d\x0a\z/s,
-    'empty get stale');
+	qr/HTTP.*STALE.*14\x0d\x0a.{20}\x0d\x0a0\x0d\x0a\x0d\x0a\z/s,
+	'empty get stale');
 
 # no client connection close with response on non-cacheable HEAD requests
 # see 545b5e4d83b2 in nginx for detailed explanation
@@ -134,8 +134,8 @@ like($r, qr/SEE-THIS/, 'non-cacheable head - second');
 ###############################################################################
 
 sub http_get_range {
-    my ($url, $extra) = @_;
-    return http(<<EOF);
+	my ($url, $extra) = @_;
+	return http(<<EOF);
 GET $url HTTP/1.1
 Host: localhost
 Connection: close

@@ -24,7 +24,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http proxy rewrite upstream_keepalive/)
-    ->plan(8);
+	->plan(8);
 
 $t->write_file_expand('nginx.conf', <<'EOF');
 
@@ -124,10 +124,10 @@ like(http_post('/keepalive/drop'), qr/X-IP: (\S+)\x0d?$/m, 'keepalive post');
 ###############################################################################
 
 sub http_post {
-    my ($uri, %extra) = @_;
-    my $cl = $extra{cl} || 0;
+	my ($uri, %extra) = @_;
+	my $cl = $extra{cl} || 0;
 
-    http(<<"EOF");
+	http(<<"EOF");
 POST $uri HTTP/1.0
 Content-Length: $cl
 

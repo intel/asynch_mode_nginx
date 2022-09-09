@@ -77,7 +77,7 @@ $t->write_file('2', '');
 $t->run();
 
 plan(skip_all => 'no 127.0.0.1 on host')
-    if http_get('/') !~ /X-IP: 127.0.0.1/m;
+	if http_get('/') !~ /X-IP: 127.0.0.1/m;
 
 $t->plan(8);
 
@@ -98,11 +98,11 @@ X-Real-IP-Custom: 192.0.2.1
 EOF
 
 like(http_xff('/1', '10.0.0.1, 192.0.2.1'), qr/^X-IP: 192.0.2.1/m,
-    'realip multi');
+	'realip multi');
 like(http_xff('/1', '192.0.2.1, 10.0.1.1, 127.0.0.1'),
-    qr/^X-IP: 127.0.0.1/m, 'realip recursive off');
+	qr/^X-IP: 127.0.0.1/m, 'realip recursive off');
 like(http_xff('/2', '10.0.1.1, 192.0.2.1, 127.0.0.1'),
-    qr/^X-IP: 192.0.2.1/m, 'realip recursive on');
+	qr/^X-IP: 192.0.2.1/m, 'realip recursive on');
 
 like(http(<<EOF), qr/^X-IP: 10.0.1.1/m, 'realip multi xff recursive off');
 GET /1 HTTP/1.0
@@ -132,8 +132,8 @@ EOF
 ###############################################################################
 
 sub http_xff {
-    my ($uri, $xff) = @_;
-    return http(<<EOF);
+	my ($uri, $xff) = @_;
+	return http(<<EOF);
 GET $uri HTTP/1.0
 Host: localhost
 X-Forwarded-For: $xff

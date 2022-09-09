@@ -24,7 +24,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/stream udp/)->plan(8)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -80,9 +80,6 @@ is($s->io('3', read => 3), '123', 'proxy responses default');
 
 # zero-length payload
 
-TODO: {
-local $TODO = 'not yet' unless $t->has_version('1.19.1');
-
 $s = dgram('127.0.0.1:' . port(8982));
 $s->write('');
 is($s->read(), 'zero', 'upstream read zero bytes');
@@ -92,37 +89,35 @@ $s->write('');
 is($s->read(), 'zero', 'upstream read zero bytes again');
 is($s->read(), '', 'upstream sent zero bytes again');
 
-}
-
 ###############################################################################
 
 sub udp_daemon {
-    my ($port, $t) = @_;
+	my ($port, $t) = @_;
 
-    my $server = IO::Socket::INET->new(
-        Proto => 'udp',
-        LocalAddr => '127.0.0.1:' . port(8981),
-        Reuse => 1,
-    )
-        or die "Can't create listening socket: $!\n";
+	my $server = IO::Socket::INET->new(
+		Proto => 'udp',
+		LocalAddr => '127.0.0.1:' . port(8981),
+		Reuse => 1,
+	)
+		or die "Can't create listening socket: $!\n";
 
-    # signal we are ready
+	# signal we are ready
 
-    open my $fh, '>', $t->testdir() . '/' . port(8981);
-    close $fh;
+	open my $fh, '>', $t->testdir() . '/' . port(8981);
+	close $fh;
 
-    while (1) {
-        $server->recv(my $buffer, 65536);
+	while (1) {
+		$server->recv(my $buffer, 65536);
 
-        if (length($buffer) > 0) {
-        $server->send($_) for (1 .. $buffer);
+		if (length($buffer) > 0) {
+			$server->send($_) for (1 .. $buffer);
 
-        } else {
-            $server->send('zero');
-            select undef, undef, undef, 0.2;
-            $server->send('');
-        }
-    }
+		} else {
+			$server->send('zero');
+			select undef, undef, undef, 0.2;
+			$server->send('');
+		}
+	}
 }
 
 ###############################################################################

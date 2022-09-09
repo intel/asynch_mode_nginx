@@ -28,8 +28,8 @@ plan(skip_all => 'FCGI not installed') if $@;
 plan(skip_all => 'win32') if $^O eq 'MSWin32';
 
 my $t = Test::Nginx->new()
-    ->has(qw/http fastcgi cache rewrite addition/)->plan(22)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->has(qw/http fastcgi cache rewrite addition/)->plan(22)
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -82,14 +82,9 @@ $t->run()->waitforsocket('127.0.0.1:' . port(8081));
 
 ###############################################################################
 
-TODO: {
-local $TODO = 'not yet' unless $t->has_version('1.19.1');
-
 like(http_get('/'), qr/SEE-THIS(?!-BUT-NOT-THIS)/, 'response with extra data');
 like(http_get('/short'), qr/SEE-THIS(?!.*:after)/s, 'too short response');
 like(http_get('/empty'), qr/200 OK(?!.*:after)/s, 'empty too short response');
-
-}
 
 like(http_head('/'), qr/200 OK(?!.*SEE-THIS)/s, 'no data in HEAD');
 like(http_head('/short'), qr/200 OK(?!.*SEE-THIS)/s, 'too short to HEAD');
@@ -97,24 +92,19 @@ like(http_head('/empty'), qr/200 OK/, 'empty response to HEAD');
 
 # unbuffered responses
 
-TODO: {
-local $TODO = 'not yet' unless $t->has_version('1.19.1');
-
 like(http_get('/unbuf/'), qr/SEE-THIS(?!-BUT-NOT-THIS)/,
-    'unbuffered with extra data');
+	'unbuffered with extra data');
 like(http_get('/unbuf/short'), qr/SEE-THIS(?!.*:after)/s,
-    'unbuffered too short response');
+	'unbuffered too short response');
 like(http_get('/unbuf/empty'), qr/200 OK(?!.*:after)/s,
-    'unbuffered empty too short responsde');
-
-}
+	'unbuffered empty too short response');
 
 like(http_head('/unbuf/'), qr/200 OK(?!.*SEE-THIS)/s,
-    'unbuffered no data in HEAD');
+	'unbuffered no data in HEAD');
 like(http_head('/unbuf/short'), qr/200 OK(?!.*SEE-THIS)/s,
-    'unbuffered too short response to HEAD');
+	'unbuffered too short response to HEAD');
 like(http_head('/unbuf/empty'), qr/200 OK/,
-    'unbuffered empty response to HEAD');
+	'unbuffered empty response to HEAD');
 
 # caching of responsses to HEAD requests
 
@@ -125,88 +115,74 @@ like(http_head('/head/short'), qr/200 OK(?!.*SEE-THIS)/s, 'head too short');
 
 like(http_get('/head/empty'), qr/200 OK/, 'head no body cached');
 like(http_get('/head/matching'), qr/SEE-THIS/, 'head matching cached');
-
-TODO: {
-local $TODO = 'not yet' unless $t->has_version('1.19.1');
-
 like(http_get('/head/extra'), qr/SEE-THIS(?!-BUT-NOT-THIS)/s,
-    'head extra cached');
+	'head extra cached');
 like(http_get('/head/short'), qr/SEE-THIS(?!.*:after)/s,
-    'head too short cached');
-
-}
+	'head too short cached');
 
 # "zero size buf" alerts (ticket #2018)
 
-TODO: {
-local $TODO = 'not yet' unless $t->has_version('1.19.2');
-
 like(http_get('/zero'), qr/200 OK(?!.*NOT-THIS)/s, 'zero size');
 like(http_get('/unbuf/zero'), qr/200 OK(?!.*NOT-THIS)/s,
-    'unbuffered zero size');
-
-}
-
-$t->todo_alerts() unless $t->has_version('1.19.2')
-    or !$t->has_version('1.19.1');
+	'unbuffered zero size');
 
 ###############################################################################
 
 sub fastcgi_daemon {
-    my $socket = FCGI::OpenSocket('127.0.0.1:' . port(8081), 5);
-    my $request = FCGI::Request(\*STDIN, \*STDOUT, \*STDERR, \%ENV,
-        $socket);
+	my $socket = FCGI::OpenSocket('127.0.0.1:' . port(8081), 5);
+	my $request = FCGI::Request(\*STDIN, \*STDOUT, \*STDERR, \%ENV,
+		$socket);
 
-    my ($uri, $head);
+	my ($uri, $head);
 
-    while( $request->Accept() >= 0 ) {
-        $uri = $ENV{REQUEST_URI};
-        $uri =~ s!^/unbuf!!;
+	while( $request->Accept() >= 0 ) {
+		$uri = $ENV{REQUEST_URI};
+		$uri =~ s!^/unbuf!!;
 
-        $head = $ENV{REQUEST_METHOD} eq 'HEAD';
+		$head = $ENV{REQUEST_METHOD} eq 'HEAD';
 
-        if ($uri eq '/') {
-            print "Content-Type: text/html\n";
-            print "Content-Length: 8\n\n";
-            print "SEE-THIS-BUT-NOT-THIS\n";
+		if ($uri eq '/') {
+			print "Content-Type: text/html\n";
+			print "Content-Length: 8\n\n";
+			print "SEE-THIS-BUT-NOT-THIS\n";
 
-        } elsif ($uri eq '/zero') {
-            print "Content-Type: text/html\n";
-            print "Content-Length: 0\n\n";
-            print "NOT-THIS\n";
+		} elsif ($uri eq '/zero') {
+			print "Content-Type: text/html\n";
+			print "Content-Length: 0\n\n";
+			print "NOT-THIS\n";
 
-        } elsif ($uri eq '/short') {
-            print "Content-Type: text/html\n";
-            print "Content-Length: 100\n\n";
-            print "SEE-THIS-TOO-SHORT-RESPONSE\n";
+		} elsif ($uri eq '/short') {
+			print "Content-Type: text/html\n";
+			print "Content-Length: 100\n\n";
+			print "SEE-THIS-TOO-SHORT-RESPONSE\n";
 
-        } elsif ($uri eq '/empty') {
-            print "Content-Type: text/html\n";
-            print "Content-Length: 100\n\n";
+		} elsif ($uri eq '/empty') {
+			print "Content-Type: text/html\n";
+			print "Content-Length: 100\n\n";
 
-        } elsif ($uri eq '/head/empty') {
-            print "Content-Type: text/html\n";
-            print "Content-Length: 8\n\n";
-            print "SEE-THIS" unless $head;
+		} elsif ($uri eq '/head/empty') {
+			print "Content-Type: text/html\n";
+			print "Content-Length: 8\n\n";
+			print "SEE-THIS" unless $head;
 
-        } elsif ($uri eq '/head/matching') {
-            print "Content-Type: text/html\n";
-            print "Content-Length: 8\n\n";
-            print "SEE-THIS";
+		} elsif ($uri eq '/head/matching') {
+			print "Content-Type: text/html\n";
+			print "Content-Length: 8\n\n";
+			print "SEE-THIS";
 
-        } elsif ($uri eq '/head/extra') {
-            print "Content-Type: text/html\n";
-            print "Content-Length: 8\n\n";
-            print "SEE-THIS-BUT-NOT-THIS\n";
+		} elsif ($uri eq '/head/extra') {
+			print "Content-Type: text/html\n";
+			print "Content-Length: 8\n\n";
+			print "SEE-THIS-BUT-NOT-THIS\n";
 
-        } elsif ($uri eq '/head/short') {
-            print "Content-Type: text/html\n";
-            print "Content-Length: 100\n\n";
-            print "SEE-THIS\n";
-        }
-    }
+		} elsif ($uri eq '/head/short') {
+			print "Content-Type: text/html\n";
+			print "Content-Length: 100\n\n";
+			print "SEE-THIS\n";
+		}
+	}
 
-    FCGI::CloseSocket($socket);
+	FCGI::CloseSocket($socket);
 }
 
 ###############################################################################

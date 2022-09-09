@@ -24,7 +24,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http image_filter/)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -73,19 +73,19 @@ EOF
 $t->run()->plan(18);
 
 $t->write_file('webp', pack("A4LA8", "RIFF", 0x22, "WEBPVP8 ") .
-    pack("N4", 0x16000000, 0x3001009d, 0x012a0100, 0x01000ec0) .
-    pack("N2n", 0xfe25a400, 0x03700000, 0x0000));
+	pack("N4", 0x16000000, 0x3001009d, 0x012a0100, 0x01000ec0) .
+	pack("N2n", 0xfe25a400, 0x03700000, 0x0000));
 $t->write_file('webpl', pack("A4LA8", "RIFF", 0x1a, "WEBPVP8L") .
-    pack("N4n", 0x0d000000, 0x2f000000, 0x10071011, 0x118888fe, 0x0700));
+	pack("N4n", 0x0d000000, 0x2f000000, 0x10071011, 0x118888fe, 0x0700));
 $t->write_file('webpx', pack("A4LA8", "RIFF", 0x4a, "WEBPVP8X") .
-    pack("N4", 0x0a000000, 0x10000000, 0x00000000, 0x0000414c) .
-    pack("N4", 0x50480c00, 0x00001107, 0x1011fd0f, 0x4444ff03) .
-    pack("N4", 0x00005650, 0x38201800, 0x00001401, 0x009d012a) .
-    pack("N4n", 0x01000100, 0x0000fe00, 0x000dc000, 0xfee6b500, 0x0000));
+	pack("N4", 0x0a000000, 0x10000000, 0x00000000, 0x0000414c) .
+	pack("N4", 0x50480c00, 0x00001107, 0x1011fd0f, 0x4444ff03) .
+	pack("N4", 0x00005650, 0x38201800, 0x00001401, 0x009d012a) .
+	pack("N4n", 0x01000100, 0x0000fe00, 0x000dc000, 0xfee6b500, 0x0000));
 
 $t->write_file('webperr', pack("A4LA8", "RIFF", 0x22, "WEBPERR ") .
-    pack("N4", 0x16000000, 0x3001009d, 0x012a0100, 0x01000ec0) .
-    pack("N2n", 0xfe25a400, 0x03700000, 0x0000));
+	pack("N4", 0x16000000, 0x3001009d, 0x012a0100, 0x01000ec0) .
+	pack("N2n", 0xfe25a400, 0x03700000, 0x0000));
 $t->write_file('webptrunc', substr $t->read_file('webp'), 0, 29);
 
 ###############################################################################

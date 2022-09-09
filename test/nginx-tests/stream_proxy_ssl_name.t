@@ -25,7 +25,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/stream stream_ssl http http_ssl sni/)
-    ->has_daemon('openssl')->plan(5);
+	->has_daemon('openssl')->plan(5);
 
 $t->write_file_expand('nginx.conf', <<'EOF');
 
@@ -115,11 +115,11 @@ EOF
 my $d = $t->testdir();
 
 foreach my $name ('localhost') {
-    system('openssl req -x509 -new '
-        . "-config $d/openssl.conf -subj /CN=$name/ "
-        . "-out $d/$name.crt -keyout $d/$name.key "
-        . ">>$d/openssl.out 2>&1") == 0
-        or die "Can't create certificate for $name: $!\n";
+	system('openssl req -x509 -new '
+		. "-config $d/openssl.conf -subj /CN=$name/ "
+		. "-out $d/$name.crt -keyout $d/$name.key "
+		. ">>$d/openssl.out 2>&1") == 0
+		or die "Can't create certificate for $name: $!\n";
 }
 
 $t->write_file('index.html', '');
@@ -130,25 +130,25 @@ $t->run();
 
 like(http_get('/'), qr/200 OK.*X-Name: ,/s, 'no name');
 like(http_get('/', socket => getconn('127.0.0.1:' . port(8081))),
-    qr/200 OK.*X-Name: u,/s, 'name default');
+	qr/200 OK.*X-Name: u,/s, 'name default');
 like(http_get('/', socket => getconn('127.0.0.1:' . port(8082))),
-    qr/200 OK.*X-Name: example.com,/s, 'name override');
+	qr/200 OK.*X-Name: example.com,/s, 'name override');
 like(http_get('/', socket => getconn('127.0.0.1:' . port(8083))),
-    qr/200 OK.*X-Name: ,/s, 'no ip');
+	qr/200 OK.*X-Name: ,/s, 'no ip');
 like(http_get('/', socket => getconn('127.0.0.1:' . port(8084))),
-    qr/200 OK.*X-Name: example.com,/s, 'no port in name');
+	qr/200 OK.*X-Name: example.com,/s, 'no port in name');
 
 ###############################################################################
 
 sub getconn {
-    my $peer = shift;
-    my $s = IO::Socket::INET->new(
-        Proto => 'tcp',
-        PeerAddr => $peer
-    )
-        or die "Can't connect to nginx: $!\n";
+	my $peer = shift;
+	my $s = IO::Socket::INET->new(
+		Proto => 'tcp',
+		PeerAddr => $peer
+	)
+		or die "Can't connect to nginx: $!\n";
 
-    return $s;
+	return $s;
 }
 
 ###############################################################################

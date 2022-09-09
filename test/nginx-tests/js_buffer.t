@@ -29,7 +29,7 @@ eval { require JSON::PP; };
 plan(skip_all => "JSON::PP not installed") if $@;
 
 my $t = Test::Nginx->new()->has(qw/http rewrite proxy/)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -146,46 +146,46 @@ $t->try_run('no njs buffer')->plan(5);
 
 TODO: {
 local $TODO = 'not yet'
-    unless http_get('/njs') =~ /^([.0-9]+)$/m && $1 ge '0.5.0';
+	unless http_get('/njs') =~ /^([.0-9]+)$/m && $1 ge '0.5.0';
 
 like(http_get('/return?text=FOO'), qr/200 OK.*body: FOO$/s,
-    'return buffer');
+	'return buffer');
 like(http_post('/req_body'), qr/200 OK.*BAR$/s, 'request buffer');
 is(get_json('/res_body'), '{"c":{"b":1},"type":"buffer"}', 'response buffer');
 is(get_json('/res_text'), '{"a":{"b":1},"type":"string"}', 'response text');
 like(http_get('/binary_var'), qr/200 OK.*true$/s,
-    'binary var');
+	'binary var');
 
 }
 
 ###############################################################################
 
 sub recode {
-    my $json;
-    eval { $json = JSON::PP::decode_json(shift) };
+	my $json;
+	eval { $json = JSON::PP::decode_json(shift) };
 
-    if ($@) {
-        return "<failed to parse JSON>";
-    }
+	if ($@) {
+		return "<failed to parse JSON>";
+	}
 
-    JSON::PP->new()->canonical()->encode($json);
+	JSON::PP->new()->canonical()->encode($json);
 }
 
 sub get_json {
-    http_get(shift) =~ /\x0d\x0a?\x0d\x0a?(.*)/ms;
-    recode($1);
+	http_get(shift) =~ /\x0d\x0a?\x0d\x0a?(.*)/ms;
+	recode($1);
 }
 
 sub http_post {
-    my ($url, %extra) = @_;
+	my ($url, %extra) = @_;
 
-    my $p = "POST $url HTTP/1.0" . CRLF .
-        "Host: localhost" . CRLF .
-        "Content-Length: 17" . CRLF .
-        CRLF .
-        "{\"a\":{\"b\":\"BAR\"}}";
+	my $p = "POST $url HTTP/1.0" . CRLF .
+		"Host: localhost" . CRLF .
+		"Content-Length: 17" . CRLF .
+		CRLF .
+		"{\"a\":{\"b\":\"BAR\"}}";
 
-    return http($p, %extra);
+	return http($p, %extra);
 }
 
 ###############################################################################

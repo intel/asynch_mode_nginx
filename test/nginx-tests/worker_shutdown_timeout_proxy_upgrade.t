@@ -26,7 +26,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http proxy/)->plan(2)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -69,8 +69,8 @@ EOF
 
 my ($sel, $buf) = IO::Select->new($s);
 if ($sel->can_read(5)) {
-    $s->sysread($buf, 1024);
-    log_in($buf);
+	$s->sysread($buf, 1024);
+	log_in($buf);
 };
 
 like($buf, qr!HTTP/1.1 101!, 'upgraded connection');
@@ -84,39 +84,39 @@ undef $s;
 ###############################################################################
 
 sub http_daemon {
-    my $server = IO::Socket::INET->new(
-        Proto => 'tcp',
-        LocalHost => '127.0.0.1:' . port(8081),
-        Listen => 5,
-        Reuse => 1
-    )
-        or die "Can't create listening socket: $!\n";
+	my $server = IO::Socket::INET->new(
+		Proto => 'tcp',
+		LocalHost => '127.0.0.1:' . port(8081),
+		Listen => 5,
+		Reuse => 1
+	)
+		or die "Can't create listening socket: $!\n";
 
-    local $SIG{PIPE} = 'IGNORE';
+	local $SIG{PIPE} = 'IGNORE';
 
-    my $client;
+	my $client;
 
-    while ($client = $server->accept()) {
-        $client->autoflush(1);
+	while ($client = $server->accept()) {
+		$client->autoflush(1);
 
-        my $headers = '';
-        my $uri = '';
+		my $headers = '';
+		my $uri = '';
 
-        while (<$client>) {
-            $headers .= $_;
-            last if (/^\x0d?\x0a?$/);
-        }
+		while (<$client>) {
+			$headers .= $_;
+			last if (/^\x0d?\x0a?$/);
+		}
 
-        next if $headers eq '';
+		next if $headers eq '';
 
-        print $client <<'EOF';
+		print $client <<'EOF';
 HTTP/1.1 101 Switching
 Upgrade: foo
 Connection: Upgrade
 
 EOF
 
-    }
+	}
 }
 
 ###############################################################################

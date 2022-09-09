@@ -24,7 +24,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http stream stream_limit_conn/)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -83,20 +83,20 @@ like(get(port(8081)), qr/200 OK/, 'passed different key');
 ###############################################################################
 
 sub get {
-    my $port = shift;
+	my $port = shift;
 
-    my $s = IO::Socket::INET->new(
-        Proto => 'tcp',
-        PeerAddr => "127.0.0.1:$port"
-    )
-        or die "Can't connect to nginx: $!\n";
+	my $s = IO::Socket::INET->new(
+		Proto => 'tcp',
+		PeerAddr => "127.0.0.1:$port"
+	)
+		or die "Can't connect to nginx: $!\n";
 
-    my $r = http_get('/', socket => $s);
-    if (!$r) {
-        $r = undef;
-    }
+	my $r = http_get('/', socket => $s);
+	if (!$r) {
+		$r = undef;
+	}
 
-    return $r;
+	return $r;
 }
 
 ###############################################################################

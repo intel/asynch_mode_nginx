@@ -27,7 +27,7 @@ eval { require SCGI; };
 plan(skip_all => 'SCGI not installed') if $@;
 
 my $t = Test::Nginx->new()->has(qw/http scgi cache/)->plan(10)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -82,63 +82,63 @@ like(http_get('/unfinished'), qr/MISS/, 'unfinished not cached');
 ###############################################################################
 
 sub scgi_daemon {
-    my $server = IO::Socket::INET->new(
-        Proto => 'tcp',
-        LocalHost => '127.0.0.1:' . port(8081),
-        Listen => 5,
-        Reuse => 1
-    )
-        or die "Can't create listening socket: $!\n";
+	my $server = IO::Socket::INET->new(
+		Proto => 'tcp',
+		LocalHost => '127.0.0.1:' . port(8081),
+		Listen => 5,
+		Reuse => 1
+	)
+		or die "Can't create listening socket: $!\n";
 
-    my $scgi = SCGI->new($server, blocking => 1);
-    my %count;
+	my $scgi = SCGI->new($server, blocking => 1);
+	my %count;
 
-    while (my $request = $scgi->accept()) {
-        eval { $request->read_env(); };
-        next if $@;
+	while (my $request = $scgi->accept()) {
+		eval { $request->read_env(); };
+		next if $@;
 
-        my $uri = $request->env->{REQUEST_URI} || '';
-        my $c = $request->connection();
+		my $uri = $request->env->{REQUEST_URI} || '';
+		my $c = $request->connection();
 
-        $count{$uri} ||= 0;
-        $count{$uri}++;
+		$count{$uri} ||= 0;
+		$count{$uri}++;
 
-        if ($uri eq '/len') {
-            $c->print(
-                "Content-Length: 9" . CRLF .
-                "Content-Type: text/html" . CRLF .
-                "Cache-Control: max-age=300" . CRLF . CRLF .
-                "test body"
-            );
+		if ($uri eq '/len') {
+			$c->print(
+				"Content-Length: 9" . CRLF .
+				"Content-Type: text/html" . CRLF .
+				"Cache-Control: max-age=300" . CRLF . CRLF .
+				"test body"
+			);
 
-        } elsif ($uri eq '/nolen') {
-            $c->print(
-                "Content-Type: text/html" . CRLF .
-                "Cache-Control: max-age=300" . CRLF . CRLF .
-                "test body"
-            );
+		} elsif ($uri eq '/nolen') {
+			$c->print(
+				"Content-Type: text/html" . CRLF .
+				"Cache-Control: max-age=300" . CRLF . CRLF .
+				"test body"
+			);
 
-        } elsif ($uri eq '/len/empty') {
-            $c->print(
-                "Content-Length: 0" . CRLF .
-                "Content-Type: text/html" . CRLF .
-                "Cache-Control: max-age=300" . CRLF . CRLF
-            );
+		} elsif ($uri eq '/len/empty') {
+			$c->print(
+				"Content-Length: 0" . CRLF .
+				"Content-Type: text/html" . CRLF .
+				"Cache-Control: max-age=300" . CRLF . CRLF
+			);
 
-        } elsif ($uri eq '/nolen/empty') {
-            $c->print(
-                "Content-Type: text/html" . CRLF .
-                "Cache-Control: max-age=300" . CRLF . CRLF
-            );
+		} elsif ($uri eq '/nolen/empty') {
+			$c->print(
+				"Content-Type: text/html" . CRLF .
+				"Cache-Control: max-age=300" . CRLF . CRLF
+			);
 
-        } elsif ($uri eq '/unfinished') {
-            $c->print(
-                "Content-Length: 10" . CRLF .
-                "Content-Type: text/html" . CRLF .
-                "Cache-Control: max-age=300" . CRLF . CRLF
-            );
-        }
-    }
+		} elsif ($uri eq '/unfinished') {
+			$c->print(
+				"Content-Length: 10" . CRLF .
+				"Content-Type: text/html" . CRLF .
+				"Cache-Control: max-age=300" . CRLF . CRLF
+			);
+		}
+	}
 }
 
 ###############################################################################

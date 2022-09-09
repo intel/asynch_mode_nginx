@@ -79,28 +79,28 @@ die "too many addresses in localhost" if @addrs > 2;
 like(http_get('/'), qr/Not Found/, 'implicit upstream');
 like(http_get('/'), $exp, 'implicit upstream all tried');
 like(http_get("/var?b=localhost:$p"), qr/Not Found/,
-    'implicit upstream by variable');
+	'implicit upstream by variable');
 
 ###############################################################################
 
 sub resolve {
-    my ($name) = @_;
+	my ($name) = @_;
 
-    my $ai_addrconfig = eval { Socket::AI_ADDRCONFIG() };
-    my ($err, @res) = Socket::getaddrinfo($name, "",
-        { socktype => SOCK_STREAM, protocol => IPPROTO_TCP,
-            flags => $ai_addrconfig });
-    die "Cannot getaddrinfo - $err" if $err;
+	my $ai_addrconfig = eval { Socket::AI_ADDRCONFIG() };
+	my ($err, @res) = Socket::getaddrinfo($name, "",
+		{ socktype => SOCK_STREAM, protocol => IPPROTO_TCP,
+			flags => $ai_addrconfig });
+	die "Cannot getaddrinfo - $err" if $err;
 
-    my @addrs;
-    foreach my $ai (@res) {
-        my ($err, $addr) = Socket::getnameinfo($ai->{addr},
-            Socket::NI_NUMERICHOST(), Socket::NIx_NOSERV());
-        die "Cannot getnameinfo - $err" if $err;
-        $addr = '[' . $addr . ']' if $ai->{family} == AF_INET6;
-        push @addrs, $addr;
-    }
-    return @addrs;
+	my @addrs;
+	foreach my $ai (@res) {
+		my ($err, $addr) = Socket::getnameinfo($ai->{addr},
+			Socket::NI_NUMERICHOST(), Socket::NIx_NOSERV());
+		die "Cannot getnameinfo - $err" if $err;
+		$addr = '[' . $addr . ']' if $ai->{family} == AF_INET6;
+		push @addrs, $addr;
+	}
+	return @addrs;
 }
 
 ###############################################################################

@@ -29,7 +29,7 @@ select STDOUT; $| = 1;
 plan(skip_all => 'win32') if $^O eq 'MSWin32';
 
 my $t = Test::Nginx->new()->has(qw/http rewrite/)->plan(20)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -175,59 +175,59 @@ like(http_server('xxx'), qr/X-Server: localhost/, 'default');
 unlike(http_server(), qr/X-Server/, 'empty');
 
 like(http_server('www.example.com'), qr/\QX-Server: www.example.com/,
-    'www.example.com');
+	'www.example.com');
 like(http_server('WWW.EXAMPLE.COM'), qr/\QX-Server: www.example.com/,
-    'www.example.com uppercase');
+	'www.example.com uppercase');
 
 like(http_server('example.com'), qr/\QX-Server: ~^EXAMPLE\.COM$/,
-    'example.com regex');
+	'example.com regex');
 like(http_server('EXAMPLE.COM'), qr/\QX-Server: ~^EXAMPLE\.COM$/,
-    'example.com regex uppercase');
+	'example.com regex uppercase');
 
 like(http_server('blah.example.com'), qr/X-Match: blah/,
-    '(P<name>.*).example.com named capture');
+	'(P<name>.*).example.com named capture');
 like(http_server('BLAH.EXAMPLE.COM'), qr/X-Match: blah/,
-    '(P<name>.*).example.com named capture uppercase');
+	'(P<name>.*).example.com named capture uppercase');
 
 like(http_server('www01.example.com'), qr/X-Match: www01/,
-    '\p{N} in named capture');
+	'\p{N} in named capture');
 like(http_server('WWW01.EXAMPLE.COM'), qr/X-Match: www01/,
-    '\p{N} in named capture uppercase');
+	'\p{N} in named capture uppercase');
 
 like(http_server('many.example.com'), qr/\QX-Server: many.example.com/,
-    'name row - first');
+	'name row - first');
 like(http_server('many2.example.com'), qr/\QX-Server: many.example.com/,
-    'name row - second');
+	'name row - second');
 
 like(http_server('many3.example.com'), qr/\QX-Server: many3.example.com/,
-    'name list - first');
+	'name list - first');
 like(http_server('many4.example.com'), qr/\QX-Server: many3.example.com/,
-    'name list - second');
+	'name list - second');
 
 like(http_server('www.wc.example.com'),
-    qr/\QX-Server: *.wc.example.com/, 'wildcard first');
+	qr/\QX-Server: *.wc.example.com/, 'wildcard first');
 like(http_server('www.pref.wc.example.com'),
-    qr/\QX-Server: *.pref.wc.example.com/, 'wildcard first most specific');
+	qr/\QX-Server: *.pref.wc.example.com/, 'wildcard first most specific');
 like(http_server('wc2.example.net'),
-    qr/\QX-Server: wc2.example.*/, 'wildcard last');
+	qr/\QX-Server: wc2.example.*/, 'wildcard last');
 like(http_server('wc2.example.com.pref'),
-    qr/\QX-Server: wc2.example.com.*/, 'wildcard last most specific');
+	qr/\QX-Server: wc2.example.com.*/, 'wildcard last most specific');
 
 like(http_server('www.dot.example.com'), qr/\QX-Server: dot.example.com/,
-    'wildcard dot');
+	'wildcard dot');
 like(http_server('dot.example.com'), qr/\QX-Server: dot.example.com/,
-    'wildcard dot empty');
+	'wildcard dot empty');
 
 ###############################################################################
 
 sub http_server {
-    my ($host) = @_;
+	my ($host) = @_;
 
-    my $str = 'GET / HTTP/1.0' . CRLF .
-        (defined $host ? "Host: $host" . CRLF : '') .
-        CRLF;
+	my $str = 'GET / HTTP/1.0' . CRLF .
+		(defined $host ? "Host: $host" . CRLF : '') .
+		CRLF;
 
-    return http($str);
+	return http($str);
 }
 
 ###############################################################################

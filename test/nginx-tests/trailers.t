@@ -26,7 +26,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http proxy/)->plan(17)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -113,8 +113,8 @@ unlike($r, qr/X-Var/, 'inheritance');
 ###############################################################################
 
 sub get {
-    my ($uri) = @_;
-    http(<<EOF);
+	my ($uri) = @_;
+	http(<<EOF);
 GET $uri HTTP/1.1
 Host: localhost
 Connection: close
@@ -123,8 +123,8 @@ EOF
 }
 
 sub head {
-    my ($uri) = @_;
-    http(<<EOF);
+	my ($uri) = @_;
+	http(<<EOF);
 HEAD $uri HTTP/1.1
 Host: localhost
 Connection: close

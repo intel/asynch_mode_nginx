@@ -24,8 +24,8 @@ use Test::Nginx::HTTP2;
 select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
-my $t = Test::Nginx->new()->has(qw/http http_v2 proxy rewrite gzip/)->plan(42)
-    ->write_file_expand('nginx.conf', <<'EOF');
+my $t = Test::Nginx->new()->has(qw/http http_v2 proxy rewrite gzip/)->plan(54)
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -104,6 +104,11 @@ http {
 
         location /arg {
             http2_push $arg_push;
+            return 204;
+        }
+
+        location /continuation {
+            http2_push /push?arg="$args$args$args$args";
             return 204;
         }
 
@@ -274,7 +279,7 @@ is(grep({ $_->{type} eq "PUSH_PROMISE" } @$frames), 0, 'max pushes disabled');
 
 TODO: {
 todo_skip 'long tests with aio', 6 unless $ENV{TEST_NGINX_UNSAFE}
-    or $t->read_file('nginx.conf') !~ /aio (on|threads)/;
+	or $t->read_file('nginx.conf') !~ /aio (on|threads)/;
 local $TODO = 'not yet' if $t->read_file('nginx.conf') =~ /aio (on|threads)/;
 
 # server push flow control & rst
@@ -282,9 +287,9 @@ local $TODO = 'not yet' if $t->read_file('nginx.conf') =~ /aio (on|threads)/;
 $s = Test::Nginx::HTTP2->new();
 $sid = $s->new_stream({ path => '/explf' });
 $frames = $s->read(all => [
-    { sid => 1, fin => 1 },
-    { sid => 2, length => 5 },
-    { sid => 4, fin => 4 }]);
+	{ sid => 1, fin => 1 },
+	{ sid => 2, length => 5 },
+	{ sid => 4, fin => 4 }]);
 
 ($frame) = grep { $_->{type} eq "DATA" && $_->{sid} == 2 } @$frames;
 is($frame->{length}, 5, 'flow control - pushed stream limited');
@@ -320,7 +325,7 @@ ok(!$frame, 'rst pushed stream');
 
 TODO: {
 todo_skip 'long tests with aio', 2 unless $ENV{TEST_NGINX_UNSAFE}
-    or $t->read_file('nginx.conf') !~ /aio (on|threads)/;
+	or $t->read_file('nginx.conf') !~ /aio (on|threads)/;
 local $TODO = 'not yet' if $t->read_file('nginx.conf') =~ /aio (on|threads)/;
 
 # priority
@@ -359,20 +364,20 @@ is(join(' ', map { $_->{sid} } @data), "2 4", 'priority 2');
 
 $s = Test::Nginx::HTTP2->new(port(8082));
 $sid = $s->new_stream({ headers => [
-    { name => ':method', value => 'GET', mode => 0 },
-    { name => ':scheme', value => 'http', mode => 0 },
-    { name => ':path', value => '/', mode => 0 },
-    { name => ':authority', value => 'max_pushes', mode => 1 }]});
+	{ name => ':method', value => 'GET', mode => 0 },
+	{ name => ':scheme', value => 'http', mode => 0 },
+	{ name => ':path', value => '/', mode => 0 },
+	{ name => ':authority', value => 'max_pushes', mode => 1 }]});
 $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 is(grep({ $_->{type} eq "PUSH_PROMISE" } @$frames), 2, 'http2 max pushes lim');
 
 $s = Test::Nginx::HTTP2->new(port(8082));
 $s->h2_settings(0, 0x3 => 1);
 $sid = $s->new_stream({ headers => [
-    { name => ':method', value => 'GET', mode => 0 },
-    { name => ':scheme', value => 'http', mode => 0 },
-    { name => ':path', value => '/', mode => 0 },
-    { name => ':authority', value => 'max_pushes', mode => 1 }]});
+	{ name => ':method', value => 'GET', mode => 0 },
+	{ name => ':scheme', value => 'http', mode => 0 },
+	{ name => ':path', value => '/', mode => 0 },
+	{ name => ':authority', value => 'max_pushes', mode => 1 }]});
 $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 is(grep({ $_->{type} eq "PUSH_PROMISE" } @$frames), 1, 'http2 max pushes 2');
 
@@ -380,9 +385,9 @@ is(grep({ $_->{type} eq "PUSH_PROMISE" } @$frames), 1, 'http2 max pushes 2');
 
 $s = Test::Nginx::HTTP2->new(port(8082));
 $sid = $s->new_stream({ headers => [
-    { name => ':method', value => 'GET', mode => 0 },
-    { name => ':scheme', value => 'http', mode => 0 },
-    { name => ':path', value => '/', mode => 0 }]});
+	{ name => ':method', value => 'GET', mode => 0 },
+	{ name => ':scheme', value => 'http', mode => 0 },
+	{ name => ':path', value => '/', mode => 0 }]});
 $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
@@ -392,11 +397,11 @@ is($frame->{headers}->{':status'}, 400, 'incomplete headers');
 
 $s = Test::Nginx::HTTP2->new();
 $sid = $s->new_stream({ headers => [
-    { name => ':method', value => 'GET', mode => 0 },
-    { name => ':scheme', value => 'http', mode => 0 },
-    { name => ':path', value => '/arg?push=/gzip.html' },
-    { name => ':authority', value => 'localhost', mode => 1 },
-    { name => 'accept-encoding', value => 'gzip' }]});
+	{ name => ':method', value => 'GET', mode => 0 },
+	{ name => ':scheme', value => 'http', mode => 0 },
+	{ name => ':path', value => '/arg?push=/gzip.html' },
+	{ name => ':authority', value => 'localhost', mode => 1 },
+	{ name => 'accept-encoding', value => 'gzip' }]});
 $frames = $s->read(all => [{ sid => 2, fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq "PUSH_PROMISE" && $_->{sid} == $sid } @$frames;
@@ -412,36 +417,60 @@ gunzip_like($frame->{data}, qr/^PROMISED\Z/, 'gzip - response');
 
 $s = Test::Nginx::HTTP2->new();
 $sid = $s->new_stream({ headers => [
-    { name => ':method', value => 'GET', mode => 0 },
-    { name => ':scheme', value => 'https', mode => 0 },
-    { name => ':path', value => '/preload' },
-    { name => ':authority', value => 'localhost', mode => 1 }]});
+	{ name => ':method', value => 'GET', mode => 0 },
+	{ name => ':scheme', value => 'https', mode => 0 },
+	{ name => ':path', value => '/preload' },
+	{ name => ':authority', value => 'localhost', mode => 1 }]});
 $frames = $s->read(all => [{ sid => 2, fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq "PUSH_PROMISE" && $_->{sid} == $sid } @$frames;
 is($frame->{headers}->{':scheme'}, 'https', 'scheme https');
 
+# CONTINUATION
+
+$s = Test::Nginx::HTTP2->new();
+$sid = $s->new_stream({ path => '/continuation?x=' . ('X' x 4096) });
+$frames = $s->read(all => [{ sid => 1, fin => 1 }, { sid => 2, fin => 1 }]);
+
+@$frames = grep { $_->{promised} } @$frames;
+is(@$frames, 2, 'continuation - frames');
+
+$frame = shift @$frames;
+is($frame->{type}, 'PUSH_PROMISE', 'continuation - PUSH_PROMISE');
+is($frame->{length}, 16384, 'continuation - PUSH_PROMISE length');
+is($frame->{flags}, 0, 'continuation - PUSH_PROMISE flags');
+is($frame->{sid}, $sid, 'continuation - PUSH_PROMISE sid');
+is($frame->{promised}, 2, 'continuation - promised stream');
+
+$frame = shift @$frames;
+is($frame->{type}, 'CONTINUATION', 'continuation - CONTINUATION');
+is($frame->{flags}, 4, 'continuation - CONTINUATION flags');
+is($frame->{headers}->{':authority'}, 'localhost', 'continuation - authority');
+is($frame->{headers}->{':scheme'}, 'http', 'continuation - scheme');
+is($frame->{headers}->{':method'}, 'GET', 'continuation - method');
+like($frame->{headers}->{':path'}, qr!^/push!, 'continuation - path');
+
 ###############################################################################
 
 sub gunzip_like {
-    my ($in, $re, $name) = @_;
+	my ($in, $re, $name) = @_;
 
-    SKIP: {
-        eval { require IO::Uncompress::Gunzip; };
-        Test::More::skip(
-            "IO::Uncompress::Gunzip not installed", 1) if $@;
+	SKIP: {
+		eval { require IO::Uncompress::Gunzip; };
+		Test::More::skip(
+			"IO::Uncompress::Gunzip not installed", 1) if $@;
 
-        my $out;
+		my $out;
 
-        IO::Uncompress::Gunzip::gunzip(\$in => \$out);
+		IO::Uncompress::Gunzip::gunzip(\$in => \$out);
 
-        if ($in =~ $re) {
-            fail($name);
-            return;
-        }
+		if ($in =~ $re) {
+			fail($name);
+			return;
+		}
 
-        like($out, $re, $name);
-    }
+		like($out, $re, $name);
+	}
 }
 
 ###############################################################################

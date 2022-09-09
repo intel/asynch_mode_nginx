@@ -24,7 +24,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http proxy rewrite/)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -87,8 +87,8 @@ $t->try_run('no njs header filter')->plan(2);
 ###############################################################################
 
 like(http_get('/filter/?len=1'), qr/Set-Cookie: BB.*Set-Cookie: CCCC.*/ms,
-    'all');;
+	'all');;
 unlike(http_get('/filter/?len=3'), qr/Set-Cookie: BB/,
-    'filter');
+	'filter');
 
 ###############################################################################

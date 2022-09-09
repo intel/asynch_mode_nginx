@@ -26,10 +26,10 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 plan(skip_all => '127.0.0.2 local address required')
-    unless defined IO::Socket::INET->new( LocalAddr => '127.0.0.2' );
+	unless defined IO::Socket::INET->new( LocalAddr => '127.0.0.2' );
 
 my $t = Test::Nginx->new()->has(qw/http/)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -118,118 +118,118 @@ $t->waitforfile($t->testdir . '/' . port(8981));
 ###############################################################################
 
 local $TODO = 'not yet'
-    unless http_get('/njs') =~ /^([.0-9]+)$/m && $1 ge '0.5.1';
+	unless http_get('/njs') =~ /^([.0-9]+)$/m && $1 ge '0.5.1';
 
 like(http_get('/dns?domain=aaa'), qr/aaa:GET:::$/s, 'fetch dns aaa');
 like(http_get('/dns?domain=many'), qr/many:GET:::$/s, 'fetch dns many');
 like(http_get('/dns?domain=unknown'), qr/"unknown" could not be resolved/s,
-    'fetch dns unknown');
+	'fetch dns unknown');
 
 ###############################################################################
 
 sub reply_handler {
-    my ($recv_data, $port, %extra) = @_;
+	my ($recv_data, $port, %extra) = @_;
 
-    my (@name, @rdata);
+	my (@name, @rdata);
 
-    use constant NOERROR    => 0;
-    use constant FORMERR    => 1;
-    use constant SERVFAIL    => 2;
-    use constant NXDOMAIN    => 3;
+	use constant NOERROR	=> 0;
+	use constant FORMERR	=> 1;
+	use constant SERVFAIL	=> 2;
+	use constant NXDOMAIN	=> 3;
 
-    use constant A        => 1;
+	use constant A		=> 1;
 
-    use constant IN        => 1;
+	use constant IN		=> 1;
 
-    # default values
+	# default values
 
-    my ($hdr, $rcode, $ttl) = (0x8180, NOERROR, 3600);
+	my ($hdr, $rcode, $ttl) = (0x8180, NOERROR, 3600);
 
-    # decode name
+	# decode name
 
-    my ($len, $offset) = (undef, 12);
-    while (1) {
-        $len = unpack("\@$offset C", $recv_data);
-        last if $len == 0;
-        $offset++;
-        push @name, unpack("\@$offset A$len", $recv_data);
-        $offset += $len;
-    }
+	my ($len, $offset) = (undef, 12);
+	while (1) {
+		$len = unpack("\@$offset C", $recv_data);
+		last if $len == 0;
+		$offset++;
+		push @name, unpack("\@$offset A$len", $recv_data);
+		$offset += $len;
+	}
 
-    $offset -= 1;
-    my ($id, $type, $class) = unpack("n x$offset n2", $recv_data);
+	$offset -= 1;
+	my ($id, $type, $class) = unpack("n x$offset n2", $recv_data);
 
-    my $name = join('.', @name);
+	my $name = join('.', @name);
 
-    if ($name eq 'aaa' && $type == A) {
-        push @rdata, rd_addr($ttl, '127.0.0.1');
+	if ($name eq 'aaa' && $type == A) {
+		push @rdata, rd_addr($ttl, '127.0.0.1');
 
-    } elsif ($name eq 'many' && $type == A) {
-        push @rdata, rd_addr($ttl, '127.0.0.2');
-        push @rdata, rd_addr($ttl, '127.0.0.1');
-    }
+	} elsif ($name eq 'many' && $type == A) {
+		push @rdata, rd_addr($ttl, '127.0.0.2');
+		push @rdata, rd_addr($ttl, '127.0.0.1');
+	}
 
-    $len = @name;
-    pack("n6 (C/a*)$len x n2", $id, $hdr | $rcode, 1, scalar @rdata,
-        0, 0, @name, $type, $class) . join('', @rdata);
+	$len = @name;
+	pack("n6 (C/a*)$len x n2", $id, $hdr | $rcode, 1, scalar @rdata,
+		0, 0, @name, $type, $class) . join('', @rdata);
 }
 
 sub rd_addr {
-    my ($ttl, $addr) = @_;
+	my ($ttl, $addr) = @_;
 
-    my $code = 'split(/\./, $addr)';
+	my $code = 'split(/\./, $addr)';
 
-    return pack 'n3N', 0xc00c, A, IN, $ttl if $addr eq '';
+	return pack 'n3N', 0xc00c, A, IN, $ttl if $addr eq '';
 
-    pack 'n3N nC4', 0xc00c, A, IN, $ttl, eval "scalar $code", eval($code);
+	pack 'n3N nC4', 0xc00c, A, IN, $ttl, eval "scalar $code", eval($code);
 }
 
 sub dns_daemon {
-    my ($port, $t, %extra) = @_;
+	my ($port, $t, %extra) = @_;
 
-    my ($data, $recv_data);
-    my $socket = IO::Socket::INET->new(
-        LocalAddr => '127.0.0.1',
-        LocalPort => $port,
-        Proto => 'udp',
-    )
-        or die "Can't create listening socket: $!\n";
+	my ($data, $recv_data);
+	my $socket = IO::Socket::INET->new(
+		LocalAddr => '127.0.0.1',
+		LocalPort => $port,
+		Proto => 'udp',
+	)
+		or die "Can't create listening socket: $!\n";
 
-    my $sel = IO::Select->new($socket);
+	my $sel = IO::Select->new($socket);
 
-    local $SIG{PIPE} = 'IGNORE';
+	local $SIG{PIPE} = 'IGNORE';
 
-    # signal we are ready
+	# signal we are ready
 
-    open my $fh, '>', $t->testdir() . '/' . $port;
-    close $fh;
+	open my $fh, '>', $t->testdir() . '/' . $port;
+	close $fh;
 
-    while (my @ready = $sel->can_read) {
-        foreach my $fh (@ready) {
-            if ($socket == $fh) {
-                $fh->recv($recv_data, 65536);
-                $data = reply_handler($recv_data, $port);
-                $fh->send($data);
+	while (my @ready = $sel->can_read) {
+		foreach my $fh (@ready) {
+			if ($socket == $fh) {
+				$fh->recv($recv_data, 65536);
+				$data = reply_handler($recv_data, $port);
+				$fh->send($data);
 
-            } else {
-                $fh->recv($recv_data, 65536);
-                unless (length $recv_data) {
-                    $sel->remove($fh);
-                    $fh->close;
-                    next;
-                }
+			} else {
+				$fh->recv($recv_data, 65536);
+				unless (length $recv_data) {
+					$sel->remove($fh);
+					$fh->close;
+					next;
+				}
 
 again:
-                my $len = unpack("n", $recv_data);
-                $data = substr $recv_data, 2, $len;
-                $data = reply_handler($data, $port, tcp => 1);
-                $data = pack("n", length $data) . $data;
-                $fh->send($data);
-                $recv_data = substr $recv_data, 2 + $len;
-                goto again if length $recv_data;
-            }
-        }
-    }
+				my $len = unpack("n", $recv_data);
+				$data = substr $recv_data, 2, $len;
+				$data = reply_handler($data, $port, tcp => 1);
+				$data = pack("n", length $data) . $data;
+				$fh->send($data);
+				$recv_data = substr $recv_data, 2 + $len;
+				goto again if length $recv_data;
+			}
+		}
+	}
 }
 
 ###############################################################################

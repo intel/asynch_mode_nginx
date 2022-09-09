@@ -24,7 +24,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http rewrite memcached ssi/)->plan(3)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -55,14 +55,14 @@ http {
 EOF
 
 $t->write_file('ssi.html',
-    '<!--#include virtual="/" set="blah" -->' .
-    'blah: <!--#echo var="blah" -->');
+	'<!--#include virtual="/" set="blah" -->' .
+	'blah: <!--#echo var="blah" -->');
 
 $t->run_daemon(\&memcached_fake_daemon);
 $t->run();
 
 $t->waitforsocket('127.0.0.1:' . port(8081))
-    or die "Can't start fake memcached";
+	or die "Can't start fake memcached";
 
 ###############################################################################
 
@@ -75,33 +75,33 @@ like(`grep -F '[error]' ${\($t->testdir())}/error.log`, qr/^$/s, 'no errors');
 ###############################################################################
 
 sub memcached_fake_daemon {
-    my $server = IO::Socket::INET->new(
-        Proto => 'tcp',
-        LocalAddr => '127.0.0.1:' . port(8081),
-        Listen => 5,
-        Reuse => 1
-    )
-        or die "Can't create listening socket: $!\n";
+	my $server = IO::Socket::INET->new(
+		Proto => 'tcp',
+		LocalAddr => '127.0.0.1:' . port(8081),
+		Listen => 5,
+		Reuse => 1
+	)
+		or die "Can't create listening socket: $!\n";
 
-    local $SIG{PIPE} = 'IGNORE';
+	local $SIG{PIPE} = 'IGNORE';
 
-    while (my $client = $server->accept()) {
-        $client->autoflush(1);
+	while (my $client = $server->accept()) {
+		$client->autoflush(1);
 
-        while (<$client>) {
-            last if (/\x0d\x0a$/);
-        }
+		while (<$client>) {
+			last if (/\x0d\x0a$/);
+		}
 
-        print $client 'VALUE / 0 8' . CRLF;
-        print $client 'SEE-TH';
-        select(undef, undef, undef, 0.1);
-        print $client 'IS';
-        select(undef, undef, undef, 0.1);
-        print $client CRLF . 'EN';
-        select(undef, undef, undef, 0.1);
-        print $client 'D' . CRLF;
-        close $client;
-    }
+		print $client 'VALUE / 0 8' . CRLF;
+		print $client 'SEE-TH';
+		select(undef, undef, undef, 0.1);
+		print $client 'IS';
+		select(undef, undef, undef, 0.1);
+		print $client CRLF . 'EN';
+		select(undef, undef, undef, 0.1);
+		print $client 'D' . CRLF;
+		close $client;
+	}
 }
 
 ###############################################################################

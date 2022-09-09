@@ -91,31 +91,31 @@ like($r, qr/^Accept-Ranges: parrots/m, 'Accept-Ranges preserved');
 unlike($r, qr/^Something/m, 'other headers stripped');
 
 like(http_post('/proxy?xar=/index.html'), qr/method: GET/,
-    'X-Accel-Redirect method name');
+	'X-Accel-Redirect method name');
 
 # escaped characters
 
 like(http_get('/proxy?xar=/foo?bar'), qr/200 OK.*xar: \/foo\?bar/s,
-    'X-Accel-Redirect value unchanged');
+	'X-Accel-Redirect value unchanged');
 unlike(http_get('/proxy?xar=..'), qr/200 OK/,
-    'X-Accel-Redirect unsafe dotdot');
+	'X-Accel-Redirect unsafe dotdot');
 unlike(http_get('/proxy?xar=../foo'), qr/200 OK/,
-    'X-Accel-Redirect unsafe dotdotsep');
+	'X-Accel-Redirect unsafe dotdotsep');
 unlike(http_get('/proxy?xar=/foo/..'), qr/200 OK/,
-    'X-Accel-Redirect unsafe sepdotdot');
+	'X-Accel-Redirect unsafe sepdotdot');
 unlike(http_get('/proxy?xar=/foo/.%2e'), qr/200 OK/,
-    'X-Accel-Redirect unsafe unescaped');
+	'X-Accel-Redirect unsafe unescaped');
 like(http_get('/proxy?xar=/foo%20bar'), qr/uri: \/foo bar/,
-    'X-Accel-Redirect unescaped');
+	'X-Accel-Redirect unescaped');
 
 like(http_get('/proxy?xar=@named'),
-    qr!200 OK.*named xar: \@named uri: /proxy!s, 'in named location');
+	qr!200 OK.*named xar: \@named uri: /proxy!s, 'in named location');
 
 ###############################################################################
 
 sub http_post {
-    my ($url) = @_;
-    http(<<EOF);
+	my ($url) = @_;
+	http(<<EOF);
 POST $url HTTP/1.0
 Host: localhost
 

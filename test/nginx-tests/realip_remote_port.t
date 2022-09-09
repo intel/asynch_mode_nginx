@@ -24,7 +24,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http realip/)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -57,7 +57,7 @@ $t->write_file('1', '');
 $t->run();
 
 plan(skip_all => 'no 127.0.0.1 on host')
-    if http_get('/') !~ /X-IP: 127.0.0.1/m;
+	if http_get('/') !~ /X-IP: 127.0.0.1/m;
 
 $t->plan(4);
 
@@ -78,21 +78,21 @@ like($data, qr/X-Real-Port: $sp/, 'realip redirect');
 ###############################################################################
 
 sub http_sp_get {
-    my $s = http_get(shift, start => 1);
-    return ($s->sockport(), http_end($s));
+	my $s = http_get(shift, start => 1);
+	return ($s->sockport(), http_end($s));
 }
 
 sub http_sp_xff {
-    my ($url, $xff) = @_;
+	my ($url, $xff) = @_;
 
-    my $s = http(<<EOF, start => 1);
+	my $s = http(<<EOF, start => 1);
 GET $url HTTP/1.0
 Host: localhost
 X-Forwarded-For: $xff
 
 EOF
 
-    return ($s->sockport(), http_end($s));
+	return ($s->sockport(), http_end($s));
 }
 
 ###############################################################################

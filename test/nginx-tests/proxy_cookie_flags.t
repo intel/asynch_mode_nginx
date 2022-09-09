@@ -78,67 +78,67 @@ http {
 
 EOF
 
-$t->try_run('no proxy_cookie_flags')->plan(14);
+$t->run()->plan(14);
 
 ###############################################################################
 
 is(http_get_set_cookie('/?v=a'),
-    'a=path=domain=; Domain=example.org; Secure; HttpOnly; SameSite=None',
-    'flags set all');
+	'a=path=domain=; Domain=example.org; Secure; HttpOnly; SameSite=None',
+	'flags set all');
 is(http_get_set_cookie('/?v=b'),
-    'b=path=domain=; Domain=example.org; Secure; HttpOnly; SameSite=Lax',
-    'flags set lax');
+	'b=path=domain=; Domain=example.org; Secure; HttpOnly; SameSite=Lax',
+	'flags set lax');
 is(http_get_set_cookie('/?v=c'),
-    'c=path=domain=; Domain=example.org; Secure; HttpOnly; SameSite=Strict',
-    'flags set strict');
+	'c=path=domain=; Domain=example.org; Secure; HttpOnly; SameSite=Strict',
+	'flags set strict');
 
 # edit already set flags
 
 is(http_get_set_cookie('/?v=a&f=;Secure;HttpOnly;SameSite=Lax'),
-    'a=path=domain=; Domain=example.org; Secure; HttpOnly; SameSite=None',
-    'flags reset all');
+	'a=path=domain=; Domain=example.org; Secure; HttpOnly; SameSite=None',
+	'flags reset all');
 is(http_get_set_cookie('/?v=b&f=;Secure;HttpOnly;SameSite=None'),
-    'b=path=domain=; Domain=example.org; Secure; HttpOnly; SameSite=Lax',
-    'flags reset lax');
+	'b=path=domain=; Domain=example.org; Secure; HttpOnly; SameSite=Lax',
+	'flags reset lax');
 is(http_get_set_cookie('/?v=c&f=;Secure;HttpOnly;SameSite=None'),
-    'c=path=domain=; Domain=example.org; Secure; HttpOnly; SameSite=Strict',
-    'flags reset strict');
+	'c=path=domain=; Domain=example.org; Secure; HttpOnly; SameSite=Strict',
+	'flags reset strict');
 
 is(http_get_set_cookie('/?v=d&f=;secure;httponly;samesite=lax'),
-    'd=path=domain=; Domain=example.org',
-    'flags remove');
+	'd=path=domain=; Domain=example.org',
+	'flags remove');
 
 is(http_get_set_cookie('/?v=nx&f=;samesite=none'),
-    'nx=path=domain=; Domain=example.org;samesite=none', 'flags no match');
+	'nx=path=domain=; Domain=example.org;samesite=none', 'flags no match');
 
 is(http_get_set_cookie('/?complex=v'),
-    'v=path=domain=; Domain=example.org; Secure', 'flags variable');
+	'v=path=domain=; Domain=example.org; Secure', 'flags variable');
 is(http_get_set_cookie('/?v=foobarbaz'),
-    'foobarbaz=path=domain=; Domain=example.org; HttpOnly', 'flags regex');
+	'foobarbaz=path=domain=; Domain=example.org; HttpOnly', 'flags regex');
 
 is(http_get_set_cookie('/off/?v=a'), 'a=path=domain=; Domain=example.org',
-    'flags off');
+	'flags off');
 
 # variables in flags
 
 is(http_get_set_cookie('/var/?v=v&f1=secure&f2=httponly&f3=samesite=none'),
-    'v=path=domain=; Domain=example.org; Secure; HttpOnly; SameSite=None',
-    'flags set');
+	'v=path=domain=; Domain=example.org; Secure; HttpOnly; SameSite=None',
+	'flags set');
 is(http_get_set_cookie('/var/?v=v&f=;Secure;HttpOnly;SameSite=Lax' .
-    '&f1=secure&f2=httponly&f3=samesite=none'),
-    'v=path=domain=; Domain=example.org; Secure; HttpOnly; SameSite=None',
-    'flags reset');
+	'&f1=secure&f2=httponly&f3=samesite=none'),
+	'v=path=domain=; Domain=example.org; Secure; HttpOnly; SameSite=None',
+	'flags reset');
 is(http_get_set_cookie('/var/?v=v&f=;secure;httponly;samesite=lax' .
-    '&f1=nosecure&f2=nohttponly&f3=nosamesite'),
-    'v=path=domain=; Domain=example.org',
-    'flags remove');
+	'&f1=nosecure&f2=nohttponly&f3=nosamesite'),
+	'v=path=domain=; Domain=example.org',
+	'flags remove');
 
 ###############################################################################
 
 sub http_get_set_cookie {
-    my ($uri) = @_;
-    http_get($uri) =~ /^Set-Cookie:\s(.+?)\x0d?$/mi;
-    return $1;
+	my ($uri) = @_;
+	http_get($uri) =~ /^Set-Cookie:\s(.+?)\x0d?$/mi;
+	return $1;
 }
 
 ###############################################################################

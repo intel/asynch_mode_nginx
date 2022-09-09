@@ -25,7 +25,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/stream stream_limit_conn udp/)->plan(9)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -96,11 +96,11 @@ is($s->io('1'), '1', 'passed');
 is($s->io('1', read_timeout => 0.4), '1', 'passed new request');
 
 is(dgram('127.0.0.1:' . port(8981))->io('1', read_timeout => 0.1), '',
-    'rejected new session');
+	'rejected new session');
 is(dgram('127.0.0.1:' . port(8982))->io('1'), '1', 'passed different zone');
 is(dgram('127.0.0.1:' . port(8983))->io('1'), '1', 'passed same zone unlimited');
 
-sleep 1;    # waiting for proxy_timeout to expire
+sleep 1;	# waiting for proxy_timeout to expire
 
 is($s->io('2', read => 2), '12', 'new session after proxy_timeout');
 
@@ -110,29 +110,29 @@ is(dgram('127.0.0.1:' . port(8981))->io('2', read => 2), '12', 'passed 2');
 
 is(dgram('127.0.0.1:' . port(8984))->io('1'), '1', 'passed proxy');
 is(dgram('127.0.0.1:' . port(8985))->io('1', read_timeout => 0.1), '',
-    'rejected proxy');
+	'rejected proxy');
 
 ###############################################################################
 
 sub udp_daemon {
-    my $t = shift;
+	my $t = shift;
 
-    my $server = IO::Socket::INET->new(
-        Proto => 'udp',
-        LocalAddr => '127.0.0.1:' . port(8980),
-        Reuse => 1,
-    )
-        or die "Can't create listening socket: $!\n";
+	my $server = IO::Socket::INET->new(
+		Proto => 'udp',
+		LocalAddr => '127.0.0.1:' . port(8980),
+		Reuse => 1,
+	)
+		or die "Can't create listening socket: $!\n";
 
-    # signal we are ready
+	# signal we are ready
 
-    open my $fh, '>', $t->testdir() . '/' . port(8980);
-    close $fh;
+	open my $fh, '>', $t->testdir() . '/' . port(8980);
+	close $fh;
 
-    while (1) {
-        $server->recv(my $buffer, 65536);
-        $server->send($_) for (1 .. $buffer);
-    }
+	while (1) {
+		$server->recv(my $buffer, 65536);
+		$server->send($_) for (1 .. $buffer);
+	}
 }
 
 ###############################################################################

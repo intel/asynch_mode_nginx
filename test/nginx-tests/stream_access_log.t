@@ -138,20 +138,20 @@ $s->io($str);
 # wait for file to appear with nonzero size thanks to the flush parameter
 
 for (1 .. 10) {
-    last if -s $t->testdir() . '/compressed.log';
-    select undef, undef, undef, 0.1;
+	last if -s $t->testdir() . '/compressed.log';
+	select undef, undef, undef, 0.1;
 }
 
 # verify that "gzip" parameter turns on compression
 
 SKIP: {
-    eval { require IO::Uncompress::Gunzip; };
-    skip("IO::Uncompress::Gunzip not installed", 1) if $@;
+	eval { require IO::Uncompress::Gunzip; };
+	skip("IO::Uncompress::Gunzip not installed", 1) if $@;
 
-    my $gzipped = $t->read_file('compressed.log');
-    my $log;
-    IO::Uncompress::Gunzip::gunzip(\$gzipped => \$log);
-    like($log, qr/^127.0.0.1/, 'compressed log - flush time');
+	my $gzipped = $t->read_file('compressed.log');
+	my $log;
+	IO::Uncompress::Gunzip::gunzip(\$gzipped => \$log);
+	like($log, qr/^127.0.0.1/, 'compressed log - flush time');
 }
 
 # now verify all other logs
@@ -166,8 +166,8 @@ ok($t->read_file('varlog_3.log'), 'variable in file');
 my $hostname = lc hostname();
 like($t->read_file('vars.log'), qr/^\d+:[\d.]+:$hostname:\d+$/, 'log vars');
 is($t->read_file('addr.log'),
-    "$escaped:$lhost:$lport:127.0.0.1:$dport:127.0.0.1:$uport\n",
-    'log addr');
+	"$escaped:$lhost:$lport:127.0.0.1:$dport:127.0.0.1:$uport\n",
+	'log addr');
 like($t->read_file('date.log'), qr#^\d+.\d+![-+\w/: ]+![-+\dT:]+$#, 'log date');
 is($t->read_file('byte.log'), "8:3:8:3\n", 'log bytes');
 like($t->read_file('time.log'), qr/0\.\d+:0\.\d+:1\.\d+:1\.\d+/, 'log time');
@@ -175,34 +175,34 @@ like($t->read_file('time.log'), qr/0\.\d+:0\.\d+:1\.\d+:1\.\d+/, 'log time');
 ###############################################################################
 
 sub stream_daemon {
-    my $server = IO::Socket::INET->new(
-        Proto => 'tcp',
-        LocalAddr => '127.0.0.1',
-        LocalPort => port(8080),
-        Listen => 5,
-        Reuse => 1
-    )
-        or die "Can't create listening socket: $!\n";
+	my $server = IO::Socket::INET->new(
+		Proto => 'tcp',
+		LocalAddr => '127.0.0.1',
+		LocalPort => port(8080),
+		Listen => 5,
+		Reuse => 1
+	)
+		or die "Can't create listening socket: $!\n";
 
-    local $SIG{PIPE} = 'IGNORE';
+	local $SIG{PIPE} = 'IGNORE';
 
-    while (my $client = $server->accept()) {
-        $client->autoflush(1);
+	while (my $client = $server->accept()) {
+		$client->autoflush(1);
 
-        log2c("(new connection $client)");
+		log2c("(new connection $client)");
 
-        $client->sysread(my $buffer, 65536) or next;
+		$client->sysread(my $buffer, 65536) or next;
 
-        log2i("$client $buffer");
+		log2i("$client $buffer");
 
-        $buffer = "ack";
+		$buffer = "ack";
 
-        log2o("$client $buffer");
+		log2o("$client $buffer");
 
-        $client->syswrite($buffer);
+		$client->syswrite($buffer);
 
-        close $client;
-    }
+		close $client;
+	}
 }
 
 sub log2i { Test::Nginx::log_core('|| <<', @_); }

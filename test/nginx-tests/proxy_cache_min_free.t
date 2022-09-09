@@ -24,7 +24,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http proxy cache/)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -65,7 +65,7 @@ http {
 EOF
 
 $t->write_file('t.html', 'SEE-THIS');
-$t->try_run('no proxy_cache_path min_free')->plan(2);
+$t->run()->plan(2);
 
 ###############################################################################
 

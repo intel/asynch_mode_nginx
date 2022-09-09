@@ -25,7 +25,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http rewrite symlink/)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -157,10 +157,10 @@ EOF
 
 my $uid = getuid();
 my ($extfile) = grep { -f && !-l && $uid != (stat())[4] }
-    ('/etc/resolv.conf', '/etc/protocols', '/etc/host.conf');
+	('/etc/resolv.conf', '/etc/protocols', '/etc/host.conf');
 
 plan(skip_all => 'no external file found')
-    if !defined $extfile;
+	if !defined $extfile;
 
 $t->try_run('no disable_symlinks')->plan(28);
 
@@ -216,40 +216,40 @@ like(http_get_host('s1', '/link'), qr!200 OK!, 'static (off, same uid)');
 like(http_get_host('s1', '/link2'), qr!200 OK!, 'static (off, other uid)');
 
 like(http_get_host('s1', '/on/link'), qr!403 Forbidden!,
-    'static (on, same uid)');
+	'static (on, same uid)');
 like(http_get_host('s1', '/on/link2'), qr!403 Forbidden!,
-    'static (on, other uid)');
+	'static (on, other uid)');
 
 like(http_get_host('s1', '/not_owner/link'), qr!200 OK!,
-    'static (if_not_owner, same uid)');
+	'static (if_not_owner, same uid)');
 like(http_get_host('s1', '/not_owner/link2'), qr!403 Forbidden!,
-    'static (if_not_owner, other uid)');
+	'static (if_not_owner, other uid)');
 
 like(http_get_host('s1', '/try_on/try'), qr/LOCAL TRY/,
-    'try_files (on)');
+	'try_files (on)');
 like(http_get_host('s1', '/try_not_owner/try'), qr/LOCAL TRY/,
-    'try_files (if_not_owner)');
+	'try_files (if_not_owner)');
 
 like(http_get_host('s1', '/if_on/link'), qr!403 Forbidden!,
-    'if (on, same uid)');
+	'if (on, same uid)');
 like(http_get_host('s1', '/if_on/link2'), qr!403 Forbidden!,
-    'if (on, other uid)');
+	'if (on, other uid)');
 
 like(http_get_host('s1', '/if_not_owner/link'), qr!204 No Content!,
-    'if (if_not_owner, same uid)');
+	'if (if_not_owner, same uid)');
 like(http_get_host('s1', '/if_not_owner/link2'), qr!403 Forbidden!,
-    'if (if_not_owner, other uid)');
+	'if (if_not_owner, other uid)');
 
 like(http_get_host('s2', '/cached-off/link'), qr!200 OK!,
-    'open_file_cache (pass 1)');
+	'open_file_cache (pass 1)');
 like(http_get_host('s2', '/cached-on/link'), qr!403 Forbidden!,
-    'open_file_cache (pass 2)');
+	'open_file_cache (pass 2)');
 like(http_get_host('s2', '/cached-off/link'), qr!200 OK!,
-    'open_file_cache (pass 3)');
+	'open_file_cache (pass 3)');
 like(http_get_host('s2', '/cached-if-not-owner/link'), qr!403 Forbidden!,
-    'open_file_cache (pass 4)');
+	'open_file_cache (pass 4)');
 like(http_get_host('s2', '/cached-off/link'), qr!200 OK!,
-    'open_file_cache (pass 5)');
+	'open_file_cache (pass 5)');
 
 like(http_get('/complex/1/empty.html'), qr!200 OK!, 'complex root 1');
 like(http_get('/complex/2/empty.html'), qr!200 OK!, 'complex root 2');
@@ -278,8 +278,8 @@ like(http_get('/from/exact/link'), qr!200 OK!, '"from=" exact match');
 ###############################################################################
 
 sub http_get_host {
-    my ($host, $url) = @_;
-    return http(<<EOF);
+	my ($host, $url) = @_;
+	return http(<<EOF);
 GET $url HTTP/1.0
 Host: $host
 

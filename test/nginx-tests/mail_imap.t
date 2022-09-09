@@ -29,7 +29,7 @@ select STDOUT; $| = 1;
 local $SIG{PIPE} = 'IGNORE';
 
 my $t = Test::Nginx->new()->has(qw/mail imap http rewrite/)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -213,8 +213,8 @@ $s = Test::Nginx::IMAP->new();
 $s->read();
 
 $s->send('a01 LOGIN {18+}' . CRLF
-    . 'te\"st@example.com' . ' {8+}' . CRLF
-    . 'se\"cret');
+	. 'te\"st@example.com' . ' {8+}' . CRLF
+	. 'se\"cret');
 $s->ok('login non-sync literals');
 
 # backslash in quotes and literals
@@ -223,7 +223,7 @@ $s = Test::Nginx::IMAP->new();
 $s->read();
 
 $s->send('a01 LOGIN {18+}' . CRLF
-    . 'te\"st@example.com' . ' "se\\\\\"cret"');
+	. 'te\"st@example.com' . ' "se\\\\\"cret"');
 
 TODO: {
 local $TODO = 'not yet' unless $t->has_version('1.21.0');
@@ -238,7 +238,7 @@ $s = Test::Nginx::IMAP->new();
 $s->read();
 
 $s->send('a01 INVALID COMMAND WITH ARGUMENTS' . CRLF
-    . 'a02 NOOP');
+	. 'a02 NOOP');
 $s->check(qr/^a01 BAD/, 'pipelined invalid command');
 
 TODO: {
@@ -249,8 +249,8 @@ $s->ok('pipelined noop after invalid command');
 }
 
 $s->send('a03 FOOBAR {10+}' . CRLF
-    . 'test test ' . CRLF
-    . 'a04 NOOP');
+	. 'test test ' . CRLF
+	. 'a04 NOOP');
 $s->check(qr/^a03 BAD/, 'invalid with non-sync literal');
 $s->check(qr/^(a04 |$)/, 'literal not command');
 
@@ -265,7 +265,7 @@ $s = Test::Nginx::IMAP->new();
 $s->read();
 
 $s->send('a01 LOGIN test@example.com secret' . CRLF
-    . 'a02 LOGOUT');
+	. 'a02 LOGOUT');
 $s->ok('pipelined login');
 $s->ok('pipelined logout');
 

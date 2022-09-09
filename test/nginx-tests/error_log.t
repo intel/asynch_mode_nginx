@@ -26,7 +26,7 @@ select STDOUT; $| = 1;
 plan(skip_all => 'win32') if $^O eq 'MSWin32';
 
 my $t = Test::Nginx->new()->has(qw/http limit_req/)
-    ->plan(25)->write_file_expand('nginx.conf', <<'EOF');
+	->plan(25)->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -111,7 +111,7 @@ EOF
 open OLDERR, ">&", \*STDERR;
 open STDERR, '>', $t->testdir() . '/stderr' or die "Can't reopen STDERR: $!";
 open my $stderr, '<', $t->testdir() . '/stderr'
-    or die "Can't open stderr file: $!";
+	or die "Can't open stderr file: $!";
 
 $t->run();
 
@@ -181,17 +181,17 @@ is(lines($t, 'stderr', '[error]'), 1, 'stderr high');
 ###############################################################################
 
 sub lines {
-    my ($t, $file, $pattern) = @_;
+	my ($t, $file, $pattern) = @_;
 
-    if ($file eq 'stderr') {
-        return map { $_ =~ /\Q$pattern\E/ } (<$stderr>);
-    }
+	if ($file eq 'stderr') {
+		return map { $_ =~ /\Q$pattern\E/ } (<$stderr>);
+	}
 
-    my $path = $t->testdir() . '/' . $file;
-    open my $fh, '<', $path or return "$!";
-    my $value = map { $_ =~ /\Q$pattern\E/ } (<$fh>);
-    close $fh;
-    return $value;
+	my $path = $t->testdir() . '/' . $file;
+	open my $fh, '<', $path or return "$!";
+	my $value = map { $_ =~ /\Q$pattern\E/ } (<$fh>);
+	close $fh;
+	return $value;
 }
 
 ###############################################################################

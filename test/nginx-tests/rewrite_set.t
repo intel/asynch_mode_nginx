@@ -77,9 +77,9 @@ $t->run();
 # prefixed variables
 
 like(http_get_extra('/t1.html', 'Foo: http_foo'), qr/Xset_fooX/,
-    'set in this context');
+	'set in this context');
 like(http_get_extra('/t2.html', 'Bar: http_bar'), qr/Xhttp_barX/,
-    'set in other context');
+	'set in other context');
 
 like(http_get_extra('/t3.html', 'Baz: http_baz'), qr/Xhttp_bazX/, 'not set');
 
@@ -88,8 +88,8 @@ like(http_get('/t4.html'), qr/XbarX/, 'set get in return');
 ###############################################################################
 
 sub http_get_extra {
-    my ($uri, $extra) = @_;
-    return http(<<EOF);
+	my ($uri, $extra) = @_;
+	return http(<<EOF);
 GET $uri HTTP/1.0
 $extra
 

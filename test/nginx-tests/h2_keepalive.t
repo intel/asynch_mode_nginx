@@ -4,7 +4,7 @@
 # (C) Sergey Kandaurov
 # (C) Nginx, Inc.
 
-# Tests for HTTP/2 protocol, http2_max_requests directive.
+# Tests for HTTP/2 protocol, keepalive directives.
 
 ###############################################################################
 
@@ -27,7 +27,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http http_v2/)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -43,7 +43,6 @@ http {
         listen       127.0.0.1:8080 http2 sndbuf=1m;
         server_name  localhost;
 
-        http2_max_requests 2;
         keepalive_requests 2;
 
         location / { }
@@ -75,11 +74,7 @@ EOF
 $t->write_file('index.html', 'SEE-THAT' x 50000);
 $t->write_file('t.html', 'SEE-THAT');
 
-# suppress deprecation warning
-
-open OLDERR, ">&", \*STDERR; close STDERR;
-$t->try_run('no keepalive_time')->plan(19);
-open STDERR, ">&", \*OLDERR;
+$t->run()->plan(19);
 
 ###############################################################################
 
@@ -98,7 +93,7 @@ my ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
 is($frame->{headers}->{':status'}, 200, 'max requests');
 
 $frames = $s->read(all => [{ type => 'GOAWAY' }], wait => 0.5)
-    unless grep { $_->{type} eq "GOAWAY" } @$frames;
+	unless grep { $_->{type} eq "GOAWAY" } @$frames;
 
 ($frame) = grep { $_->{type} eq "GOAWAY" } @$frames;
 is($frame, undef, 'max requests - GOAWAY');
@@ -117,15 +112,9 @@ $frames = $s->read(all => [{ sid => $sid, fin => 1 }, { type => 'GOAWAY' }]);
 ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
 is($frame->{headers}->{':status'}, 200, 'max requests limited');
 
-TODO: {
-local $TODO = 'not yet' if ($^O eq 'linux' or $^O eq 'freebsd')
-    and !$t->has_version('1.19.1');
-
 my @data = grep { $_->{type} eq "DATA" } @$frames;
 my $sum = eval join '+', map { $_->{length} } @data;
 is($sum, 400000, 'max requests limited - all data received');
-
-}
 
 ($frame) = grep { $_->{type} eq "GOAWAY" } @$frames;
 ok($frame, 'max requests limited - GOAWAY');
@@ -133,25 +122,15 @@ is($frame->{last_sid}, $sid, 'max requests limited - GOAWAY last stream');
 
 # keepalive_timeout 0
 
-SKIP: {
-skip 'not yet', 2 unless $t->has_version('1.19.7');
-
 $s = Test::Nginx::HTTP2->new(port(8081));
 $sid = $s->new_stream({ path => '/t.html' });
 $frames = $s->read(all => [{ sid => $sid, fin => 1 }, { type => 'GOAWAY' }]);
 
-TODO: {
-local $TODO = 'not yet' unless $t->has_version('1.19.8');
-
 ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
 is($frame->{headers}->{':status'}, 200, 'keepalive_timeout 0');
 
-}
-
 ($frame) = grep { $_->{type} eq "GOAWAY" } @$frames;
 ok($frame, 'keepalive_timeout 0 - GOAWAY');
-
-}
 
 # keepalive_time
 
@@ -205,18 +184,12 @@ $frames = $s->read(all => [{ sid => $sid, fin => 1 }, { type => 'GOAWAY' }]);
 ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
 is($frame->{headers}->{':status'}, 200, 'graceful shutdown in idle');
 
-TODO: {
-local $TODO = 'not yet' if ($^O eq 'linux' or $^O eq 'freebsd')
-    and !$t->has_version('1.19.1');
-
-my @data = grep { $_->{type} eq "DATA" } @$frames;
-my $sum = eval join '+', map { $_->{length} } @data;
+@data = grep { $_->{type} eq "DATA" } @$frames;
+$sum = eval join '+', map { $_->{length} } @data;
 is($sum, 400000, 'graceful shutdown in idle - all data received');
 
 ($frame) = grep { $_->{type} eq "GOAWAY" } @$frames;
 ok($frame, 'graceful shutdown in idle - GOAWAY');
 is($frame->{last_sid}, $sid, 'graceful shutdown in idle - GOAWAY last stream');
-
-}
 
 ###############################################################################

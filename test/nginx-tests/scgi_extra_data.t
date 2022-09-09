@@ -27,8 +27,8 @@ eval { require SCGI; };
 plan(skip_all => 'SCGI not installed') if $@;
 
 my $t = Test::Nginx->new()
-    ->has(qw/http scgi cache rewrite addition/)->plan(22)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->has(qw/http scgi cache rewrite addition/)->plan(22)
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -82,14 +82,9 @@ $t->run()->waitforsocket('127.0.0.1:' . port(8081));
 
 ###############################################################################
 
-TODO: {
-local $TODO = 'not yet' unless $t->has_version('1.19.1');
-
 like(http_get('/'), qr/SEE-THIS(?!-BUT-NOT-THIS)/, 'response with extra data');
 like(http_get('/short'), qr/SEE-THIS(?!.*:after)/s, 'too short response');
 like(http_get('/empty'), qr/200 OK(?!.*:after)/s, 'empty too short response');
-
-}
 
 like(http_head('/'), qr/200 OK(?!.*SEE-THIS)/s, 'no data in HEAD');
 like(http_head('/short'), qr/200 OK(?!.*SEE-THIS)/s, 'too short to HEAD');
@@ -97,24 +92,19 @@ like(http_head('/empty'), qr/200 OK/, 'empty response to HEAD');
 
 # unbuffered responses
 
-TODO: {
-local $TODO = 'not yet' unless $t->has_version('1.19.1');
-
 like(http_get('/unbuf/'), qr/SEE-THIS(?!-BUT-NOT-THIS)/,
-    'unbuffered with extra data');
+	'unbuffered with extra data');
 like(http_get('/unbuf/short'), qr/SEE-THIS(?!.*:after)/s,
-    'unbuffered too short response');
+	'unbuffered too short response');
 like(http_get('/unbuf/empty'), qr/200 OK(?!.*:after)/s,
-    'unbuffered empty too short response');
-
-}
+	'unbuffered empty too short response');
 
 like(http_head('/unbuf/'), qr/200 OK(?!.*SEE-THIS)/s,
-    'unbuffered no data in HEAD');
+	'unbuffered no data in HEAD');
 like(http_head('/unbuf/short'), qr/200 OK(?!.*SEE-THIS)/s,
-    'unbuffered too short response to HEAD');
+	'unbuffered too short response to HEAD');
 like(http_head('/unbuf/empty'), qr/200 OK/,
-    'unbuffered empty response to HEAD');
+	'unbuffered empty response to HEAD');
 
 # caching of responsses to HEAD requests
 
@@ -125,101 +115,82 @@ like(http_head('/head/short'), qr/200 OK(?!.*SEE-THIS)/s, 'head too short');
 
 like(http_get('/head/empty'), qr/SEE-THIS/, 'head no body cached');
 like(http_get('/head/matching'), qr/SEE-THIS/, 'head matching cached');
-
-TODO: {
-local $TODO = 'not yet' unless $t->has_version('1.19.1');
-
 like(http_get('/head/extra'), qr/SEE-THIS(?!-BUT-NOT-THIS)/s,
-    'head extra cached');
+	'head extra cached');
 like(http_get('/head/short'), qr/SEE-THIS(?!.*:after)/s,
-    'head too short cached');
-
-}
+	'head too short cached');
 
 # "zero size buf" alerts (ticket #2117)
 
-TODO: {
-local $TODO = 'not yet' unless $t->has_version('1.19.1');
-
 like(http_get('/zero'), qr/200 OK(?!.*NOT-THIS)/s, 'zero size');
-
-}
-
-TODO: {
-local $TODO = 'not yet' unless $t->has_version('1.19.7');
-
 like(http_get('/unbuf/zero'), qr/200 OK(?!.*NOT-THIS)/s,
-    'unbuffered zero size');
-
-}
-
-$t->todo_alerts() if $t->has_version('1.19.1') and !$t->has_version('1.19.7');
+	'unbuffered zero size');
 
 ###############################################################################
 
 sub scgi_daemon {
-    my $server = IO::Socket::INET->new(
-        Proto => 'tcp',
-        LocalHost => '127.0.0.1:' . port(8081),
-        Listen => 5,
-        Reuse => 1
-    )
-        or die "Can't create listening socket: $!\n";
+	my $server = IO::Socket::INET->new(
+		Proto => 'tcp',
+		LocalHost => '127.0.0.1:' . port(8081),
+		Listen => 5,
+		Reuse => 1
+	)
+		or die "Can't create listening socket: $!\n";
 
-    my $scgi = SCGI->new($server, blocking => 1);
-    my ($c, $uri, $head);
+	my $scgi = SCGI->new($server, blocking => 1);
+	my ($c, $uri, $head);
 
-    while (my $request = $scgi->accept()) {
-        eval { $request->read_env(); };
-        next if $@;
-        
-        $uri = $request->env->{REQUEST_URI};
-        $uri =~ s!^/unbuf!!;
+	while (my $request = $scgi->accept()) {
+		eval { $request->read_env(); };
+		next if $@;
+		
+		$uri = $request->env->{REQUEST_URI};
+		$uri =~ s!^/unbuf!!;
 
-        $head = $request->env->{REQUEST_METHOD} eq 'HEAD';
+		$head = $request->env->{REQUEST_METHOD} eq 'HEAD';
 
-        $c = $request->connection();
+		$c = $request->connection();
 
-        if ($uri eq '/') {
-            $c->print("Content-Type: text/html\n");
-            $c->print("Content-Length: 8\n\n");
-            $c->print("SEE-THIS-BUT-NOT-THIS\n");
+		if ($uri eq '/') {
+			$c->print("Content-Type: text/html\n");
+			$c->print("Content-Length: 8\n\n");
+			$c->print("SEE-THIS-BUT-NOT-THIS\n");
 
-        } elsif ($uri eq '/zero') {
-            $c->print("Content-Type: text/html\n");
-            $c->print("Content-Length: 0\n\n");
-            $c->print("NOT-THIS\n");
+		} elsif ($uri eq '/zero') {
+			$c->print("Content-Type: text/html\n");
+			$c->print("Content-Length: 0\n\n");
+			$c->print("NOT-THIS\n");
 
-        } elsif ($uri eq '/short') {
-            $c->print("Content-Type: text/html\n");
-            $c->print("Content-Length: 100\n\n");
-            $c->print("SEE-THIS-TOO-SHORT-RESPONSE\n");
+		} elsif ($uri eq '/short') {
+			$c->print("Content-Type: text/html\n");
+			$c->print("Content-Length: 100\n\n");
+			$c->print("SEE-THIS-TOO-SHORT-RESPONSE\n");
 
-        } elsif ($uri eq '/empty') {
-            $c->print("Content-Type: text/html\n");
-            $c->print("Content-Length: 100\n\n");
+		} elsif ($uri eq '/empty') {
+			$c->print("Content-Type: text/html\n");
+			$c->print("Content-Length: 100\n\n");
 
-        } elsif ($uri eq '/head/empty') {
-            $c->print("Content-Type: text/html\n");
-            $c->print("Content-Length: 8\n\n");
-            $c->print("SEE-THIS") unless $head;
+		} elsif ($uri eq '/head/empty') {
+			$c->print("Content-Type: text/html\n");
+			$c->print("Content-Length: 8\n\n");
+			$c->print("SEE-THIS") unless $head;
 
-        } elsif ($uri eq '/head/matching') {
-            $c->print("Content-Type: text/html\n");
-            $c->print("Content-Length: 8\n\n");
-            $c->print("SEE-THIS");
+		} elsif ($uri eq '/head/matching') {
+			$c->print("Content-Type: text/html\n");
+			$c->print("Content-Length: 8\n\n");
+			$c->print("SEE-THIS");
 
-        } elsif ($uri eq '/head/extra') {
-            $c->print("Content-Type: text/html\n");
-            $c->print("Content-Length: 8\n\n");
-            $c->print("SEE-THIS-BUT-NOT-THIS\n");
+		} elsif ($uri eq '/head/extra') {
+			$c->print("Content-Type: text/html\n");
+			$c->print("Content-Length: 8\n\n");
+			$c->print("SEE-THIS-BUT-NOT-THIS\n");
 
-        } elsif ($uri eq '/head/short') {
-            $c->print("Content-Type: text/html\n");
-            $c->print("Content-Length: 100\n\n");
-            $c->print("SEE-THIS\n");
-        }
-    }
+		} elsif ($uri eq '/head/short') {
+			$c->print("Content-Type: text/html\n");
+			$c->print("Content-Length: 100\n\n");
+			$c->print("SEE-THIS\n");
+		}
+	}
 }
 
 ###############################################################################

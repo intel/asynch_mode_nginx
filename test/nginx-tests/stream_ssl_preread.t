@@ -25,8 +25,8 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/stream stream_map stream_ssl_preread/)
-    ->has(qw/stream_ssl stream_return/)->has_daemon('openssl')
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->has(qw/stream_ssl stream_return/)->has_daemon('openssl')
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -113,16 +113,16 @@ eval { require IO::Socket::SSL; die if $IO::Socket::SSL::VERSION < 1.56; };
 plan(skip_all => 'IO::Socket::SSL version >= 1.56 required') if $@;
 
 eval {
-    if (IO::Socket::SSL->can('can_client_sni')) {
-        IO::Socket::SSL->can_client_sni() or die;
-    }
+	if (IO::Socket::SSL->can('can_client_sni')) {
+		IO::Socket::SSL->can_client_sni() or die;
+	}
 };
 plan(skip_all => 'IO::Socket::SSL with OpenSSL SNI support required') if $@;
 
 eval {
-    my $ctx = Net::SSLeay::CTX_new() or die;
-    my $ssl = Net::SSLeay::new($ctx) or die;
-    Net::SSLeay::set_tlsext_host_name($ssl, 'example.org') == 1 or die;
+	my $ctx = Net::SSLeay::CTX_new() or die;
+	my $ssl = Net::SSLeay::new($ctx) or die;
+	Net::SSLeay::set_tlsext_host_name($ssl, 'example.org') == 1 or die;
 };
 plan(skip_all => 'Net::SSLeay with OpenSSL SNI support required') if $@;
 
@@ -139,11 +139,11 @@ EOF
 my $d = $t->testdir();
 
 foreach my $name ('localhost') {
-    system('openssl req -x509 -new '
-        . "-config $d/openssl.conf -subj /CN=$name/ "
-        . "-out $d/$name.crt -keyout $d/$name.key "
-        . ">>$d/openssl.out 2>&1") == 0
-        or die "Can't create certificate for $name: $!\n";
+	system('openssl req -x509 -new '
+		. "-config $d/openssl.conf -subj /CN=$name/ "
+		. "-out $d/$name.crt -keyout $d/$name.key "
+		. ">>$d/openssl.out 2>&1") == 0
+		or die "Can't create certificate for $name: $!\n";
 }
 
 $t->run();
@@ -164,12 +164,12 @@ is(get_ssl('', 8081), $p3, 'no sni');
 is(get_ssl('foo', 8082), $p3, 'preread off');
 is(get_ssl('foo', 8083), undef, 'preread buffer full');
 is(stream('127.0.0.1:' . port(8080))->io('x' x 1000), "127.0.0.1:$p3",
-    'not a handshake');
+	'not a handshake');
 
 # ticket #1317
 
 is(stream("127.0.0.1:$p4")->io('x' x 16), "127.0.0.1:$p3",
-    'pending buffers on next upstream');
+	'pending buffers on next upstream');
 
 # no junk in variable due to short ClientHello length value
 
@@ -190,59 +190,59 @@ is($t->read_file('status.log'), "400\n", 'preread buffer full - log');
 ###############################################################################
 
 sub get_frag {
-    my $r = pack("N*", 0x16030100, 0x3b010000, 0x380303ac,
-        0x8c8678a0, 0xaa1e7eed, 0x3644eed6, 0xc3bd2c69,
-        0x7bc7deda, 0x249db0e3, 0x0c339eba, 0xa80b7600,
-        0x00020000, 0x0100000d, 0x00000009, 0x00070000,
-        0x04666f6f, 0x16030100);
-    $r .= pack("n", 0x0166);
+	my $r = pack("N*", 0x16030100, 0x3b010000, 0x380303ac,
+		0x8c8678a0, 0xaa1e7eed, 0x3644eed6, 0xc3bd2c69,
+		0x7bc7deda, 0x249db0e3, 0x0c339eba, 0xa80b7600,
+		0x00020000, 0x0100000d, 0x00000009, 0x00070000,
+		0x04666f6f, 0x16030100);
+	$r .= pack("n", 0x0166);
 
-    http($r);
+	http($r);
 }
 
 sub get_short {
-    my $r = pack("N*", 0x16030100, 0x38010000, 0x330303eb);
-    $r .= pack("N*", 0x6357cdba, 0xa6b8d853, 0xf1f6ac0f);
-    $r .= pack("N*", 0xdf03178c, 0x0ae41824, 0xe7643682);
-    $r .= pack("N*", 0x3c1b273f, 0xbfde4b00, 0x00000000);
-    $r .= pack("CN3", 0x0c, 0x00000008, 0x00060000, 0x03666f6f);
+	my $r = pack("N*", 0x16030100, 0x38010000, 0x330303eb);
+	$r .= pack("N*", 0x6357cdba, 0xa6b8d853, 0xf1f6ac0f);
+	$r .= pack("N*", 0xdf03178c, 0x0ae41824, 0xe7643682);
+	$r .= pack("N*", 0x3c1b273f, 0xbfde4b00, 0x00000000);
+	$r .= pack("CN3", 0x0c, 0x00000008, 0x00060000, 0x03666f6f);
 
-    http($r);
+	http($r);
 }
 
 sub get_oldver {
-    my $r = pack("N*", 0x16030000, 0x38010000, 0x340303eb);
-    $r .= pack("N*", 0x6357cdba, 0xa6b8d853, 0xf1f6ac0f);
-    $r .= pack("N*", 0xdf03178c, 0x0ae41824, 0xe7643682);
-    $r .= pack("N*", 0x3c1b273f, 0xbfde4b00, 0x00000000);
-    $r .= pack("CN3", 0x0c, 0x00000008, 0x00060000, 0x03666f6f);
+	my $r = pack("N*", 0x16030000, 0x38010000, 0x340303eb);
+	$r .= pack("N*", 0x6357cdba, 0xa6b8d853, 0xf1f6ac0f);
+	$r .= pack("N*", 0xdf03178c, 0x0ae41824, 0xe7643682);
+	$r .= pack("N*", 0x3c1b273f, 0xbfde4b00, 0x00000000);
+	$r .= pack("CN3", 0x0c, 0x00000008, 0x00060000, 0x03666f6f);
 
-    http($r);
+	http($r);
 }
 
 sub get_ssl {
-    my ($host, $port) = @_;
-    my $s = stream('127.0.0.1:' . port($port));
+	my ($host, $port) = @_;
+	my $s = stream('127.0.0.1:' . port($port));
 
-    eval {
-        local $SIG{ALRM} = sub { die "timeout\n" };
-        local $SIG{PIPE} = sub { die "sigpipe\n" };
-        alarm(8);
-        IO::Socket::SSL->start_SSL($s->{_socket},
-            SSL_hostname => $host,
-            SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_NONE(),
-            SSL_error_trap => sub { die $_[1] }
-        );
-        alarm(0);
-    };
-    alarm(0);
+	eval {
+		local $SIG{ALRM} = sub { die "timeout\n" };
+		local $SIG{PIPE} = sub { die "sigpipe\n" };
+		alarm(8);
+		IO::Socket::SSL->start_SSL($s->{_socket},
+			SSL_hostname => $host,
+			SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_NONE(),
+			SSL_error_trap => sub { die $_[1] }
+		);
+		alarm(0);
+	};
+	alarm(0);
 
-    if ($@) {
-        log_in("died: $@");
-        return undef;
-    }
+	if ($@) {
+		log_in("died: $@");
+		return undef;
+	}
 
-    return $s->read();
+	return $s->read();
 }
 
 ###############################################################################

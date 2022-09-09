@@ -71,14 +71,14 @@ http {
 EOF
 
 $t->write_file('t1', 'SEE-THIS');
-$t->try_run('no proxy_protocol_server_addr')->plan(28);
+$t->run()->plan(28);
 
 ###############################################################################
 
 my $p = pack("N3C", 0x0D0A0D0A, 0x000D0A51, 0x5549540A, 0x21);
 my $tcp4 = $p . pack("CnN2n2", 0x11, 12, 0xc0000201, 0xc0000202, 123, 567);
 my $tcp6 = $p . pack("CnNx8NNx8Nn2", 0x21, 36,
-    0x20010db8, 0x00000001, 0x20010db8, 0x00000002, 123, 567);
+	0x20010db8, 0x00000001, 0x20010db8, 0x00000002, 123, 567);
 my $tlv = $p . pack("CnN2n2x9", 0x11, 21, 0xc0000201, 0xc0000202, 123, 567);
 my $unk1 = $p . pack("Cxx", 0x01);
 my $unk2 = $p . pack("CnC4", 0x41, 4, 1, 2, 3, 4);
@@ -144,8 +144,8 @@ is($t->read_file('pp6.log'), "2001:db8::1:123\n", 'tcp6 log');
 ###############################################################################
 
 sub pp_get {
-    my ($url, $proxy) = @_;
-    return http($proxy . <<EOF);
+	my ($url, $proxy) = @_;
+	return http($proxy . <<EOF);
 GET $url HTTP/1.0
 Host: localhost
 

@@ -23,7 +23,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http proxy rewrite/)->plan(9)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -124,31 +124,31 @@ like(http_get('/redirect497'), qr!HTTP/1.1 302!, 'redirect 497');
 # again in error_page 302
 
 like(http_get('/error302redirect'),
-    qr{HTTP/1.1 302(?!.*Location: first).*Location: http://example.com/}ms,
-    'error 302 redirect - old location cleared');
+	qr{HTTP/1.1 302(?!.*Location: first).*Location: http://example.com/}ms,
+	'error 302 redirect - old location cleared');
 
 like(http_get('/error302return302text'),
-    qr{HTTP/1.1 302(?!.*Location: first).*Location: http://example.com/}ms,
-    'error 302 return 302 text - old location cleared');
+	qr{HTTP/1.1 302(?!.*Location: first).*Location: http://example.com/}ms,
+	'error 302 return 302 text - old location cleared');
 
 like(http_get('/error302return302args'),
-    qr{HTTP/1.1 302(?!.*Location: first).*Location: http://example.com/1}ms,
-    'error 302 return 302 args - old location cleared');
+	qr{HTTP/1.1 302(?!.*Location: first).*Location: http://example.com/1}ms,
+	'error 302 return 302 args - old location cleared');
 
 like(http_get('/error302return302varargs?a=2'),
-    qr{HTTP/1.1 302(?!.*Location: first).*Location: http://example.com/2}ms,
-    'error 302 return 302 var args - old location cleared');
+	qr{HTTP/1.1 302(?!.*Location: first).*Location: http://example.com/2}ms,
+	'error 302 return 302 var args - old location cleared');
 
 like(http_get('/error302rewrite'),
-    qr{HTTP/1.1 302(?!.*Location: first).*Location: http://example.com/}ms,
-    'error 302 rewrite - old location cleared');
+	qr{HTTP/1.1 302(?!.*Location: first).*Location: http://example.com/}ms,
+	'error 302 rewrite - old location cleared');
 
 like(http_get('/error302directory'),
-    qr{HTTP/1.1 301(?!.*Location: first).*Location: http://}ms,
-    'error 302 directory redirect - old location cleared');
+	qr{HTTP/1.1 301(?!.*Location: first).*Location: http://}ms,
+	'error 302 directory redirect - old location cleared');
 
 like(http_get('/error302auto'),
-    qr{HTTP/1.1 301(?!.*Location: first).*Location: http://}ms,
-    'error 302 auto redirect - old location cleared');
+	qr{HTTP/1.1 301(?!.*Location: first).*Location: http://}ms,
+	'error 302 auto redirect - old location cleared');
 
 ###############################################################################

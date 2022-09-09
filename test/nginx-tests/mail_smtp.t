@@ -29,7 +29,7 @@ select STDOUT; $| = 1;
 local $SIG{PIPE} = 'IGNORE';
 
 my $t = Test::Nginx->new()->has(qw/mail smtp http rewrite/)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -202,19 +202,19 @@ $s->send('EHLO example.com');
 $s->read();
 
 $s->send('INVALID COMMAND WITH ARGUMENTS' . CRLF
-    . 'RSET');
+	. 'RSET');
 $s->read();
 $s->ok('pipelined rset after invalid command');
 
 $s->send('AUTH PLAIN '
-    . encode_base64("\0test\@example.com\0bad", '') . CRLF
-    . 'MAIL FROM:<test@example.com> SIZE=100');
+	. encode_base64("\0test\@example.com\0bad", '') . CRLF
+	. 'MAIL FROM:<test@example.com> SIZE=100');
 $s->read();
 $s->ok('mail from after failed pipelined auth');
 
 $s->send('AUTH PLAIN '
-    . encode_base64("\0test\@example.com\0secret", '') . CRLF
-    . 'MAIL FROM:<test@example.com> SIZE=100');
+	. encode_base64("\0test\@example.com\0secret", '') . CRLF
+	. 'MAIL FROM:<test@example.com> SIZE=100');
 $s->read();
 $s->ok('mail from after pipelined auth');
 
@@ -242,8 +242,8 @@ $s->send('EHLO example.com');
 $s->read();
 
 $s->send('MAIL FROM:<test@example.com> SIZE=100' . CRLF
-    . 'RCPT TO:<test@example.com>' . CRLF
-    . 'RSET');
+	. 'RCPT TO:<test@example.com>' . CRLF
+	. 'RSET');
 
 $s->ok('pipelined mail from');
 $s->ok('pipelined rcpt to');
@@ -257,8 +257,8 @@ $s->send('EHLO example.com');
 $s->read();
 
 $s->print('MAIL FROM:<test@example.com> SIZE=100' . CRLF
-    . 'RCPT TO:<test@example.com>' . CRLF
-    . 'RS');
+	. 'RCPT TO:<test@example.com>' . CRLF
+	. 'RS');
 
 $s->ok('split pipelined mail from');
 
@@ -280,11 +280,11 @@ $s->send('EHLO example.com');
 $s->read();
 
 $s->send('MAIL FROM:<test@example.com> SIZE=100' . CRLF
-    . 'RCPT TO:<foo@example.com>' . CRLF
-    . 'RCPT TO:<bar@example.com>' . CRLF
-    . 'RCPT TO:<baz@example.com>' . CRLF
-    . 'RCPT TO:<foobar@example.com>' . CRLF
-    . 'RSET');
+	. 'RCPT TO:<foo@example.com>' . CRLF
+	. 'RCPT TO:<bar@example.com>' . CRLF
+	. 'RCPT TO:<baz@example.com>' . CRLF
+	. 'RCPT TO:<foobar@example.com>' . CRLF
+	. 'RSET');
 
 TODO: {
 todo_skip 'long pipelined - not yet', 6 unless $t->has_version('1.21.0');

@@ -27,7 +27,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/mail mail_ssl imap pop3 smtp/)
-    ->has_daemon('openssl')->plan(17);
+	->has_daemon('openssl')->plan(17);
 
 $t->write_file_expand('nginx.conf', <<'EOF');
 
@@ -113,11 +113,11 @@ EOF
 my $d = $t->testdir();
 
 foreach my $name ('localhost') {
-    system('openssl req -x509 -new '
-        . "-config $d/openssl.conf -subj /CN=$name/ "
-        . "-out $d/$name.crt -keyout $d/$name.key "
-        . ">>$d/openssl.out 2>&1") == 0
-        or die "Can't create certificate for $name: $!\n";
+	system('openssl req -x509 -new '
+		. "-config $d/openssl.conf -subj /CN=$name/ "
+		. "-out $d/$name.crt -keyout $d/$name.key "
+		. ">>$d/openssl.out 2>&1") == 0
+		or die "Can't create certificate for $name: $!\n";
 }
 
 $t->run();
@@ -140,7 +140,7 @@ $s->read();
 
 $s->send('1 CAPABILITY');
 $s->check(qr/^\* CAPABILITY IMAP4 IMAP4rev1 UIDPLUS AUTH=PLAIN STARTTLS/,
-    'imap capability starttls');
+	'imap capability starttls');
 
 # imap starttls only
 
@@ -149,7 +149,7 @@ $s->read();
 
 $s->send('1 CAPABILITY');
 $s->check(qr/^\* CAPABILITY IMAP4 IMAP4rev1 UIDPLUS STARTTLS LOGINDISABLED/,
-    'imap capability starttls only');
+	'imap capability starttls only');
 
 # pop3
 
@@ -174,7 +174,7 @@ $s->send('CAPA');
 $caps = get_auth_caps($s);
 like($caps, qr/USER/, 'pop3 starttls - user');
 like($caps, qr/SASL (PLAIN LOGIN|LOGIN PLAIN) CRAM-MD5/,
-    'pop3 starttls - methods');
+	'pop3 starttls - methods');
 like($caps, qr/STLS/, 'pop3 startls - stls');
 
 # pop3 starttls only
@@ -216,14 +216,14 @@ $s->check(qr/^250 STARTTLS/, 'smtp ehlo - starttls only');
 ###############################################################################
 
 sub get_auth_caps {
-    my ($s) = @_;
-    my @meth;
+	my ($s) = @_;
+	my @meth;
 
-    while ($s->read()) {
-        last if /^\./;
-        push @meth, $1 if /(.*?)\x0d\x0a?/ms;
-    }
-    join ':', @meth;
+	while ($s->read()) {
+		last if /^\./;
+		push @meth, $1 if /(.*?)\x0d\x0a?/ms;
+	}
+	join ':', @meth;
 }
 
 ###############################################################################

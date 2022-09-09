@@ -24,7 +24,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http proxy cache charset/)->plan(10)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -69,9 +69,9 @@ http {
 EOF
 
 $t->write_file('t1.html',
-    join('', map { sprintf "X%03dXXXXXX", $_ } (0 .. 99)));
+	join('', map { sprintf "X%03dXXXXXX", $_ } (0 .. 99)));
 $t->write_file('t2.html',
-    join('', map { sprintf "X%03dXXXXXX", $_ } (0 .. 99)));
+	join('', map { sprintf "X%03dXXXXXX", $_ } (0 .. 99)));
 $t->run();
 
 ###############################################################################
@@ -85,9 +85,9 @@ http_get('/t1.html');
 $t1 = http_get_range('/t1.html', 'Range: bytes=0-9, 10-19');
 like($t1, qr/ 206 /, 'charset - 206 partial reply');
 like($t1, qr/Content-Type: multipart\/byteranges; boundary=\w+\x0d\x0a/,
-    'charset - content type');
+	'charset - content type');
 like($t1, qr/Content-Type: text\/html; charset=B(?!; charset)/,
-    'charset - charset attribute');
+	'charset - charset attribute');
 like($t1, qr/X000XXXXXX/m, 'charset - content 0-9');
 like($t1, qr/X001XXXXXX\x0d?$/m, 'charset - content 10-19');
 
@@ -95,17 +95,17 @@ http_get('/t2.html');
 $t1 = http_get_range('/t2.html', 'Range: bytes=0-9, 10-19');
 like($t1, qr/ 206 /, 'x-accel-charset - 206 partial reply');
 like($t1, qr/Content-Type: multipart\/byteranges; boundary=\w+\x0d\x0a/,
-    'x-accel-charset - content type');
+	'x-accel-charset - content type');
 like($t1, qr/Content-Type: text\/html; charset=A(?!; charset)/,
-    'x-accel-charset - charset attribute');
+	'x-accel-charset - charset attribute');
 like($t1, qr/Y000YYYYYY/m, 'x-accel-charset - content 0-9');
 like($t1, qr/Y001YYYYYY\x0d?$/m, 'x-accel-charset - content 10-19');
 
 ###############################################################################
 
 sub http_get_range {
-    my ($url, $extra) = @_;
-    return http(<<EOF);
+	my ($url, $extra) = @_;
+	return http(<<EOF);
 GET $url HTTP/1.1
 Host: localhost
 Connection: close

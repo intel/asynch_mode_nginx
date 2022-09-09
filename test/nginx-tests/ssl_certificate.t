@@ -26,22 +26,22 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 eval {
-    require Net::SSLeay;
-    Net::SSLeay::load_error_strings();
-    Net::SSLeay::SSLeay_add_ssl_algorithms();
-    Net::SSLeay::randomize();
+	require Net::SSLeay;
+	Net::SSLeay::load_error_strings();
+	Net::SSLeay::SSLeay_add_ssl_algorithms();
+	Net::SSLeay::randomize();
 };
 plan(skip_all => 'Net::SSLeay not installed') if $@;
 
 eval {
-    my $ctx = Net::SSLeay::CTX_new() or die;
-    my $ssl = Net::SSLeay::new($ctx) or die;
-    Net::SSLeay::set_tlsext_host_name($ssl, 'example.org') == 1 or die;
+	my $ctx = Net::SSLeay::CTX_new() or die;
+	my $ssl = Net::SSLeay::new($ctx) or die;
+	Net::SSLeay::set_tlsext_host_name($ssl, 'example.org') == 1 or die;
 };
 plan(skip_all => 'Net::SSLeay with OpenSSL SNI support required') if $@;
 
 my $t = Test::Nginx->new()->has(qw/http http_ssl geo/)
-    ->has_daemon('openssl');
+	->has_daemon('openssl');
 
 $t->{_configure_args} =~ /OpenSSL ([\d\.]+)/;
 plan(skip_all => 'OpenSSL too old') unless defined $1 and $1 ge '1.0.2';
@@ -144,21 +144,21 @@ EOF
 my $d = $t->testdir();
 
 foreach my $name ('one', 'two') {
-    system('openssl req -x509 -new '
-        . "-config $d/openssl.conf -subj /CN=$name/ "
-        . "-out $d/$name.crt -keyout $d/$name.key "
-        . ">>$d/openssl.out 2>&1") == 0
-        or die "Can't create certificate for $name: $!\n";
+	system('openssl req -x509 -new '
+		. "-config $d/openssl.conf -subj /CN=$name/ "
+		. "-out $d/$name.crt -keyout $d/$name.key "
+		. ">>$d/openssl.out 2>&1") == 0
+		or die "Can't create certificate for $name: $!\n";
 }
 
 foreach my $name ('pass') {
-    system("openssl genrsa -out $d/$name.key -passout pass:pass "
-        . "-aes128 2048 >>$d/openssl.out 2>&1") == 0
-        or die "Can't create $name key: $!\n";
-    system("openssl req -x509 -new -config $d/openssl.conf "
-        . "-subj /CN=$name/ -out $d/$name.crt -key $d/$name.key "
-        . "-passin pass:pass >>$d/openssl.out 2>&1") == 0
-        or die "Can't create $name certificate: $!\n";
+	system("openssl genrsa -out $d/$name.key -passout pass:pass "
+		. "-aes128 2048 >>$d/openssl.out 2>&1") == 0
+		or die "Can't create $name key: $!\n";
+	system("openssl req -x509 -new -config $d/openssl.conf "
+		. "-subj /CN=$name/ -out $d/$name.crt -key $d/$name.key "
+		. "-passin pass:pass >>$d/openssl.out 2>&1") == 0
+		or die "Can't create $name certificate: $!\n";
 }
 
 $t->write_file('password_file', 'pass');
@@ -197,36 +197,36 @@ ok(Net::SSLeay::ERR_peek_error(), 'no certificate');
 ###############################################################################
 
 sub get {
-    my ($host, $port, $ctx) = @_;
-    my ($s, $ssl) = get_ssl_socket($host, $port, $ctx) or return;
+	my ($host, $port, $ctx) = @_;
+	my ($s, $ssl) = get_ssl_socket($host, $port, $ctx) or return;
 
-    local $SIG{PIPE} = 'IGNORE';
+	local $SIG{PIPE} = 'IGNORE';
 
-    Net::SSLeay::write($ssl, 'GET / HTTP/1.0' . CRLF . CRLF);
-    my $r = Net::SSLeay::read($ssl);
-    Net::SSLeay::shutdown($ssl);
-    $s->close();
-    return $r unless wantarray();
-    return ($s, $ssl);
+	Net::SSLeay::write($ssl, 'GET / HTTP/1.0' . CRLF . CRLF);
+	my $r = Net::SSLeay::read($ssl);
+	Net::SSLeay::shutdown($ssl);
+	$s->close();
+	return $r unless wantarray();
+	return ($s, $ssl);
 }
 
 sub cert {
-    my ($host, $port, $ctx) = @_;
-    my ($s, $ssl) = get_ssl_socket($host, $port, $ctx) or return;
-    Net::SSLeay::dump_peer_certificate($ssl);
+	my ($host, $port, $ctx) = @_;
+	my ($s, $ssl) = get_ssl_socket($host, $port, $ctx) or return;
+	Net::SSLeay::dump_peer_certificate($ssl);
 }
 
 sub get_ssl_socket {
-    my ($host, $port, $ses) = @_;
+	my ($host, $port, $ses) = @_;
 
-    my $s = IO::Socket::INET->new('127.0.0.1:' . port($port));
-    my $ctx = Net::SSLeay::CTX_new() or die("Failed to create SSL_CTX $!");
-    my $ssl = Net::SSLeay::new($ctx) or die("Failed to create SSL $!");
-    Net::SSLeay::set_tlsext_host_name($ssl, $host);
-    Net::SSLeay::set_session($ssl, $ses) if defined $ses;
-    Net::SSLeay::set_fd($ssl, fileno($s));
-    Net::SSLeay::connect($ssl);
-    return ($s, $ssl);
+	my $s = IO::Socket::INET->new('127.0.0.1:' . port($port));
+	my $ctx = Net::SSLeay::CTX_new() or die("Failed to create SSL_CTX $!");
+	my $ssl = Net::SSLeay::new($ctx) or die("Failed to create SSL $!");
+	Net::SSLeay::set_tlsext_host_name($ssl, $host);
+	Net::SSLeay::set_session($ssl, $ses) if defined $ses;
+	Net::SSLeay::set_fd($ssl, fileno($s));
+	Net::SSLeay::connect($ssl);
+	return ($s, $ssl);
 }
 
 ###############################################################################

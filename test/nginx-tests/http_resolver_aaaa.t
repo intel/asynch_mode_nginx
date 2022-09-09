@@ -85,7 +85,7 @@ my $p0 = port(8080);
 like(http_host_header('aaaa.example.net', '/'), qr/\[fe80::1\]/, 'AAAA');
 like(http_host_header('cname.example.net', '/'), qr/\[fe80::1\]/, 'CNAME');
 like(http_host_header('cname.example.net', '/'), qr/\[fe80::1\]/,
-    'CNAME cached');
+	'CNAME cached');
 
 # CNAME + AAAA combined answer
 # demonstrates the name in answer section different from what is asked
@@ -96,12 +96,12 @@ like(http_host_header('cname_a.example.net', '/'), qr/\[::1\]/, 'CNAME + AAAA');
 # nonexisting IPs enumerated with proxy_next_upstream
 
 like(http_host_header('many.example.net', '/'),
-    qr/^\[fe80::(1\]:$p0, \[fe80::2\]:$p0|2\]:$p0, \[fe80::1\]:$p0)$/m,
-    'AAAA many');
+	qr/^\[fe80::(1\]:$p0, \[fe80::2\]:$p0|2\]:$p0, \[fe80::1\]:$p0)$/m,
+	'AAAA many');
 
 like(http_host_header('many.example.net', '/'),
-    qr/^\[fe80::(1\]:$p0, \[fe80::2\]:$p0|2\]:$p0, \[fe80::1\]:$p0)$/m,
-    'AAAA many cached');
+	qr/^\[fe80::(1\]:$p0, \[fe80::2\]:$p0|2\]:$p0, \[fe80::1\]:$p0)$/m,
+	'AAAA many cached');
 
 # tests for several resolvers specified in directive
 # query bad ns, make sure that error responses are not cached
@@ -123,7 +123,7 @@ is(@n = $response =~ /$p0/g, 0, 'zero zero responses');
 like($response, qr/502 Bad/, 'zero zero');
 
 like(http_host_header('z_n.example.net', '/'), qr/^\[fe80::1\]:$p0$/ms,
-    'zero AAAA');
+	'zero AAAA');
 
 $response = http_host_header('z_c.example.net', '/');
 is(@n = $response =~ /$p0/g, 2, 'zero CNAME responses');
@@ -140,7 +140,7 @@ is(@n = $response =~ /$p0/g, 0, 'zero error responses');
 like($response, qr/502 Bad/, 'zero error');
 
 like(http_host_header('n_z.example.net', '/'), qr/^127.0.0.201:$p0$/ms,
-    'A zero');
+	'A zero');
 
 $response = http_host_header('n_n.example.net', '/');
 is(@n = $response =~ /$p0/g, 2, 'A AAAA responses');
@@ -148,7 +148,7 @@ like($response, qr/127.0.0.201:$p0/, 'A AAAA 1');
 like($response, qr/\[fe80::1\]:$p0/, 'A AAAA 2');
 
 like(http_host_header('n_c.example.net', '/'), qr/^127.0.0.201:$p0$/ms,
-    'A CNAME');
+	'A CNAME');
 
 $response = http_host_header('n_cn.example.net', '/');
 is(@n = $response =~ /$p0/g, 4, 'A CNAME+AAAA responses');
@@ -166,7 +166,7 @@ is(@n = $response =~ /$p0/g, 0, 'CNAME zero responses');
 like($response, qr/502 Bad/, 'CNAME zero');
 
 like(http_host_header('c_n.example.net', '/'), qr/^\[fe80::1\]:$p0$/ms,
-    'CNAME AAAA');
+	'CNAME AAAA');
 
 $response = http_host_header('c_c.example.net', '/');
 is(@n = $response =~ /$p0/g, 2, 'CNAME CNAME responses');
@@ -174,7 +174,7 @@ like($response, qr/127.0.0.201:$p0/, 'CNAME CNAME 1');
 like($response, qr/\[fe80::1\]:$p0/, 'CNAME CNAME 2');
 
 like(http_host_header('c1_c2.example.net', '/'), qr/^\[fe80::1\]:$p0$/ms,
-    'CNAME1 CNAME2');
+	'CNAME1 CNAME2');
 
 $response = http_host_header('c_cn.example.net', '/');
 is(@n = $response =~ /$p0/g, 2, 'CNAME CNAME+AAAA responses');
@@ -236,8 +236,8 @@ like($response, qr/502 Bad/, 'error error');
 ###############################################################################
 
 sub http_host_header {
-    my ($host, $uri) = @_;
-    return http(<<EOF);
+	my ($host, $uri) = @_;
+	return http(<<EOF);
 GET $uri HTTP/1.0
 Host: $host
 
@@ -247,383 +247,383 @@ EOF
 ###############################################################################
 
 sub reply_handler {
-    my ($recv_data, $port, $state) = @_;
+	my ($recv_data, $port, $state) = @_;
 
-    my (@name, @rdata);
+	my (@name, @rdata);
 
-    use constant NOERROR    => 0;
-    use constant SERVFAIL    => 2;
-    use constant NXDOMAIN    => 3;
+	use constant NOERROR	=> 0;
+	use constant SERVFAIL	=> 2;
+	use constant NXDOMAIN	=> 3;
 
-    use constant A        => 1;
-    use constant CNAME    => 5;
-    use constant AAAA    => 28;
-    use constant DNAME    => 39;
+	use constant A		=> 1;
+	use constant CNAME	=> 5;
+	use constant AAAA	=> 28;
+	use constant DNAME	=> 39;
 
-    use constant IN        => 1;
+	use constant IN		=> 1;
 
-    # default values
+	# default values
 
-    my ($hdr, $rcode, $ttl) = (0x8180, NOERROR, 3600);
+	my ($hdr, $rcode, $ttl) = (0x8180, NOERROR, 3600);
 
-    # decode name
+	# decode name
 
-    my ($len, $offset) = (undef, 12);
-    while (1) {
-        $len = unpack("\@$offset C", $recv_data);
-        last if $len == 0;
-        $offset++;
-        push @name, unpack("\@$offset A$len", $recv_data);
-        $offset += $len;
-    }
+	my ($len, $offset) = (undef, 12);
+	while (1) {
+		$len = unpack("\@$offset C", $recv_data);
+		last if $len == 0;
+		$offset++;
+		push @name, unpack("\@$offset A$len", $recv_data);
+		$offset += $len;
+	}
 
-    $offset -= 1;
-    my ($id, $type, $class) = unpack("n x$offset n2", $recv_data);
+	$offset -= 1;
+	my ($id, $type, $class) = unpack("n x$offset n2", $recv_data);
 
-    my $name = join('.', @name);
-    if (($name eq 'aaaa.example.net') || ($name eq 'alias.example.net')) {
-        if ($type == AAAA) {
-            push @rdata, rd_addr6($ttl, "fe80::1");
-        }
+	my $name = join('.', @name);
+	if (($name eq 'aaaa.example.net') || ($name eq 'alias.example.net')) {
+		if ($type == AAAA) {
+			push @rdata, rd_addr6($ttl, "fe80::1");
+		}
 
-    } elsif ($name eq 'alias2.example.net') {
-        if ($type == A) {
-            push @rdata, rd_addr($ttl, '127.0.0.201');
-        }
-        if ($type == AAAA) {
-            push @rdata, rd_addr6($ttl, "fe80::1");
-        }
+	} elsif ($name eq 'alias2.example.net') {
+		if ($type == A) {
+			push @rdata, rd_addr($ttl, '127.0.0.201');
+		}
+		if ($type == AAAA) {
+			push @rdata, rd_addr6($ttl, "fe80::1");
+		}
 
-    } elsif ($name eq 'alias4.example.net') {
-        if ($type == A) {
-            push @rdata, rd_addr($ttl, '127.0.0.201');
-        }
+	} elsif ($name eq 'alias4.example.net') {
+		if ($type == A) {
+			push @rdata, rd_addr($ttl, '127.0.0.201');
+		}
 
-    } elsif ($name eq 'alias6.example.net') {
-        if ($type == AAAA) {
-            push @rdata, rd_addr6($ttl, "fe80::1");
-        }
+	} elsif ($name eq 'alias6.example.net') {
+		if ($type == AAAA) {
+			push @rdata, rd_addr6($ttl, "fe80::1");
+		}
 
-    } elsif (($name eq 'many.example.net') && $type == AAAA) {
-        $state->{manycnt}++;
-        if ($state->{manycnt} > 1) {
-            $rcode = SERVFAIL;
-        }
+	} elsif (($name eq 'many.example.net') && $type == AAAA) {
+		$state->{manycnt}++;
+		if ($state->{manycnt} > 1) {
+			$rcode = SERVFAIL;
+		}
 
-        push @rdata, rd_addr6($ttl, 'fe80::1');
-        push @rdata, rd_addr6($ttl, 'fe80::2');
+		push @rdata, rd_addr6($ttl, 'fe80::1');
+		push @rdata, rd_addr6($ttl, 'fe80::2');
 
-    } elsif ($name eq 'cname.example.net') {
-        $state->{cnamecnt}++;
-        if ($state->{cnamecnt} > 2) {
-            $rcode = SERVFAIL;
-        }
-        push @rdata, pack("n3N nCa5n", 0xc00c, CNAME, IN, $ttl,
-            8, 5, 'alias', 0xc012);
+	} elsif ($name eq 'cname.example.net') {
+		$state->{cnamecnt}++;
+		if ($state->{cnamecnt} > 2) {
+			$rcode = SERVFAIL;
+		}
+		push @rdata, pack("n3N nCa5n", 0xc00c, CNAME, IN, $ttl,
+			8, 5, 'alias', 0xc012);
 
-    } elsif ($name eq 'cname_a.example.net') {
-        push @rdata, pack("n3N nCa5n", 0xc00c, CNAME, IN, $ttl,
-            8, 5, 'alias', 0xc014);
+	} elsif ($name eq 'cname_a.example.net') {
+		push @rdata, pack("n3N nCa5n", 0xc00c, CNAME, IN, $ttl,
+			8, 5, 'alias', 0xc014);
 
-        # points to "alias" set in previous rdata
+		# points to "alias" set in previous rdata
 
-        if ($type == AAAA) {
-            push @rdata, pack('n3N nn8', 0xc031, AAAA, IN, $ttl,
-                16, expand_ip6("::1"));
-        }
+		if ($type == AAAA) {
+			push @rdata, pack('n3N nn8', 0xc031, AAAA, IN, $ttl,
+				16, expand_ip6("::1"));
+		}
 
-    } elsif ($name eq '2.example.net') {
-        if ($port == port(8981)) {
-            $state->{twocnt}++;
-        }
-        if ($state->{twocnt} & 1) {
-            $rcode = SERVFAIL;
-        }
+	} elsif ($name eq '2.example.net') {
+		if ($port == port(8981)) {
+			$state->{twocnt}++;
+		}
+		if ($state->{twocnt} & 1) {
+			$rcode = SERVFAIL;
+		}
 
-        if ($type == AAAA) {
-            push @rdata, rd_addr6($ttl, '::1');
-        }
+		if ($type == AAAA) {
+			push @rdata, rd_addr6($ttl, '::1');
+		}
 
-    } elsif ($name eq 'z_z.example.net') {
-        # assume no answers given
+	} elsif ($name eq 'z_z.example.net') {
+		# assume no answers given
 
-    } elsif ($name eq 'z_n.example.net') {
-        if ($type == AAAA) {
-            push @rdata, rd_addr6($ttl, 'fe80::1');
-        }
+	} elsif ($name eq 'z_n.example.net') {
+		if ($type == AAAA) {
+			push @rdata, rd_addr6($ttl, 'fe80::1');
+		}
 
-    } elsif ($name eq 'z_c.example.net') {
-        if ($type == AAAA) {
-            push @rdata, pack("n3N nCa6n", 0xc00c, CNAME, IN, $ttl,
-                9, 6, 'alias2', 0xc010);
-        }
+	} elsif ($name eq 'z_c.example.net') {
+		if ($type == AAAA) {
+			push @rdata, pack("n3N nCa6n", 0xc00c, CNAME, IN, $ttl,
+				9, 6, 'alias2', 0xc010);
+		}
 
-    } elsif ($name eq 'z_cn.example.net') {
-        if ($type == AAAA) {
-            push @rdata, pack("n3N nCa5n", 0xc00c, CNAME, IN, $ttl,
-                8, 5, 'alias', 0xc011);
-            push @rdata, pack('n3N nn8', 0xc02e, AAAA, IN, $ttl,
-                16, expand_ip6("fe80::1"));
-            push @rdata, pack('n3N nn8', 0xc02e, AAAA, IN, $ttl,
-                16, expand_ip6("fe80::2"));
-        }
+	} elsif ($name eq 'z_cn.example.net') {
+		if ($type == AAAA) {
+			push @rdata, pack("n3N nCa5n", 0xc00c, CNAME, IN, $ttl,
+				8, 5, 'alias', 0xc011);
+			push @rdata, pack('n3N nn8', 0xc02e, AAAA, IN, $ttl,
+				16, expand_ip6("fe80::1"));
+			push @rdata, pack('n3N nn8', 0xc02e, AAAA, IN, $ttl,
+				16, expand_ip6("fe80::2"));
+		}
 
-    } elsif ($name eq 'z_e.example.net') {
-        if ($type == AAAA) {
-            $rcode = SERVFAIL;
-        }
+	} elsif ($name eq 'z_e.example.net') {
+		if ($type == AAAA) {
+			$rcode = SERVFAIL;
+		}
 
-    } elsif ($name eq 'n_z.example.net') {
-        if ($type == A) {
-            push @rdata, rd_addr($ttl, '127.0.0.201');
-        }
+	} elsif ($name eq 'n_z.example.net') {
+		if ($type == A) {
+			push @rdata, rd_addr($ttl, '127.0.0.201');
+		}
 
-    } elsif ($name eq 'n_n.example.net') {
-        if ($type == A) {
-            push @rdata, rd_addr($ttl, '127.0.0.201');
-        }
-        if ($type == AAAA) {
-            push @rdata, rd_addr6($ttl, 'fe80::1');
-        }
+	} elsif ($name eq 'n_n.example.net') {
+		if ($type == A) {
+			push @rdata, rd_addr($ttl, '127.0.0.201');
+		}
+		if ($type == AAAA) {
+			push @rdata, rd_addr6($ttl, 'fe80::1');
+		}
 
-    } elsif ($name eq 'n_c.example.net') {
-        if ($type == A) {
-            push @rdata, rd_addr($ttl, '127.0.0.201');
-        }
-        if ($type == AAAA) {
-            push @rdata, pack("n3N nCa6n", 0xc00c, CNAME, IN, $ttl,
-                9, 6, 'alias2', 0xc010);
-        }
+	} elsif ($name eq 'n_c.example.net') {
+		if ($type == A) {
+			push @rdata, rd_addr($ttl, '127.0.0.201');
+		}
+		if ($type == AAAA) {
+			push @rdata, pack("n3N nCa6n", 0xc00c, CNAME, IN, $ttl,
+				9, 6, 'alias2', 0xc010);
+		}
 
-    } elsif ($name eq 'n_cn.example.net') {
-        if ($type == A) {
-            push @rdata, rd_addr($ttl, '127.0.0.201');
-            push @rdata, rd_addr($ttl, '127.0.0.202');
-        }
-        if ($type == AAAA) {
-            push @rdata, pack("n3N nCa5n", 0xc00c, CNAME, IN, $ttl,
-                8, 5, 'alias', 0xc011);
-            push @rdata, pack('n3N nn8', 0xc02e, AAAA, IN, $ttl,
-                16, expand_ip6("fe80::1"));
-            push @rdata, pack('n3N nn8', 0xc02e, AAAA, IN, $ttl,
-                16, expand_ip6("fe80::2"));
-        }
+	} elsif ($name eq 'n_cn.example.net') {
+		if ($type == A) {
+			push @rdata, rd_addr($ttl, '127.0.0.201');
+			push @rdata, rd_addr($ttl, '127.0.0.202');
+		}
+		if ($type == AAAA) {
+			push @rdata, pack("n3N nCa5n", 0xc00c, CNAME, IN, $ttl,
+				8, 5, 'alias', 0xc011);
+			push @rdata, pack('n3N nn8', 0xc02e, AAAA, IN, $ttl,
+				16, expand_ip6("fe80::1"));
+			push @rdata, pack('n3N nn8', 0xc02e, AAAA, IN, $ttl,
+				16, expand_ip6("fe80::2"));
+		}
 
-    } elsif ($name eq 'n_e.example.net') {
-        if ($type == A) {
-            push @rdata, rd_addr($ttl, '127.0.0.201');
-        }
-        if ($type == AAAA) {
-            $rcode = SERVFAIL;
-        }
+	} elsif ($name eq 'n_e.example.net') {
+		if ($type == A) {
+			push @rdata, rd_addr($ttl, '127.0.0.201');
+		}
+		if ($type == AAAA) {
+			$rcode = SERVFAIL;
+		}
 
-    } elsif ($name eq 'c_z.example.net') {
-        if ($type == A) {
-            push @rdata, pack("n3N nCa5n", 0xc00c, CNAME, IN, $ttl,
-                8, 5, 'alias', 0xc010);
-        }
+	} elsif ($name eq 'c_z.example.net') {
+		if ($type == A) {
+			push @rdata, pack("n3N nCa5n", 0xc00c, CNAME, IN, $ttl,
+				8, 5, 'alias', 0xc010);
+		}
 
-    } elsif ($name eq 'c_n.example.net') {
-        if ($type == A) {
-            push @rdata, pack("n3N nCa5n", 0xc00c, CNAME, IN, $ttl,
-                8, 5, 'alias', 0xc010);
-        }
-        if ($type == AAAA) {
-            push @rdata, rd_addr6($ttl, "fe80::1");
-        }
+	} elsif ($name eq 'c_n.example.net') {
+		if ($type == A) {
+			push @rdata, pack("n3N nCa5n", 0xc00c, CNAME, IN, $ttl,
+				8, 5, 'alias', 0xc010);
+		}
+		if ($type == AAAA) {
+			push @rdata, rd_addr6($ttl, "fe80::1");
+		}
 
-    } elsif ($name eq 'c_c.example.net') {
-        push @rdata, pack("n3N nCa6n", 0xc00c, CNAME, IN, $ttl,
-            9, 6, 'alias2', 0xc010);
+	} elsif ($name eq 'c_c.example.net') {
+		push @rdata, pack("n3N nCa6n", 0xc00c, CNAME, IN, $ttl,
+			9, 6, 'alias2', 0xc010);
 
-    } elsif ($name eq 'c1_c2.example.net') {
-        if ($type == A) {
-            push @rdata, pack("n3N nCa6n", 0xc00c, CNAME, IN, $ttl,
-                9, 6, 'alias4', 0xc012);
-        }
-        if ($type == AAAA) {
-            push @rdata, pack("n3N nCa6n", 0xc00c, CNAME, IN, $ttl,
-                9, 6, 'alias6', 0xc012);
-        }
+	} elsif ($name eq 'c1_c2.example.net') {
+		if ($type == A) {
+			push @rdata, pack("n3N nCa6n", 0xc00c, CNAME, IN, $ttl,
+				9, 6, 'alias4', 0xc012);
+		}
+		if ($type == AAAA) {
+			push @rdata, pack("n3N nCa6n", 0xc00c, CNAME, IN, $ttl,
+				9, 6, 'alias6', 0xc012);
+		}
 
-    } elsif ($name eq 'c_cn.example.net') {
-        push @rdata, pack("n3N nCa6n", 0xc00c, CNAME, IN, $ttl,
-            9, 6, 'alias2', 0xc011);
+	} elsif ($name eq 'c_cn.example.net') {
+		push @rdata, pack("n3N nCa6n", 0xc00c, CNAME, IN, $ttl,
+			9, 6, 'alias2', 0xc011);
 
-        if ($type == AAAA) {
-            push @rdata, pack('n3N nn8', 0xc02e, AAAA, IN, $ttl,
-                16, expand_ip6("fe80::1"));
-            push @rdata, pack('n3N nn8', 0xc02e, AAAA, IN, $ttl,
-                16, expand_ip6("fe80::2"));
-        }
+		if ($type == AAAA) {
+			push @rdata, pack('n3N nn8', 0xc02e, AAAA, IN, $ttl,
+				16, expand_ip6("fe80::1"));
+			push @rdata, pack('n3N nn8', 0xc02e, AAAA, IN, $ttl,
+				16, expand_ip6("fe80::2"));
+		}
 
-    } elsif ($name eq 'cn_z.example.net') {
-        if ($type == A) {
-            push @rdata, pack("n3N nCa6n", 0xc00c, CNAME, IN, $ttl,
-                9, 6, 'alias2', 0xc011);
-            push @rdata, pack("n3N nC4", 0xc02e, A, IN, $ttl,
-                4, split('\.', '127.0.0.201'));
-            push @rdata, pack("n3N nC4", 0xc02e, A, IN, $ttl,
-                4, split('\.', '127.0.0.202'));
-        }
+	} elsif ($name eq 'cn_z.example.net') {
+		if ($type == A) {
+			push @rdata, pack("n3N nCa6n", 0xc00c, CNAME, IN, $ttl,
+				9, 6, 'alias2', 0xc011);
+			push @rdata, pack("n3N nC4", 0xc02e, A, IN, $ttl,
+				4, split('\.', '127.0.0.201'));
+			push @rdata, pack("n3N nC4", 0xc02e, A, IN, $ttl,
+				4, split('\.', '127.0.0.202'));
+		}
 
-    } elsif ($name eq 'cn_n.example.net') {
-        if ($type == A) {
-            push @rdata, pack("n3N nCa6n", 0xc00c, CNAME, IN, $ttl,
-                9, 6, 'alias2', 0xc011);
-            push @rdata, pack("n3N nC4", 0xc02e, A, IN, $ttl,
-                4, split('\.', '127.0.0.201'));
-            push @rdata, pack("n3N nC4", 0xc02e, A, IN, $ttl,
-                4, split('\.', '127.0.0.202'));
-        }
-        if ($type == AAAA) {
-            push @rdata, pack('n3N nn8', 0xc00c, AAAA, IN, $ttl,
-                16, expand_ip6("fe80::1"));
-            push @rdata, pack('n3N nn8', 0xc00c, AAAA, IN, $ttl,
-                16, expand_ip6("fe80::2"));
-        }
+	} elsif ($name eq 'cn_n.example.net') {
+		if ($type == A) {
+			push @rdata, pack("n3N nCa6n", 0xc00c, CNAME, IN, $ttl,
+				9, 6, 'alias2', 0xc011);
+			push @rdata, pack("n3N nC4", 0xc02e, A, IN, $ttl,
+				4, split('\.', '127.0.0.201'));
+			push @rdata, pack("n3N nC4", 0xc02e, A, IN, $ttl,
+				4, split('\.', '127.0.0.202'));
+		}
+		if ($type == AAAA) {
+			push @rdata, pack('n3N nn8', 0xc00c, AAAA, IN, $ttl,
+				16, expand_ip6("fe80::1"));
+			push @rdata, pack('n3N nn8', 0xc00c, AAAA, IN, $ttl,
+				16, expand_ip6("fe80::2"));
+		}
 
-    } elsif ($name eq 'cn_c.example.net') {
-        push @rdata, pack("n3N nCa6n", 0xc00c, CNAME, IN, $ttl,
-            9, 6, 'alias2', 0xc011);
-        if ($type == A) {
-            push @rdata, pack("n3N nC4", 0xc02e, A, IN, $ttl,
-                4, split('\.', '127.0.0.201'));
-            push @rdata, pack("n3N nC4", 0xc02e, A, IN, $ttl,
-                4, split('\.', '127.0.0.202'));
-        }
+	} elsif ($name eq 'cn_c.example.net') {
+		push @rdata, pack("n3N nCa6n", 0xc00c, CNAME, IN, $ttl,
+			9, 6, 'alias2', 0xc011);
+		if ($type == A) {
+			push @rdata, pack("n3N nC4", 0xc02e, A, IN, $ttl,
+				4, split('\.', '127.0.0.201'));
+			push @rdata, pack("n3N nC4", 0xc02e, A, IN, $ttl,
+				4, split('\.', '127.0.0.202'));
+		}
 
-    } elsif ($name eq 'cn_cn.example.net') {
-        push @rdata, pack("n3N nCa6n", 0xc00c, CNAME, IN, $ttl,
-            9, 6, 'alias2', 0xc012);
+	} elsif ($name eq 'cn_cn.example.net') {
+		push @rdata, pack("n3N nCa6n", 0xc00c, CNAME, IN, $ttl,
+			9, 6, 'alias2', 0xc012);
 
-        if ($type == A) {
-            push @rdata, pack("n3N nC4", 0xc02f, A, IN, $ttl,
-                4, split('\.', '127.0.0.201'));
-            push @rdata, pack("n3N nC4", 0xc02f, A, IN, $ttl,
-                4, split('\.', '127.0.0.202'));
-        }
-        if ($type == AAAA) {
-            push @rdata, pack('n3N nn8', 0xc02f, AAAA, IN, $ttl,
-                16, expand_ip6("fe80::1"));
-            push @rdata, pack('n3N nn8', 0xc02f, AAAA, IN, $ttl,
-                16, expand_ip6("fe80::2"));
-        }
+		if ($type == A) {
+			push @rdata, pack("n3N nC4", 0xc02f, A, IN, $ttl,
+				4, split('\.', '127.0.0.201'));
+			push @rdata, pack("n3N nC4", 0xc02f, A, IN, $ttl,
+				4, split('\.', '127.0.0.202'));
+		}
+		if ($type == AAAA) {
+			push @rdata, pack('n3N nn8', 0xc02f, AAAA, IN, $ttl,
+				16, expand_ip6("fe80::1"));
+			push @rdata, pack('n3N nn8', 0xc02f, AAAA, IN, $ttl,
+				16, expand_ip6("fe80::2"));
+		}
 
-    } elsif ($name eq 'cn_e.example.net') {
-        if ($type == A) {
-            push @rdata, pack("n3N nCa6n", 0xc00c, CNAME, IN, $ttl,
-                9, 6, 'alias2', 0xc011);
-            push @rdata, pack("n3N nC4", 0xc02e, A, IN, $ttl,
-                4, split('\.', '127.0.0.201'));
-            push @rdata, pack("n3N nC4", 0xc02e, A, IN, $ttl,
-                4, split('\.', '127.0.0.202'));
-        }
-        if ($type == AAAA) {
-            $rcode = SERVFAIL;
-        }
+	} elsif ($name eq 'cn_e.example.net') {
+		if ($type == A) {
+			push @rdata, pack("n3N nCa6n", 0xc00c, CNAME, IN, $ttl,
+				9, 6, 'alias2', 0xc011);
+			push @rdata, pack("n3N nC4", 0xc02e, A, IN, $ttl,
+				4, split('\.', '127.0.0.201'));
+			push @rdata, pack("n3N nC4", 0xc02e, A, IN, $ttl,
+				4, split('\.', '127.0.0.202'));
+		}
+		if ($type == AAAA) {
+			$rcode = SERVFAIL;
+		}
 
 
-    } elsif ($name eq 'e_z.example.net') {
-        if ($type == A) {
-            $rcode = SERVFAIL;
-        }
+	} elsif ($name eq 'e_z.example.net') {
+		if ($type == A) {
+			$rcode = SERVFAIL;
+		}
 
-    } elsif ($name eq 'e_n.example.net') {
-        if ($type == A) {
-            $rcode = SERVFAIL;
-        }
-        if ($type == AAAA) {
-            push @rdata, rd_addr6($ttl, 'fe80::1');
-        }
+	} elsif ($name eq 'e_n.example.net') {
+		if ($type == A) {
+			$rcode = SERVFAIL;
+		}
+		if ($type == AAAA) {
+			push @rdata, rd_addr6($ttl, 'fe80::1');
+		}
 
-    } elsif ($name eq 'e_c.example.net') {
-        if ($type == A) {
-            $rcode = SERVFAIL;
-        }
-        if ($type == AAAA) {
-            push @rdata, pack("n3N nCa6n", 0xc00c, CNAME, IN, $ttl,
-                9, 6, 'alias2', 0xc010);
-        }
+	} elsif ($name eq 'e_c.example.net') {
+		if ($type == A) {
+			$rcode = SERVFAIL;
+		}
+		if ($type == AAAA) {
+			push @rdata, pack("n3N nCa6n", 0xc00c, CNAME, IN, $ttl,
+				9, 6, 'alias2', 0xc010);
+		}
 
-    } elsif ($name eq 'e_cn.example.net') {
-        if ($type == A) {
-            $rcode = SERVFAIL;
-        }
-        if ($type == AAAA) {
-            push @rdata, pack("n3N nCa5n", 0xc00c, CNAME, IN, $ttl,
-                8, 5, 'alias', 0xc011);
-            push @rdata, pack('n3N nn8', 0xc02e, AAAA, IN, $ttl,
-                16, expand_ip6("fe80::1"));
-            push @rdata, pack('n3N nn8', 0xc02e, AAAA, IN, $ttl,
-                16, expand_ip6("fe80::2"));
-        }
+	} elsif ($name eq 'e_cn.example.net') {
+		if ($type == A) {
+			$rcode = SERVFAIL;
+		}
+		if ($type == AAAA) {
+			push @rdata, pack("n3N nCa5n", 0xc00c, CNAME, IN, $ttl,
+				8, 5, 'alias', 0xc011);
+			push @rdata, pack('n3N nn8', 0xc02e, AAAA, IN, $ttl,
+				16, expand_ip6("fe80::1"));
+			push @rdata, pack('n3N nn8', 0xc02e, AAAA, IN, $ttl,
+				16, expand_ip6("fe80::2"));
+		}
 
-    } elsif ($name eq 'e_e.example.net') {
-        if ($type == A) {
-            $rcode = SERVFAIL;
-        }
-        if ($type == AAAA) {
-            $rcode = NXDOMAIN;
-        }
-    }
+	} elsif ($name eq 'e_e.example.net') {
+		if ($type == A) {
+			$rcode = SERVFAIL;
+		}
+		if ($type == AAAA) {
+			$rcode = NXDOMAIN;
+		}
+	}
 
-    $len = @name;
-    pack("n6 (C/a*)$len x n2", $id, $hdr | $rcode, 1, scalar @rdata,
-        0, 0, @name, $type, $class) . join('', @rdata);
+	$len = @name;
+	pack("n6 (C/a*)$len x n2", $id, $hdr | $rcode, 1, scalar @rdata,
+		0, 0, @name, $type, $class) . join('', @rdata);
 }
 
 sub rd_addr {
-    my ($ttl, $addr) = @_;
+	my ($ttl, $addr) = @_;
 
-    my $code = 'split(/\./, $addr)';
+	my $code = 'split(/\./, $addr)';
 
-    pack 'n3N nC4', 0xc00c, A, IN, $ttl, eval "scalar $code", eval($code);
+	pack 'n3N nC4', 0xc00c, A, IN, $ttl, eval "scalar $code", eval($code);
 }
 
 sub expand_ip6 {
-    my ($addr) = @_;
+	my ($addr) = @_;
 
-    substr ($addr, index($addr, "::"), 2) =
-        join "0", map { ":" } (0 .. 8 - (split /:/, $addr) + 1);
-    map { hex "0" x (4 - length $_) . "$_" } split /:/, $addr;
+	substr ($addr, index($addr, "::"), 2) =
+		join "0", map { ":" } (0 .. 8 - (split /:/, $addr) + 1);
+	map { hex "0" x (4 - length $_) . "$_" } split /:/, $addr;
 }
 
 sub rd_addr6 {
-    my ($ttl, $addr) = @_;
+	my ($ttl, $addr) = @_;
 
-    pack 'n3N nn8', 0xc00c, AAAA, IN, $ttl, 16, expand_ip6($addr);
+	pack 'n3N nn8', 0xc00c, AAAA, IN, $ttl, 16, expand_ip6($addr);
 }
 
 sub dns_daemon {
-    my ($port, $t) = @_;
+	my ($port, $t) = @_;
 
-    my ($data, $recv_data);
-    my $socket = IO::Socket::INET->new(
-        LocalAddr => '127.0.0.1',
-        LocalPort => $port,
-        Proto => 'udp',
-    )
-        or die "Can't create listening socket: $!\n";
+	my ($data, $recv_data);
+	my $socket = IO::Socket::INET->new(
+		LocalAddr => '127.0.0.1',
+		LocalPort => $port,
+		Proto => 'udp',
+	)
+		or die "Can't create listening socket: $!\n";
 
-    # track number of relevant queries
+	# track number of relevant queries
 
-    my %state = (
-        cnamecnt    => 0,
-        twocnt        => 0,
-        manycnt        => 0,
-    );
+	my %state = (
+		cnamecnt	=> 0,
+		twocnt		=> 0,
+		manycnt		=> 0,
+	);
 
-    # signal we are ready
+	# signal we are ready
 
-    open my $fh, '>', $t->testdir() . '/' . $port;
-    close $fh;
+	open my $fh, '>', $t->testdir() . '/' . $port;
+	close $fh;
 
-    while (1) {
-        $socket->recv($recv_data, 65536);
-        $data = reply_handler($recv_data, $port, \%state);
-        $socket->send($data);
-    }
+	while (1) {
+		$socket->recv($recv_data, 65536);
+		$data = reply_handler($recv_data, $port, \%state);
+		$socket->send($data);
+	}
 }
 
 ###############################################################################

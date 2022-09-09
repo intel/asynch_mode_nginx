@@ -24,7 +24,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http proxy/)->plan(4)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -78,45 +78,45 @@ like($f, qr!^/multi:32:77:$l2:$l2!m, 'log - response length - multi packets');
 ###############################################################################
 
 sub http_daemon {
-    my ($port) = @_;
-    my $server = IO::Socket::INET->new(
-        Proto => 'tcp',
-        LocalHost => '127.0.0.1',
-        LocalPort => $port,
-        Listen => 5,
-        Reuse => 1
-    )
-        or die "Can't create listening socket: $!\n";
+	my ($port) = @_;
+	my $server = IO::Socket::INET->new(
+		Proto => 'tcp',
+		LocalHost => '127.0.0.1',
+		LocalPort => $port,
+		Listen => 5,
+		Reuse => 1
+	)
+		or die "Can't create listening socket: $!\n";
 
-    local $SIG{PIPE} = 'IGNORE';
+	local $SIG{PIPE} = 'IGNORE';
 
-    while (my $client = $server->accept()) {
-        $client->autoflush(1);
+	while (my $client = $server->accept()) {
+		$client->autoflush(1);
 
-        my $headers = '';
-        my $uri = '';
+		my $headers = '';
+		my $uri = '';
 
-        while (<$client>) {
-            $headers .= $_;
-            last if (/^\x0d?\x0a?$/);
-        }
+		while (<$client>) {
+			$headers .= $_;
+			last if (/^\x0d?\x0a?$/);
+		}
 
-        $uri = $1 if $headers =~ /^\S+\s+([^ ]+)\s+HTTP/i;
-        my $len = length($headers);
+		$uri = $1 if $headers =~ /^\S+\s+([^ ]+)\s+HTTP/i;
+		my $len = length($headers);
 
-        if ($uri eq '/') {
-            print $client <<"EOF";
+		if ($uri eq '/') {
+			print $client <<"EOF";
 HTTP/1.1 200 OK
 Connection: close
 X-Len: $len
 
 EOF
-            print $client "TEST-OK-IF-YOU-SEE-THIS"
-                unless $headers =~ /^HEAD/i;
+			print $client "TEST-OK-IF-YOU-SEE-THIS"
+				unless $headers =~ /^HEAD/i;
 
-        } elsif ($uri eq '/multi') {
+		} elsif ($uri eq '/multi') {
 
-            print $client <<"EOF";
+			print $client <<"EOF";
 HTTP/1.1 200 OK
 Connection: close
 X-Len: $len
@@ -124,12 +124,12 @@ X-Len: $len
 TEST-OK-IF-YOU-SEE-THIS
 EOF
 
-            select undef, undef, undef, 0.1;
-            print $client 'AND-THIS';
-        }
+			select undef, undef, undef, 0.1;
+			print $client 'AND-THIS';
+		}
 
-        close $client;
-    }
+		close $client;
+	}
 }
 
 ###############################################################################

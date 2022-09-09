@@ -26,7 +26,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http/)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -38,14 +38,14 @@ events {
 http {
     %%TEST_GLOBALS_HTTP%%
 
-    js_include test.js;
+    js_import test.js;
 
     server {
         listen       127.0.0.1:8080;
         server_name  localhost;
 
         location / {
-            js_content test_return;
+            js_content test.returnf;
         }
     }
 }
@@ -53,9 +53,11 @@ http {
 EOF
 
 $t->write_file('test.js', <<EOF);
-    function test_return(r) {
+    function returnf(r) {
         r.return(Number(r.args.c), r.args.t);
     }
+
+    export default {returnf};
 
 EOF
 

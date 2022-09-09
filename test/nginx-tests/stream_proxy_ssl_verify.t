@@ -25,7 +25,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/stream stream_ssl stream_return/)
-    ->has_daemon('openssl')->plan(6);
+	->has_daemon('openssl')->plan(6);
 
 $t->write_file_expand('nginx.conf', <<'EOF');
 
@@ -145,11 +145,11 @@ EOF
 my $d = $t->testdir();
 
 foreach my $name ('1.example.com', '2.example.com') {
-    system('openssl req -x509 -new '
-        . "-config $d/openssl.$name.conf "
-        . "-out $d/$name.crt -keyout $d/$name.key "
-        . ">>$d/openssl.out 2>&1") == 0
-        or die "Can't create certificate for $name: $!\n";
+	system('openssl req -x509 -new '
+		. "-config $d/openssl.$name.conf "
+		. "-out $d/$name.crt -keyout $d/$name.key "
+		. ">>$d/openssl.out 2>&1") == 0
+		or die "Can't create certificate for $name: $!\n";
 }
 
 sleep 1 if $^O eq 'MSWin32';
@@ -176,7 +176,7 @@ isnt(get(8085), 'OK', 'untrusted');
 ###############################################################################
 
 sub get {
-    stream('127.0.0.1:' . port(shift))->read();
+	stream('127.0.0.1:' . port(shift))->read();
 }
 
 ###############################################################################

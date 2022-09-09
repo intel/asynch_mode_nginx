@@ -26,7 +26,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http charset/)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -38,55 +38,55 @@ events {
 http {
     %%TEST_GLOBALS_HTTP%%
 
-    js_set $test_foo_in   test_foo_in;
-    js_set $test_ifoo_in  test_ifoo_in;
+    js_set $test_foo_in   test.foo_in;
+    js_set $test_ifoo_in  test.ifoo_in;
 
-    js_include test.js;
+    js_import test.js;
 
     server {
         listen       127.0.0.1:8080;
         server_name  localhost;
 
         location /njs {
-            js_content test_njs;
+            js_content test.njs;
         }
 
         location /content_length {
-            js_content content_length;
+            js_content test.content_length;
         }
 
         location /content_length_arr {
-            js_content content_length_arr;
+            js_content test.content_length_arr;
         }
 
         location /content_length_keys {
-            js_content content_length_keys;
+            js_content test.content_length_keys;
         }
 
         location /content_type {
             charset windows-1251;
 
             default_type text/plain;
-            js_content content_type;
+            js_content test.content_type;
         }
 
         location /content_type_arr {
             charset windows-1251;
 
             default_type text/plain;
-            js_content content_type_arr;
+            js_content test.content_type_arr;
         }
 
         location /content_encoding {
-            js_content content_encoding;
+            js_content test.content_encoding;
         }
 
         location /content_encoding_arr {
-            js_content content_encoding_arr;
+            js_content test.content_encoding_arr;
         }
 
         location /headers_list {
-            js_content headers_list;
+            js_content test.headers_list;
         }
 
         location /foo_in {
@@ -98,39 +98,39 @@ http {
         }
 
         location /hdr_in {
-            js_content hdr_in;
+            js_content test.hdr_in;
         }
 
         location /raw_hdr_in {
-            js_content raw_hdr_in;
+            js_content test.raw_hdr_in;
         }
 
         location /hdr_out {
-            js_content hdr_out;
+            js_content test.hdr_out;
         }
 
         location /raw_hdr_out {
-            js_content raw_hdr_out;
+            js_content test.raw_hdr_out;
         }
 
         location /hdr_out_array {
-            js_content hdr_out_array;
+            js_content test.hdr_out_array;
         }
 
         location /hdr_out_set_cookie {
-            js_content hdr_out_set_cookie;
+            js_content test.hdr_out_set_cookie;
         }
 
         location /hdr_out_single {
-            js_content hdr_out_single;
+            js_content test.hdr_out_single;
         }
 
         location /ihdr_out {
-            js_content ihdr_out;
+            js_content test.ihdr_out;
         }
 
         location /hdr_sorted_keys {
-            js_content hdr_sorted_keys;
+            js_content test.hdr_sorted_keys;
         }
     }
 }
@@ -143,6 +143,15 @@ $t->write_file('test.js', <<EOF);
     }
 
     function content_length(r) {
+        if (njs.version_number >= 0x000705) {
+            var clength = r.headersOut['Content-Length'];
+            if (clength !== undefined) {
+                r.return(500, `Content-Length "\${clength}" is not empty`);
+                return;
+            }
+        }
+
+        delete r.headersOut['Content-Length'];
         r.headersOut['Content-Length'] = '';
         r.headersOut['Content-Length'] = 3;
         delete r.headersOut['Content-Length'];
@@ -168,6 +177,15 @@ $t->write_file('test.js', <<EOF);
     }
 
     function content_type(r) {
+        if (njs.version_number >= 0x000705) {
+            var ctype = r.headersOut['Content-Type'];
+            if (ctype !== undefined) {
+                r.return(500, `Content-Type "\${ctype}" is not empty`);
+                return;
+            }
+        }
+
+        delete r.headersOut['Content-Type'];
         r.headersOut['Content-Type'] = 'text/xml';
         r.headersOut['Content-Type'] = '';
         r.headersOut['Content-Type'] = 'text/xml; charset=';
@@ -186,6 +204,15 @@ $t->write_file('test.js', <<EOF);
     }
 
     function content_encoding(r) {
+        if (njs.version_number >= 0x000705) {
+            var ce = r.headersOut['Content-Encoding'];
+            if (ce !== undefined) {
+                r.return(500, `Content-Encoding "\${ce}" is not empty`);
+                return;
+            }
+        }
+
+        delete r.headersOut['Content-Encoding'];
         r.headersOut['Content-Encoding'] = '';
         r.headersOut['Content-Encoding'] = 'test';
         delete r.headersOut['Content-Encoding'];
@@ -244,11 +271,11 @@ $t->write_file('test.js', <<EOF);
         r.return(200, Object.keys(hdr).sort());
     }
 
-    function test_foo_in(r) {
+    function foo_in(r) {
         return 'hdr=' + r.headersIn.foo;
     }
 
-    function test_ifoo_in(r) {
+    function ifoo_in(r) {
         var s = '', h;
         for (h in r.headersIn) {
             if (h.substr(0, 3) == 'foo') {
@@ -324,6 +351,13 @@ $t->write_file('test.js', <<EOF);
         r.finish();
     }
 
+    export default {njs:test_njs, content_length, content_length_arr,
+                    content_length_keys, content_type, content_type_arr,
+                    content_encoding, content_encoding_arr, headers_list,
+                    hdr_in, raw_hdr_in, hdr_sorted_keys, foo_in, ifoo_in,
+                    hdr_out, raw_hdr_out, hdr_out_array, hdr_out_single,
+                    hdr_out_set_cookie, ihdr_out};
+
 
 EOF
 
@@ -332,13 +366,13 @@ $t->try_run('no njs')->plan(39);
 ###############################################################################
 
 like(http_get('/content_length'), qr/Content-Length: 3/,
-    'set Content-Length');
+	'set Content-Length');
 like(http_get('/content_type'), qr/Content-Type: text\/xml; charset="utf-8"\r/,
-    'set Content-Type');
+	'set Content-Type');
 unlike(http_get('/content_type'), qr/Content-Type: text\/plain/,
-    'set Content-Type 2');
+	'set Content-Type 2');
 like(http_get('/content_encoding'), qr/Content-Encoding: gzip/,
-    'set Content-Encoding');
+	'set Content-Encoding');
 like(http_get('/headers_list'), qr/a:c:d/, 'headers list');
 
 like(http_get('/ihdr_out?a=12&b=34'), qr/^1234$/m, 'r.headersOut iteration');
@@ -351,98 +385,98 @@ unlike(http_get('/hdr_out?foo'), qr/Foo:/, 'r.headersOut no value 2');
 
 TODO: {
 local $TODO = 'not yet'
-    unless http_get('/njs') =~ /^([.0-9]+)$/m && $1 ge '0.4.0';
+	unless http_get('/njs') =~ /^([.0-9]+)$/m && $1 ge '0.4.0';
 
 like(http_get('/content_length_keys'), qr/B:true/, 'Content-Length in keys');
 like(http_get('/content_length_arr'), qr/Content-Length: 3/,
-    'set Content-Length arr');
+	'set Content-Length arr');
 
 like(http_get('/content_type'), qr/B:true/, 'Content-Type in keys');
 like(http_get('/content_type_arr'), qr/Content-Type: text\/html/,
-    'set Content-Type arr');
+	'set Content-Type arr');
 like(http_get('/content_encoding_arr'), qr/Content-Encoding: gzip/,
-    'set Content-Encoding arr');
+	'set Content-Encoding arr');
 
 like(http_get('/hdr_out_array?foo=12345'), qr/Foo: bar\r\nFoo: 12345/,
-    'r.headersOut arr');
+	'r.headersOut arr');
 like(http_get('/hdr_out_array'), qr/Foo: bar/,
-    'r.headersOut arr last is empty');
-like(http_get('/hdr_out_array?foo=abc'), qr/B:bar,abc/,
-    'r.headersOut get');
+	'r.headersOut arr last is empty');
+like(http_get('/hdr_out_array?foo=abc'), qr/B:bar,\s?abc/,
+	'r.headersOut get');
 like(http_get('/hdr_out_array'), qr/B:bar/, 'r.headersOut get2');
 like(http_get('/hdr_out_array?hidden=1'), qr/B:undefined/,
-    'r.headersOut get3');
+	'r.headersOut get3');
 like(http_get('/hdr_out_array?scalar_set=1'), qr/B:xxx/,
-    'r.headersOut scalar set');
+	'r.headersOut scalar set');
 like(http_get('/hdr_out_single'), qr/ETag: a\r\nETag: b/,
-    'r.headersOut single');
+	'r.headersOut single');
 like(http_get('/hdr_out_single'), qr/B:a/,
-    'r.headersOut single get');
+	'r.headersOut single get');
 like(http_get('/hdr_out_set_cookie'), qr/Set-Cookie: c\r\nSet-Cookie: d/,
-    'set_cookie');
+	'set_cookie');
 like(http_get('/hdr_out_set_cookie'), qr/B:\['c','d','f']/,
-    'set_cookie2');
+	'set_cookie2');
 unlike(http_get('/hdr_out_set_cookie'), qr/Set-Cookie: [abe]/,
-    'set_cookie3');
+	'set_cookie3');
 
 }
 
 like(http(
-    'GET /hdr_in HTTP/1.0' . CRLF
-    . 'Cookie: foo' . CRLF
-    . 'Host: localhost' . CRLF . CRLF
+	'GET /hdr_in HTTP/1.0' . CRLF
+	. 'Cookie: foo' . CRLF
+	. 'Host: localhost' . CRLF . CRLF
 ), qr/cookie: foo/, 'r.headersIn cookie');
 
 like(http(
-    'GET /hdr_in HTTP/1.0' . CRLF
-    . 'X-Forwarded-For: foo' . CRLF
-    . 'Host: localhost' . CRLF . CRLF
+	'GET /hdr_in HTTP/1.0' . CRLF
+	. 'X-Forwarded-For: foo' . CRLF
+	. 'Host: localhost' . CRLF . CRLF
 ), qr/x-forwarded-for: foo/, 'r.headersIn xff');
 
 like(http(
-    'GET /hdr_in HTTP/1.0' . CRLF
-    . 'Cookie: foo1' . CRLF
-    . 'Cookie: foo2' . CRLF
-    . 'Host: localhost' . CRLF . CRLF
+	'GET /hdr_in HTTP/1.0' . CRLF
+	. 'Cookie: foo1' . CRLF
+	. 'Cookie: foo2' . CRLF
+	. 'Host: localhost' . CRLF . CRLF
 ), qr/cookie: foo1;\s?foo2/, 'r.headersIn cookie2');
 
 like(http(
-    'GET /hdr_in HTTP/1.0' . CRLF
-    . 'X-Forwarded-For: foo1' . CRLF
-    . 'X-Forwarded-For: foo2' . CRLF
-    . 'Host: localhost' . CRLF . CRLF
+	'GET /hdr_in HTTP/1.0' . CRLF
+	. 'X-Forwarded-For: foo1' . CRLF
+	. 'X-Forwarded-For: foo2' . CRLF
+	. 'Host: localhost' . CRLF . CRLF
 ), qr/x-forwarded-for: foo1,\s?foo2/, 'r.headersIn xff2');
 
 like(http(
-    'GET /hdr_in HTTP/1.0' . CRLF
-    . 'ETag: bar1' . CRLF
-    . 'ETag: bar2' . CRLF
-    . 'Host: localhost' . CRLF . CRLF
+	'GET /hdr_in HTTP/1.0' . CRLF
+	. 'ETag: bar1' . CRLF
+	. 'ETag: bar2' . CRLF
+	. 'Host: localhost' . CRLF . CRLF
 ), qr/etag: bar1(?!,\s?bar2)/, 'r.headersIn duplicate single');
 
 like(http(
-    'GET /hdr_in HTTP/1.0' . CRLF
-    . 'Content-Type: bar1' . CRLF
-    . 'Content-Type: bar2' . CRLF
-    . 'Host: localhost' . CRLF . CRLF
+	'GET /hdr_in HTTP/1.0' . CRLF
+	. 'Content-Type: bar1' . CRLF
+	. 'Content-Type: bar2' . CRLF
+	. 'Host: localhost' . CRLF . CRLF
 ), qr/content-type: bar1(?!,\s?bar2)/, 'r.headersIn duplicate single 2');
 
 TODO: {
 local $TODO = 'not yet'
-    unless http_get('/njs') =~ /^([.0-9]+)$/m && $1 ge '0.4.1';
+	unless http_get('/njs') =~ /^([.0-9]+)$/m && $1 ge '0.4.1';
 
 like(http(
-    'GET /hdr_in HTTP/1.0' . CRLF
-    . 'Foo: bar1' . CRLF
-    . 'Foo: bar2' . CRLF
-    . 'Host: localhost' . CRLF . CRLF
-), qr/foo: bar1,bar2/, 'r.headersIn duplicate generic');
+	'GET /hdr_in HTTP/1.0' . CRLF
+	. 'Foo: bar1' . CRLF
+	. 'Foo: bar2' . CRLF
+	. 'Host: localhost' . CRLF . CRLF
+), qr/foo: bar1,\s?bar2/, 'r.headersIn duplicate generic');
 
 like(http(
-    'GET /raw_hdr_in?filter=foo HTTP/1.0' . CRLF
-    . 'foo: bar1' . CRLF
-    . 'Foo: bar2' . CRLF
-    . 'Host: localhost' . CRLF . CRLF
+	'GET /raw_hdr_in?filter=foo HTTP/1.0' . CRLF
+	. 'foo: bar1' . CRLF
+	. 'Foo: bar2' . CRLF
+	. 'Host: localhost' . CRLF . CRLF
 ), qr/raw: bar1|bar2/, 'r.rawHeadersIn');
 
 like(http_get('/raw_hdr_out?filter=a'), qr/raw: foo|bar/, 'r.rawHeadersOut');
@@ -450,16 +484,16 @@ like(http_get('/raw_hdr_out?filter=a'), qr/raw: foo|bar/, 'r.rawHeadersOut');
 }
 
 like(http(
-    'GET /hdr_sorted_keys?in=1 HTTP/1.0' . CRLF
-    . 'Cookie: foo1' . CRLF
-    . 'Accept: */*' . CRLF
-    . 'Cookie: foo2' . CRLF
-    . 'Host: localhost' . CRLF . CRLF
+	'GET /hdr_sorted_keys?in=1 HTTP/1.0' . CRLF
+	. 'Cookie: foo1' . CRLF
+	. 'Accept: */*' . CRLF
+	. 'Cookie: foo2' . CRLF
+	. 'Host: localhost' . CRLF . CRLF
 ), qr/Accept,Cookie,Host/, 'r.headersIn sorted keys');
 
 like(http(
-    'GET /hdr_sorted_keys HTTP/1.0' . CRLF
-    . 'Host: localhost' . CRLF . CRLF
+	'GET /hdr_sorted_keys HTTP/1.0' . CRLF
+	. 'Host: localhost' . CRLF . CRLF
 ), qr/a,b,c/, 'r.headersOut sorted keys');
 
 ###############################################################################

@@ -89,39 +89,39 @@ like(http_get('/nolen'), qr/SEE-THIS/, 'bad backend - no content length');
 ###############################################################################
 
 sub http_noclose_daemon {
-    my $server = IO::Socket::INET->new(
-        Proto => 'tcp',
-        LocalAddr => '127.0.0.1:' . port(8081),
-        Listen => 5,
-        Reuse => 1
-    )
-        or die "Can't create listening socket: $!\n";
+	my $server = IO::Socket::INET->new(
+		Proto => 'tcp',
+		LocalAddr => '127.0.0.1:' . port(8081),
+		Listen => 5,
+		Reuse => 1
+	)
+		or die "Can't create listening socket: $!\n";
 
-    local $SIG{PIPE} = 'IGNORE';
+	local $SIG{PIPE} = 'IGNORE';
 
-    while (my $client = $server->accept()) {
-        $client->autoflush(1);
+	while (my $client = $server->accept()) {
+		$client->autoflush(1);
 
-        my $multi = 0;
-        my $nolen = 0;
+		my $multi = 0;
+		my $nolen = 0;
 
-        while (<$client>) {
-            $multi = 1 if /multi/;
-            $nolen = 1 if /nolen/;
-            last if (/^\x0d?\x0a?$/);
-        }
+		while (<$client>) {
+			$multi = 1 if /multi/;
+			$nolen = 1 if /nolen/;
+			last if (/^\x0d?\x0a?$/);
+		}
 
-        if ($nolen) {
+		if ($nolen) {
 
-            print $client <<'EOF';
+			print $client <<'EOF';
 HTTP/1.1 200 OK
 Connection: close
 
 TEST-OK-IF-YOU-SEE-THIS
 EOF
-        } elsif ($multi) {
+		} elsif ($multi) {
 
-            print $client <<"EOF";
+			print $client <<"EOF";
 HTTP/1.1 200 OK
 Content-Length: 32
 Connection: close
@@ -129,24 +129,24 @@ Connection: close
 TEST-OK-IF-YOU-SEE-THIS
 EOF
 
-            select undef, undef, undef, 0.1;
-            print $client 'AND-THIS';
+			select undef, undef, undef, 0.1;
+			print $client 'AND-THIS';
 
-        } else {
+		} else {
 
-            print $client <<"EOF";
+			print $client <<"EOF";
 HTTP/1.1 200 OK
 Content-Length: 24
 Connection: close
 
 TEST-OK-IF-YOU-SEE-THIS
 EOF
-        }
+		}
 
-        my $select = IO::Select->new($client);
-        $select->can_read(10);
-        close $client;
-    }
+		my $select = IO::Select->new($client);
+		$select->can_read(10);
+		close $client;
+	}
 }
 
 ###############################################################################

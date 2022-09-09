@@ -196,31 +196,31 @@ is(stream('127.0.0.1:' . port(8098))->io($str), '', 'unix deny unix');
 ###############################################################################
 
 sub stream_daemon {
-    my $server = IO::Socket::INET->new(
-        Proto => 'tcp',
-        LocalAddr => '127.0.0.1:' . port(8080),
-        Listen => 5,
-        Reuse => 1
-    )
-        or die "Can't create listening socket: $!\n";
+	my $server = IO::Socket::INET->new(
+		Proto => 'tcp',
+		LocalAddr => '127.0.0.1:' . port(8080),
+		Listen => 5,
+		Reuse => 1
+	)
+		or die "Can't create listening socket: $!\n";
 
-    local $SIG{PIPE} = 'IGNORE';
+	local $SIG{PIPE} = 'IGNORE';
 
-    while (my $client = $server->accept()) {
-        $client->autoflush(1);
+	while (my $client = $server->accept()) {
+		$client->autoflush(1);
 
-        log2c("(new connection $client)");
+		log2c("(new connection $client)");
 
-        $client->sysread(my $buffer, 65536) or next;
+		$client->sysread(my $buffer, 65536) or next;
 
-        log2i("$client $buffer");
+		log2i("$client $buffer");
 
-        log2o("$client $buffer");
+		log2o("$client $buffer");
 
-        $client->syswrite($buffer);
+		$client->syswrite($buffer);
 
-        close $client;
-    }
+		close $client;
+	}
 }
 
 sub log2i { Test::Nginx::log_core('|| <<', @_); }

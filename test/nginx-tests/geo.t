@@ -198,7 +198,7 @@ $t->write_file('geo-ranges.conf', '127.0.0.0-127.255.255.255  loopback;');
 $t->run();
 
 plan(skip_all => 'no 127.0.0.1 on host')
-    if http_get('/1') !~ /X-IP: 127.0.0.1/m;
+	if http_get('/1') !~ /X-IP: 127.0.0.1/m;
 
 $t->plan(22);
 
@@ -225,22 +225,22 @@ like(http_get('/1?ip=10.0.0.1'), qr/^X-Arg: default/m, 'geo default');
 like(http_get('/1?ip=10.0.0.1'), qr/^X-ARa: default/m, 'geo ranges default');
 like(http_get('/1?ip=10.13.2.1'), qr/^X-ARa: foo2/m, 'geo ranges add');
 like(http_get('/1?ip=10.11.2.1'), qr/^X-ARa: default/m,
-    'geo delete range from variable');
+	'geo delete range from variable');
 
 like(http_xff('192.0.2.1'), qr/^X-XFF: test/m, 'geo proxy');
 like(http_xff('10.0.0.1'), qr/^X-XFF: default/m, 'geo proxy default');
 like(http_xff('10.0.0.1, 192.0.2.1'), qr/^X-XFF: test/m, 'geo proxy long');
 
 like(http_xff('192.0.2.1, 127.0.0.1'), qr/^X-XFF: loopback/m,
-    'geo proxy_recursive off');
+	'geo proxy_recursive off');
 like(http_xff('192.0.2.1, 127.0.0.1'), qr/^X-XFR: test/m,
-    'geo proxy_recursive on');
+	'geo proxy_recursive on');
 
 ###############################################################################
 
 sub http_xff {
-    my ($xff) = @_;
-    return http(<<EOF);
+	my ($xff) = @_;
+	return http(<<EOF);
 GET /1 HTTP/1.0
 Host: localhost
 X-Forwarded-For: $xff

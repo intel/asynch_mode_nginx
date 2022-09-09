@@ -26,8 +26,8 @@ use Test::Nginx;
 select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
-my $t = Test::Nginx->new()->has(qw/http proxy/)->plan(9)
-    ->write_file_expand('nginx.conf', <<'EOF');
+my $t = Test::Nginx->new()->has(qw/http proxy/)->plan(12)
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -85,13 +85,13 @@ $t->run()->waitforsocket('127.0.0.1:' . port(8085));
 ###############################################################################
 
 my $us = 'GET / HTTP/1.0' . CRLF
-    . 'x_foo: x-bar' . CRLF . CRLF;
+	. 'x_foo: x-bar' . CRLF . CRLF;
 my $us2 = 'GET / HTTP/1.0' . CRLF
-    . '_foo: x-bar' . CRLF . CRLF;
+	. '_foo: x-bar' . CRLF . CRLF;
 my $bad = 'GET / HTTP/1.0' . CRLF
-    . 'x.foo: x-bar' . CRLF . CRLF;
+	. 'x.foo: x-bar' . CRLF . CRLF;
 my $bad2 = 'GET / HTTP/1.0' . CRLF
-    . '.foo: x-bar' . CRLF . CRLF;
+	. '.foo: x-bar' . CRLF . CRLF;
 
 # ignore_invalid_headers off;
 
@@ -102,15 +102,10 @@ like(get($bad2, 8080), qr/x-bar/, 'off - bad first');
 
 # ignore_invalid_headers off; headers parsing post 8f55cb5c7e79
 
-TODO: {
-local $TODO = 'not yet' unless $t->has_version('1.17.5');
-
 unlike(http('GET /v HTTP/1.0' . CRLF
-    . 'Host: localhost' . CRLF
-    . 'coo: foo' . CRLF
-    . '</kie>: x-bar' . CRLF . CRLF), qr/x-bar/, 'off - several');
-
-}
+	. 'Host: localhost' . CRLF
+	. 'coo: foo' . CRLF
+	. '</kie>: x-bar' . CRLF . CRLF), qr/x-bar/, 'off - several');
 
 # ignore_invalid_headers on;
 
@@ -122,51 +117,69 @@ unlike(get($us2, 8081), qr/x-bar/, 'on - underscore first');
 like(get($us, 8082), qr/x-bar/, 'underscores_in_headers');
 like(get($us2, 8082), qr/x-bar/, 'underscores_in_headers - first');
 
+# always invalid header characters
+
+my $bad3 = 'GET / HTTP/1.0' . CRLF
+	. ':foo: x-bar' . CRLF . CRLF;
+my $bad4 = 'GET / HTTP/1.0' . CRLF
+	. ' foo: x-bar' . CRLF . CRLF;
+my $bad5 = 'GET / HTTP/1.0' . CRLF
+	. "foo\x02: x-bar" . CRLF . CRLF;
+
+TODO: {
+local $TODO = 'not yet' unless $t->has_version('1.21.1');
+
+like(http($bad3), qr/400 Bad/, 'colon first');
+like(http($bad4), qr/400 Bad/, 'space');
+like(http($bad5), qr/400 Bad/, 'control');
+
+}
+
 ###############################################################################
 
 sub get {
-    my ($msg, $port) = @_;
+	my ($msg, $port) = @_;
 
-    my $s = IO::Socket::INET->new('127.0.0.1:' . port($port)) or die;
-    my ($headers) = http($msg, socket => $s) =~ /X-Headers: (\w+)/;
-    decode_base64($headers);
+	my $s = IO::Socket::INET->new('127.0.0.1:' . port($port)) or die;
+	my ($headers) = http($msg, socket => $s) =~ /X-Headers: (\w+)/;
+	decode_base64($headers);
 }
 
 ###############################################################################
 
 sub http_daemon {
-    my $once = 1;
-    my $server = IO::Socket::INET->new(
-        Proto => 'tcp',
-        LocalHost => '127.0.0.1:' . port(8085),
-        Listen => 5,
-        Reuse => 1
-    )
-        or die "Can't create listening socket: $!\n";
+	my $once = 1;
+	my $server = IO::Socket::INET->new(
+		Proto => 'tcp',
+		LocalHost => '127.0.0.1:' . port(8085),
+		Listen => 5,
+		Reuse => 1
+	)
+		or die "Can't create listening socket: $!\n";
 
-    local $SIG{PIPE} = 'IGNORE';
+	local $SIG{PIPE} = 'IGNORE';
 
-    while (my $client = $server->accept()) {
-        $client->autoflush(1);
+	while (my $client = $server->accept()) {
+		$client->autoflush(1);
 
-        my $headers = '';
-        my $uri = '';
+		my $headers = '';
+		my $uri = '';
 
-        while (<$client>) {
-            $headers .= $_;
-            last if (/^\x0d?\x0a?$/);
-        }
+		while (<$client>) {
+			$headers .= $_;
+			last if (/^\x0d?\x0a?$/);
+		}
 
-        $headers = encode_base64($headers, "");
+		$headers = encode_base64($headers, "");
 
-        print $client <<EOF;
+		print $client <<EOF;
 HTTP/1.1 200 OK
 Connection: close
 X-Headers: $headers
 
 EOF
 
-    }
+	}
 }
 
 ###############################################################################

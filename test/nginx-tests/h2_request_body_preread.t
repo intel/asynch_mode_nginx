@@ -134,7 +134,7 @@ is($frame->{headers}->{'x-body'}, 'TEST', 'within preread limited');
 
 $sid = $s->new_stream({ path => '/req', body_more => 1, continuation => 1 });
 $s->h2_continue($sid,
-    { headers => [{ name => 'content-length', value => '8' }]});
+	{ headers => [{ name => 'content-length', value => '8' }]});
 
 $s->h2_body('SEE', { body_more => 1 });
 $s->read(all => [{ type => 'WINDOW_UPDATE' }]);

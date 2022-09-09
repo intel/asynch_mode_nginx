@@ -29,7 +29,7 @@ plan(skip_all => 'FCGI not installed') if $@;
 plan(skip_all => 'win32') if $^O eq 'MSWin32';
 
 my $t = Test::Nginx->new()->has(qw/http fastcgi ssi/)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -60,8 +60,8 @@ http {
 EOF
 
 $t->write_file('inmemory.html',
-    '<!--#include virtual="/include$request_uri" set="x" -->' .
-    'set: <!--#echo var="x" -->');
+	'<!--#include virtual="/include$request_uri" set="x" -->' .
+	'set: <!--#echo var="x" -->');
 
 $t->run()->plan(2);
 
@@ -75,28 +75,28 @@ like(http_get('/inmemory.html'), qr/set: SEE-THIS/, 'fastcgi inmemory');
 ###############################################################################
 
 sub fastcgi_daemon {
-    my $socket = FCGI::OpenSocket('127.0.0.1:' . port(8081), 5);
-    my $request = FCGI::Request(\*STDIN, \*STDOUT, \*STDERR, \%ENV,
-        $socket);
+	my $socket = FCGI::OpenSocket('127.0.0.1:' . port(8081), 5);
+	my $request = FCGI::Request(\*STDIN, \*STDOUT, \*STDERR, \%ENV,
+		$socket);
 
-    my $count;
-    while( $request->Accept() >= 0 ) {
-        $count++;
+	my $count;
+	while( $request->Accept() >= 0 ) {
+		$count++;
 
-        # this intentionally uses multiple print()'s to test
-        # parsing of multiple records
+		# this intentionally uses multiple print()'s to test
+		# parsing of multiple records
 
-        print(
-            "Status: 200 OK" . CRLF .
-            "Content-Type: text/plain" . CRLF . CRLF
-        );
+		print(
+			"Status: 200 OK" . CRLF .
+			"Content-Type: text/plain" . CRLF . CRLF
+		);
 
-        print "SEE";
-        print "-THIS" . CRLF;
-        print "$count" . CRLF;
-    }
+		print "SEE";
+		print "-THIS" . CRLF;
+		print "$count" . CRLF;
+	}
 
-    FCGI::CloseSocket($socket);
+	FCGI::CloseSocket($socket);
 }
 
 ###############################################################################

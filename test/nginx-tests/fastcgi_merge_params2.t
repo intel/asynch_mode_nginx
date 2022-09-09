@@ -27,7 +27,7 @@ plan(skip_all => 'FCGI not installed') if $@;
 plan(skip_all => 'win32') if $^O eq 'MSWin32';
 
 my $t = Test::Nginx->new()->has(qw/http fastcgi cache/)->plan(4)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -71,20 +71,20 @@ $t->run()->waitforsocket('127.0.0.1:' . port(8081));
 ###############################################################################
 
 like(http_get_ims('/'), qr/ims=;/,
-    'if-modified-since cleared with cache');
+	'if-modified-since cleared with cache');
 like(http_get_ims('/'), qr/iums=;/,
-    'if-unmodified-since cleared with cache');
+	'if-unmodified-since cleared with cache');
 
 like(http_get_ims('/no/'), qr/ims=blah;/,
-    'if-modified-since preserved without cache');
+	'if-modified-since preserved without cache');
 like(http_get_ims('/no/'), qr/iums=blah;/,
-    'if-unmodified-since preserved without cache');
+	'if-unmodified-since preserved without cache');
 
 ###############################################################################
 
 sub http_get_ims {
-    my ($url) = @_;
-    return http(<<EOF);
+	my ($url) = @_;
+	return http(<<EOF);
 GET $url HTTP/1.0
 Host: localhost
 Connection: close
@@ -97,27 +97,27 @@ EOF
 ###############################################################################
 
 sub fastcgi_daemon {
-    my $socket = FCGI::OpenSocket('127.0.0.1:' . port(8081), 5);
-    my $request = FCGI::Request(\*STDIN, \*STDOUT, \*STDERR, \%ENV,
-        $socket);
+	my $socket = FCGI::OpenSocket('127.0.0.1:' . port(8081), 5);
+	my $request = FCGI::Request(\*STDIN, \*STDOUT, \*STDERR, \%ENV,
+		$socket);
 
-    my $count;
-    while( $request->Accept() >= 0 ) {
-        $count++;
+	my $count;
+	while( $request->Accept() >= 0 ) {
+		$count++;
 
-        my $ims = $ENV{HTTP_IF_MODIFIED_SINCE};
-        my $iums = $ENV{HTTP_IF_UNMODIFIED_SINCE};
-        my $blah = $ENV{HTTP_X_BLAH};
+		my $ims = $ENV{HTTP_IF_MODIFIED_SINCE};
+		my $iums = $ENV{HTTP_IF_UNMODIFIED_SINCE};
+		my $blah = $ENV{HTTP_X_BLAH};
 
-        print <<EOF;
+		print <<EOF;
 Location: http://localhost/redirect
 Content-Type: text/html
 
 ims=$ims;iums=$iums;blah=$blah;
 EOF
-    }
+	}
 
-    FCGI::CloseSocket($socket);
+	FCGI::CloseSocket($socket);
 }
 
 ###############################################################################

@@ -93,23 +93,23 @@ like(http_get('/?example.com'), qr/x:0 y:foo/, 'map example.com foo');
 like(http_get('/?EXAMPLE.COM'), qr/x:0 y:foo/, 'map EXAMPLE.COM foo');
 like(http_get('/?example.com.'), qr/x:0 y:foo/, 'map example.com. foo');
 like(http_get('/?example.org'), qr/x:0 y:right-wildcard/,
-    'map example.org wildcard');
+	'map example.org wildcard');
 like(http_get('/?foo.example.com'), qr/x:0 y:left-wildcard/,
-    'map foo.example.com wildcard');
+	'map foo.example.com wildcard');
 like(http_get('/?foo.example.com.'), qr/x:0 y:left-wildcard/,
-    'map foo.example.com. wildcard');
+	'map foo.example.com. wildcard');
 like(http_get('/?dot.example.com'), qr/x:0 y:special-wildcard/,
-    'map dot.example.com special wildcard');
+	'map dot.example.com special wildcard');
 like(http_get('/?www.dot.example.com'), qr/x:0 y:special-wildcard/,
-    'map www.dot.example.com special wildcard');
+	'map www.dot.example.com special wildcard');
 like(http_get('/?REGEX.EXAMPLE.ORG'), qr/x:0 y:regex-sensitive/,
-    'map REGEX.EXAMPLE.ORG');
+	'map REGEX.EXAMPLE.ORG');
 like(http_get('/?regex.example.org'), qr/x:0 y:0/,
-    'map regex.example.org');
+	'map regex.example.org');
 like(http_get('/?www.regex.example.org'), qr/x:0 y:regex-insensitive/,
-    'map www.regex.example.org insensitive');
+	'map www.regex.example.org insensitive');
 like(http_get('/?WWW.REGEX.EXAMPLE.ORG'), qr/x:0 y:regex-insensitive/,
-    'map WWW.REGEX.EXAMPLE.ORG insensitive');
+	'map WWW.REGEX.EXAMPLE.ORG insensitive');
 like(http_get('/?include'), qr/x:0 y:include/, 'map special parameter');
 like(http_get('/?server'), qr/x:0 y:localhost/, 'map server_name variable');
 like(http_get('/?var'), qr/x:0 y:baz/, 'map z variable');

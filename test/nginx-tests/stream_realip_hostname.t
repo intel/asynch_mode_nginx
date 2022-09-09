@@ -27,7 +27,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/stream stream_return stream_realip unix/)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -77,27 +77,27 @@ EOF
 $t->run();
 
 plan(skip_all => 'no 127.0.0.1 on host')
-    if http_get('/') ne '127.0.0.1';
+	if http_get('/') ne '127.0.0.1';
 
 $t->plan(4);
 
 ###############################################################################
 
 is(pp_get(8081, "PROXY TCP4 192.0.2.1 192.0.2.2 1234 5678${CRLF}"),
-    '192.0.2.1', 'realip unix');
+	'192.0.2.1', 'realip unix');
 isnt(pp_get(8082, "PROXY TCP4 192.0.2.1 192.0.2.2 1234 5678${CRLF}"),
-    '192.0.2.1', 'realip unix - no match');
+	'192.0.2.1', 'realip unix - no match');
 
 is(pp_get(8083, "PROXY TCP4 192.0.2.1 192.0.2.2 1234 5678${CRLF}"),
-    '192.0.2.1', 'realip hostname');
+	'192.0.2.1', 'realip hostname');
 isnt(pp_get(8084, "PROXY TCP4 192.0.2.1 192.0.2.2 1234 5678${CRLF}"),
-    '192.0.2.1', 'realip hostname - no match');
+	'192.0.2.1', 'realip hostname - no match');
 
 ###############################################################################
 
 sub pp_get {
-    my ($port, $proxy) = @_;
-    stream(PeerPort => port($port))->io($proxy);
+	my ($port, $proxy) = @_;
+	stream(PeerPort => port($port))->io($proxy);
 }
 
 ###############################################################################

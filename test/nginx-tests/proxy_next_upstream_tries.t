@@ -139,121 +139,121 @@ like(http_get('/timeout/zero'), qr/x404, 404, 404x/, 'timeout zero');
 ###############################################################################
 
 sub http_daemon {
-    my ($port) = @_;
+	my ($port) = @_;
 
-    my $server = IO::Socket::INET->new(
-        Proto => 'tcp',
-        LocalHost => '127.0.0.1',
-        LocalPort => $port,
-        Listen => 5,
-        Reuse => 1
-    )
-        or die "Can't create listening socket: $!\n";
+	my $server = IO::Socket::INET->new(
+		Proto => 'tcp',
+		LocalHost => '127.0.0.1',
+		LocalPort => $port,
+		Listen => 5,
+		Reuse => 1
+	)
+		or die "Can't create listening socket: $!\n";
 
-    local $SIG{PIPE} = 'IGNORE';
+	local $SIG{PIPE} = 'IGNORE';
 
-    while (my $client = $server->accept()) {
-        $client->autoflush(1);
+	while (my $client = $server->accept()) {
+		$client->autoflush(1);
 
-        my $headers = '';
-        my $uri = '';
+		my $headers = '';
+		my $uri = '';
 
-        while (<$client>) {
-            $headers .= $_;
-            last if (/^\x0d?\x0a?$/);
-        }
+		while (<$client>) {
+			$headers .= $_;
+			last if (/^\x0d?\x0a?$/);
+		}
 
-        next if $headers eq '';
+		next if $headers eq '';
 
-        $uri = $1 if $headers =~ /^\S+\s+([^ ]+)\s+HTTP/i;
+		$uri = $1 if $headers =~ /^\S+\s+([^ ]+)\s+HTTP/i;
 
-        if ($uri eq '/w') {
-            Test::Nginx::log_core('||', "$port: sleep(1)");
-            select undef, undef, undef, 1;
-        }
+		if ($uri eq '/w') {
+			Test::Nginx::log_core('||', "$port: sleep(1)");
+			select undef, undef, undef, 1;
+		}
 
-        if ($uri eq '/w2') {
-            Test::Nginx::log_core('||', "$port: sleep(2)");
-            select undef, undef, undef, 2;
-        }
+		if ($uri eq '/w2') {
+			Test::Nginx::log_core('||', "$port: sleep(2)");
+			select undef, undef, undef, 2;
+		}
 
-        Test::Nginx::log_core('||', "$port: response, 404");
-        print $client <<EOF;
+		Test::Nginx::log_core('||', "$port: response, 404");
+		print $client <<EOF;
 HTTP/1.1 404 Not Found
 Connection: close
 
 EOF
 
-    } continue {
-        close $client;
-    }
+	} continue {
+		close $client;
+	}
 }
 
 sub reply_handler {
-    my ($recv_data) = @_;
+	my ($recv_data) = @_;
 
-    my (@name, @rdata);
+	my (@name, @rdata);
 
-    use constant NOERROR    => 0;
-    use constant A        => 1;
-    use constant IN        => 1;
+	use constant NOERROR	=> 0;
+	use constant A		=> 1;
+	use constant IN		=> 1;
 
-    # default values
+	# default values
 
-    my ($hdr, $rcode, $ttl) = (0x8180, NOERROR, 3600);
+	my ($hdr, $rcode, $ttl) = (0x8180, NOERROR, 3600);
 
-    # decode name
+	# decode name
 
-    my ($len, $offset) = (undef, 12);
-    while (1) {
-        $len = unpack("\@$offset C", $recv_data);
-        last if $len == 0;
-        $offset++;
-        push @name, unpack("\@$offset A$len", $recv_data);
-        $offset += $len;
-    }
+	my ($len, $offset) = (undef, 12);
+	while (1) {
+		$len = unpack("\@$offset C", $recv_data);
+		last if $len == 0;
+		$offset++;
+		push @name, unpack("\@$offset A$len", $recv_data);
+		$offset += $len;
+	}
 
-    $offset -= 1;
-    my ($id, $type, $class) = unpack("n x$offset n2", $recv_data);
+	$offset -= 1;
+	my ($id, $type, $class) = unpack("n x$offset n2", $recv_data);
 
-    @rdata = map { rd_addr($ttl, '127.0.0.1') } (1 .. 3) if $type == A;
+	@rdata = map { rd_addr($ttl, '127.0.0.1') } (1 .. 3) if $type == A;
 
-    $len = @name;
-    pack("n6 (C/a*)$len x n2", $id, $hdr | $rcode, 1, scalar @rdata,
-        0, 0, @name, $type, $class) . join('', @rdata);
+	$len = @name;
+	pack("n6 (C/a*)$len x n2", $id, $hdr | $rcode, 1, scalar @rdata,
+		0, 0, @name, $type, $class) . join('', @rdata);
 }
 
 sub rd_addr {
-    my ($ttl, $addr) = @_;
+	my ($ttl, $addr) = @_;
 
-    my $code = 'split(/\./, $addr)';
+	my $code = 'split(/\./, $addr)';
 
-    return pack 'n3N', 0xc00c, A, IN, $ttl if $addr eq '';
+	return pack 'n3N', 0xc00c, A, IN, $ttl if $addr eq '';
 
-    pack 'n3N nC4', 0xc00c, A, IN, $ttl, eval "scalar $code", eval($code);
+	pack 'n3N nC4', 0xc00c, A, IN, $ttl, eval "scalar $code", eval($code);
 }
 
 sub dns_daemon {
-    my ($port, $t) = @_;
+	my ($port, $t) = @_;
 
-    my ($data, $recv_data);
-    my $socket = IO::Socket::INET->new(
-        LocalAddr => '127.0.0.1',
-        LocalPort => $port,
-        Proto => 'udp',
-    )
-        or die "Can't create listening socket: $!\n";
+	my ($data, $recv_data);
+	my $socket = IO::Socket::INET->new(
+		LocalAddr => '127.0.0.1',
+		LocalPort => $port,
+		Proto => 'udp',
+	)
+		or die "Can't create listening socket: $!\n";
 
-    # signal we are ready
+	# signal we are ready
 
-    open my $fh, '>', $t->testdir() . '/' . $port;
-    close $fh;
+	open my $fh, '>', $t->testdir() . '/' . $port;
+	close $fh;
 
-    while (1) {
-        $socket->recv($recv_data, 65536);
-        $data = reply_handler($recv_data);
-        $socket->send($data);
-    }
+	while (1) {
+		$socket->recv($recv_data, 65536);
+		$data = reply_handler($recv_data);
+		$socket->send($data);
+	}
 }
 
 ###############################################################################

@@ -83,42 +83,42 @@ like(many(10, port(8981)), qr/($port2|$port3): 10/, 'hash consistent');
 ###############################################################################
 
 sub many {
-    my ($count, $port) = @_;
-    my (%ports);
+	my ($count, $port) = @_;
+	my (%ports);
 
-    for (1 .. $count) {
-        if (dgram("127.0.0.1:$port")->io('.') =~ /(\d+)/) {
-            $ports{$1} = 0 unless defined $ports{$1};
-            $ports{$1}++;
-        }
-    }
+	for (1 .. $count) {
+		if (dgram("127.0.0.1:$port")->io('.') =~ /(\d+)/) {
+			$ports{$1} = 0 unless defined $ports{$1};
+			$ports{$1}++;
+		}
+	}
 
-    my @keys = map { my $p = $_; grep { $p == $_ } keys %ports } @ports;
-    return join ', ', map { $_ . ": " . $ports{$_} } @keys;
+	my @keys = map { my $p = $_; grep { $p == $_ } keys %ports } @ports;
+	return join ', ', map { $_ . ": " . $ports{$_} } @keys;
 }
 
 ###############################################################################
 
 sub udp_daemon {
-    my ($port, $t) = @_;
+	my ($port, $t) = @_;
 
-    my $server = IO::Socket::INET->new(
-        Proto => 'udp',
-        LocalAddr => '127.0.0.1:' . $port,
-        Reuse => 1,
-    )
-        or die "Can't create listening socket: $!\n";
+	my $server = IO::Socket::INET->new(
+		Proto => 'udp',
+		LocalAddr => '127.0.0.1:' . $port,
+		Reuse => 1,
+	)
+		or die "Can't create listening socket: $!\n";
 
-    # signal we are ready
+	# signal we are ready
 
-    open my $fh, '>', $t->testdir() . '/' . $port;
-    close $fh;
+	open my $fh, '>', $t->testdir() . '/' . $port;
+	close $fh;
 
-    while (1) {
-        $server->recv(my $buffer, 65536);
-        $buffer = $server->sockport();
-        $server->send($buffer);
-    }
+	while (1) {
+		$server->recv(my $buffer, 65536);
+		$buffer = $server->sockport();
+		$server->send($buffer);
+	}
 }
 
 ###############################################################################

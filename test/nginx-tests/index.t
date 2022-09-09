@@ -24,7 +24,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http/)->plan(14)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -113,7 +113,7 @@ like(http_get('/many/'), qr/X-URI: \/many\/many.html.*manybody/ms, 'many');
 like(http_get('/var/'), qr/X-URI: \/var\/localhost.html.*varbody/ms, 'var');
 like(http_get('/va2/'), qr/X-URI: \/va2\/localhost.html.*varbody/ms, 'var 2');
 like(http_get('/var_redirect/'), qr/X-URI: \/localhost.html.*varbody/ms,
-    'var with redirect');
+	'var with redirect');
 
 like(http_get('/not_found/'), qr/404 Not Found/, 'not found');
 like(http_get('/not_found/off/'), qr/404 Not Found/, 'not found log off');

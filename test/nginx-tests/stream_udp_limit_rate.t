@@ -25,7 +25,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/stream udp/)->plan(8)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -97,26 +97,26 @@ is($s->io($str), $str, 'upload passed');
 ###############################################################################
 
 sub udp_daemon {
-    my ($port, $t) = @_;
+	my ($port, $t) = @_;
 
-    my $server = IO::Socket::INET->new(
-        Proto => 'udp',
-        LocalAddr => "127.0.0.1:$port",
-    )
-        or die "Can't create listening socket: $!\n";
+	my $server = IO::Socket::INET->new(
+		Proto => 'udp',
+		LocalAddr => "127.0.0.1:$port",
+	)
+		or die "Can't create listening socket: $!\n";
 
-    # signal we are ready
+	# signal we are ready
 
-    open my $fh, '>', $t->testdir() . "/$port";
-    close $fh;
+	open my $fh, '>', $t->testdir() . "/$port";
+	close $fh;
 
-    while (1) {
-        $server->recv(my $buffer, 65536);
-        log2i("$server $buffer");
+	while (1) {
+		$server->recv(my $buffer, 65536);
+		log2i("$server $buffer");
 
-        log2o("$server $buffer");
-        $server->send($buffer);
-    }
+		log2o("$server $buffer");
+		$server->send($buffer);
+	}
 }
 
 sub log2i { Test::Nginx::log_core('|| <<', @_); }

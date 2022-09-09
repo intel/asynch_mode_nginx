@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-#
+
 # Copyright (C) Intel, Inc.
 # (C) Dmitry Volyntsev.
 # (C) Nginx, Inc.
@@ -29,7 +29,7 @@ eval { require JSON::PP; };
 plan(skip_all => "JSON::PP not installed") if $@;
 
 my $t = Test::Nginx->new()->has(qw/http rewrite proxy cache/)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -44,70 +44,70 @@ http {
     proxy_cache_path   %%TESTDIR%%/cache1
                        keys_zone=ON:1m      use_temp_path=on;
 
-    js_include test.js;
+    js_import test.js;
 
-    js_set $async_var       async_var;
-    js_set $subrequest_var  subrequest_var;
+    js_set $async_var       test.async_var;
+    js_set $subrequest_var  test.subrequest_var;
 
     server {
         listen       127.0.0.1:8080;
         server_name  localhost;
 
         location /njs {
-            js_content test_njs;
+            js_content test.njs;
         }
 
         location /sr {
-            js_content sr;
+            js_content test.sr;
         }
 
         location /sr_pr {
-            js_content sr_pr;
+            js_content test.sr_pr;
         }
 
         location /sr_args {
-            js_content sr_args;
+            js_content test.sr_args;
         }
 
         location /sr_options_args {
-            js_content sr_options_args;
+            js_content test.sr_options_args;
         }
 
         location /sr_options_args_pr {
-            js_content sr_options_args_pr;
+            js_content test.sr_options_args_pr;
         }
 
         location /sr_options_method {
-            js_content sr_options_method;
+            js_content test.sr_options_method;
         }
 
         location /sr_options_method_pr {
-            js_content sr_options_method_pr;
+            js_content test.sr_options_method_pr;
         }
 
         location /sr_options_body {
-            js_content sr_options_body;
+            js_content test.sr_options_body;
         }
 
         location /sr_options_method_head {
-            js_content sr_options_method_head;
+            js_content test.sr_options_method_head;
         }
 
         location /sr_body {
-            js_content sr_body;
+            js_content test.sr_body;
         }
 
         location /sr_body_pr {
-            js_content sr_body_pr;
+            js_content test.sr_body_pr;
         }
 
         location /sr_body_special {
-            js_content sr_body_special;
+            js_content test.sr_body_special;
         }
 
         location /sr_in_variable_handler {
             set $_ $async_var;
-            js_content sr_in_variable_handler;
+            js_content test.sr_in_variable_handler;
         }
 
         location /sr_detached_in_variable_handler {
@@ -121,64 +121,64 @@ http {
         }
 
         location /sr_error_page {
-            js_content sr_error_page;
+            js_content test.sr_error_page;
         }
 
         location /sr_js_in_subrequest {
-            js_content sr_js_in_subrequest;
+            js_content test.sr_js_in_subrequest;
         }
 
         location /sr_js_in_subrequest_pr {
-            js_content sr_js_in_subrequest_pr;
+            js_content test.sr_js_in_subrequest_pr;
         }
 
         location /sr_file {
-            js_content sr_file;
+            js_content test.sr_file;
         }
 
         location /sr_cache {
-            js_content sr_cache;
+            js_content test.sr_cache;
         }
 
 
         location /sr_unavail {
-            js_content sr_unavail;
+            js_content test.sr_unavail;
         }
 
         location /sr_unavail_pr {
-            js_content sr_unavail_pr;
+            js_content test.sr_unavail_pr;
         }
 
         location /sr_broken {
-            js_content sr_broken;
+            js_content test.sr_broken;
         }
 
         location /sr_too_large {
-            js_content sr_too_large;
+            js_content test.sr_too_large;
         }
 
         location /sr_out_of_order {
-            js_content sr_out_of_order;
+            js_content test.sr_out_of_order;
         }
 
         location /sr_except_not_a_func {
-            js_content sr_except_not_a_func;
+            js_content test.sr_except_not_a_func;
         }
 
         location /sr_except_failed_to_convert_options_arg {
-            js_content sr_except_failed_to_convert_options_arg;
+            js_content test.sr_except_failed_to_convert_options_arg;
         }
 
         location /sr_except_invalid_options_header_only {
-            js_content sr_except_invalid_options_header_only;
+            js_content test.sr_except_invalid_options_header_only;
         }
 
         location /sr_in_sr_callback {
-            js_content sr_in_sr_callback;
+            js_content test.sr_in_sr_callback;
         }
 
         location /sr_uri_except {
-            js_content sr_uri_except;
+            js_content test.sr_uri_except;
         }
 
 
@@ -201,7 +201,7 @@ http {
         }
 
         location /sr_in_sr {
-            js_content sr_in_sr;
+            js_content test.sr_in_sr;
         }
 
         location /unavail {
@@ -209,11 +209,11 @@ http {
         }
 
         location /sr_parent {
-             js_content sr_parent;
+             js_content test.sr_parent;
         }
 
         location /js_sub {
-            js_content js_sub;
+            js_content test.js_sub;
         }
 
         location /return {
@@ -245,15 +245,15 @@ http {
         }
 
         location /body {
-            js_content body;
+            js_content test.body;
         }
 
         location /detached {
-            js_content detached;
+            js_content test.detached;
         }
 
         location /delayed {
-            js_content delayed;
+            js_content test.delayed;
         }
     }
 
@@ -268,8 +268,6 @@ http {
 EOF
 
 $t->write_file('test.js', <<EOF);
-    this.Failed = {get toConvert() { return {toString(){return {};}}}};
-
     function test_njs(r) {
         r.return(200, njs.version);
     }
@@ -474,6 +472,8 @@ $t->write_file('test.js', <<EOF);
         r.subrequest('/sub1', 'a=1', 'b');
     }
 
+    let Failed = {get toConvert() { return {toString(){return {};}}}};
+
     function sr_except_failed_to_convert_options_arg(r) {
         r.subrequest('/sub1', {args:Failed.toConvert}, ()=>{});
     }
@@ -489,6 +489,17 @@ $t->write_file('test.js', <<EOF);
     function js_sub(r) {
         r.return(200, '["JS-SUB"]');
     }
+
+    export default {njs:test_njs, sr, sr_pr, sr_args, sr_options_args,
+                    sr_options_args_pr, sr_options_method, sr_options_method_pr,
+                    sr_options_method_head, sr_options_body, sr_body,
+                    sr_body_pr, sr_body_special, body, delayed, detached,
+                    sr_in_variable_handler, async_var, sr_error_page,
+                    subrequest_var, sr_file, sr_cache, sr_unavail, sr_parent,
+                    sr_unavail_pr, sr_broken, sr_too_large, sr_in_sr,
+                    sr_js_in_subrequest, sr_js_in_subrequest_pr, js_sub,
+                    sr_in_sr_callback, sr_out_of_order, sr_except_not_a_func,
+                    sr_uri_except, sr_except_failed_to_convert_options_arg};
 
 EOF
 
@@ -509,30 +520,17 @@ is(get_json('/sr_options_method_head'), '{"c":200}', 'sr_options_method_head');
 is(get_json('/sr_body'), '{"a":{"b":1}}', 'sr_body');
 is(get_json('/sr_body_special'), '{"e":"msg"}', 'sr_body_special');
 is(get_json('/sr_in_variable_handler'), '["CB-VAR"]', 'sr_in_variable_handler');
-
-$t->todo_alerts() if $t->read_file('nginx.conf') =~ /aio (on|threads)/
-    and !$t->has_version('1.17.9');
-
-TODO: {
-local $TODO = 'header already sent' if $t->read_file('nginx.conf') =~ /aio on/
-    and !$t->has_version('1.17.9');
-local $TODO = 'open socket left' if $t->read_file('nginx.conf') =~ /aio thread/
-    and !$t->has_version('1.17.9');
-
 is(get_json('/sr_file'), '["SEE-THIS"]', 'sr_file');
-
-}
-
 is(get_json('/sr_cache?c=1'), '["SEE-THIS"]', 'sr_cache');
 is(get_json('/sr_cache?c=1'), '["SEE-THIS"]', 'sr_cached');
 is(get_json('/sr_js_in_subrequest'), '["JS-SUB"]', 'sr_js_in_subrequest');
 is(get_json('/sr_unavail'), '[{"status":502,"uri":"/unavail"}]',
-    'sr_unavail');
+	'sr_unavail');
 is(get_json('/sr_out_of_order'),
-    '[{"status":404,"uri":"/unknown"},' .
-    '{"status":206,"uri":"/p/sub1"},' .
-    '{"status":200,"uri":"/p/delayed"}]',
-    'sr_multi');
+	'[{"status":404,"uri":"/unknown"},' .
+	'{"status":206,"uri":"/p/sub1"},' .
+	'{"status":200,"uri":"/p/delayed"}]',
+	'sr_multi');
 
 is(get_json('/sr_pr'), '{"h":"xxx"}', 'sr_promise');
 is(get_json('/sr_options_args_pr'), '{"h":"xxx"}', 'sr_options_args_pr');
@@ -540,14 +538,14 @@ is(get_json('/sr_options_method_pr?m=PUT'), '["PUT"]', 'sr method PUT');
 is(get_json('/sr_body_pr'), '{"a":{"b":1}}', 'sr_body_pr');
 is(get_json('/sr_js_in_subrequest_pr'), '["JS-SUB"]', 'sr_js_in_subrequest_pr');
 is(get_json('/sr_unavail_pr'), '[{"status":502,"uri":"/unavail"}]',
-    'sr_unavail_pr');
+	'sr_unavail_pr');
 
 like(http_get('/sr_detached_in_variable_handler'), qr/subrequest_var/,
      'sr_detached_in_variable_handler');
 
 TODO: {
 todo_skip 'leaves coredump', 1 unless $ENV{TEST_NGINX_UNSAFE}
-    or http_get('/njs') =~ /^([.0-9]+)$/m && $1 ge '0.5.0';
+	or http_get('/njs') =~ /^([.0-9]+)$/m && $1 ge '0.5.0';
 
 like(http_get('/sr_error_page'), qr/reply\.status:404/,
      'sr_error_page');
@@ -564,82 +562,82 @@ http_get('/sr_except_failed_to_convert_options_arg');
 http_get('/sr_uri_except');
 
 is(get_json('/sr_in_sr_callback'),
-    '{"e":"subrequest can only be created for the primary request"}',
-    'subrequest for non-primary request');
+	'{"e":"subrequest can only be created for the primary request"}',
+	'subrequest for non-primary request');
 
 $t->stop();
 
 ok(index($t->read_file('error.log'), 'callback is not a function') > 0,
-    'subrequest cb exception');
+	'subrequest cb exception');
 ok(index($t->read_file('error.log'), 'failed to convert uri arg') > 0,
-    'subrequest uri exception');
+	'subrequest uri exception');
 ok(index($t->read_file('error.log'), 'failed to convert options.args') > 0,
-    'subrequest invalid args exception');
+	'subrequest invalid args exception');
 ok(index($t->read_file('error.log'), 'too big subrequest response') > 0,
-    'subrequest too large body');
+	'subrequest too large body');
 ok(index($t->read_file('error.log'), 'subrequest creation failed') > 0,
-    'subrequest creation failed');
+	'subrequest creation failed');
 ok(index($t->read_file('error.log'),
-        'js subrequest: failed to get the parent context') > 0,
-    'zero parent ctx');
+		'js subrequest: failed to get the parent context') > 0,
+	'zero parent ctx');
 
 ok(index($t->read_file('error.log'), 'DETACHED') > 0,
-    'detached subrequest');
+	'detached subrequest');
 
 ###############################################################################
 
 sub recode {
-    my $json;
-    eval { $json = JSON::PP::decode_json(shift) };
+	my $json;
+	eval { $json = JSON::PP::decode_json(shift) };
 
-    if ($@) {
-        return "<failed to parse JSON>";
-    }
+	if ($@) {
+		return "<failed to parse JSON>";
+	}
 
-    JSON::PP->new()->canonical()->encode($json);
+	JSON::PP->new()->canonical()->encode($json);
 }
 
 sub get_json {
-    http_get(shift) =~ /\x0d\x0a?\x0d\x0a?(.*)/ms;
-    recode($1);
+	http_get(shift) =~ /\x0d\x0a?\x0d\x0a?(.*)/ms;
+	recode($1);
 }
 
 ###############################################################################
 
 sub http_daemon {
-    my $server = IO::Socket::INET->new(
-        Proto => 'tcp',
-        LocalAddr => '127.0.0.1:' . port(8082),
-        Listen => 5,
-        Reuse => 1
-    )
-        or die "Can't create listening socket: $!\n";
+	my $server = IO::Socket::INET->new(
+		Proto => 'tcp',
+		LocalAddr => '127.0.0.1:' . port(8082),
+		Listen => 5,
+		Reuse => 1
+	)
+		or die "Can't create listening socket: $!\n";
 
-    local $SIG{PIPE} = 'IGNORE';
+	local $SIG{PIPE} = 'IGNORE';
 
-    while (my $client = $server->accept()) {
-        $client->autoflush(1);
+	while (my $client = $server->accept()) {
+		$client->autoflush(1);
 
-        my $headers = '';
-        my $uri = '';
+		my $headers = '';
+		my $uri = '';
 
-        while (<$client>) {
-            $headers .= $_;
-            last if (/^\x0d?\x0a?$/);
-        }
+		while (<$client>) {
+			$headers .= $_;
+			last if (/^\x0d?\x0a?$/);
+		}
 
-        $uri = $1 if $headers =~ /^\S+\s+([^ ]+)\s+HTTP/i;
+		$uri = $1 if $headers =~ /^\S+\s+([^ ]+)\s+HTTP/i;
 
-        if ($uri eq '/unfinished') {
-            print $client
-                "HTTP/1.1 200 OK" . CRLF .
-                "Transfer-Encoding: chunked" . CRLF .
-                "Content-Length: 100" . CRLF .
-                CRLF .
-                "unfinished" . CRLF;
-            close($client);
-        }
-    }
+		if ($uri eq '/unfinished') {
+			print $client
+				"HTTP/1.1 200 OK" . CRLF .
+				"Transfer-Encoding: chunked" . CRLF .
+				"Content-Length: 100" . CRLF .
+				CRLF .
+				"unfinished" . CRLF;
+			close($client);
+		}
+	}
 }
 
 ###############################################################################

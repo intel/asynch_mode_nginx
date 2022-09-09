@@ -63,8 +63,8 @@ $t->write_file('index.html', 'SEE-THIS');
 $t->write_file('index-nostore.html', 'SEE-THIS');
 $t->write_file('index-big.html', 'x' x (100 << 10));
 $t->write_file('ssi.html',
-    '<!--#include virtual="/store-index-big.html?1" -->' .
-    '<!--#include virtual="/store-index-big.html?2" -->'
+	'<!--#include virtual="/store-index-big.html?1" -->' .
+	'<!--#include virtual="/store-index-big.html?2" -->'
 );
 $t->run();
 
@@ -74,7 +74,7 @@ like(http_get('/store-index.html'), qr/SEE-THIS/, 'proxy request');
 ok(-e $t->testdir() . '/store-index.html', 'result stored');
 
 like(http_get('/store-string-index.html'), qr/SEE-THIS/,
-    'proxy string path request');
+	'proxy string path request');
 ok(-e $t->testdir() . '/store-string-index.html', 'string path result stored');
 
 like(http_head('/store-index-nostore.html'), qr/200 OK/, 'head request');
@@ -86,18 +86,18 @@ http_get('/store-index-big.html', aborted => 1, sleep => 0.1);
 
 select(undef, undef, undef, 0.5);
 select(undef, undef, undef, 2.5)
-    if scalar @{[ glob $t->testdir() . '/proxy_temp/*' ]};
+	if scalar @{[ glob $t->testdir() . '/proxy_temp/*' ]};
 
 ok(scalar @{[ glob $t->testdir() . '/proxy_temp/*' ]} == 0,
-    'no temp files after aborted request');
+	'no temp files after aborted request');
 
 http_get('/ssi.html', aborted => 1, sleep => 0.1);
 
 select(undef, undef, undef, 0.5);
 select(undef, undef, undef, 2.5)
-    if scalar @{[ glob $t->testdir() . '/proxy_temp/*' ]};
+	if scalar @{[ glob $t->testdir() . '/proxy_temp/*' ]};
 
 ok(scalar @{[ glob $t->testdir() . '/proxy_temp/*' ]} == 0,
-    'no temp files after aborted ssi');
+	'no temp files after aborted ssi');
 
 ###############################################################################

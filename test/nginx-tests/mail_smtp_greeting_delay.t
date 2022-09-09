@@ -24,7 +24,7 @@ select STDOUT; $| = 1;
 local $SIG{PIPE} = 'IGNORE';
 
 my $t = Test::Nginx->new()->has(qw/mail smtp/)->plan(2)
-    ->write_file_expand('nginx.conf', <<'EOF')->run();
+	->write_file_expand('nginx.conf', <<'EOF')->run();
 
 %%TEST_GLOBALS%%
 

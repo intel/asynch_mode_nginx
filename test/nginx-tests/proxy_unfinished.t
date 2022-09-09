@@ -107,28 +107,28 @@ like(http_get('/cache/chunked'), qr/MISS/, 'unfinished chunked');
 # make sure there is no final chunk in unfinished responses
 
 like(http_get_11('/length'), qr/unfinished.*no-last-chunk/s,
-    'length no final chunk');
+	'length no final chunk');
 like(http_get_11('/chunked'), qr/unfinished.*no-last-chunk/s,
-    'chunked no final chunk');
+	'chunked no final chunk');
 
 # but there is final chunk in complete responses
 
 like(http_get_11('/length/ok'), qr/finished\x0d\x0a$/s,
-    'length final chunk');
+	'length final chunk');
 like(http_get_11('/chunked/ok'), qr/finished\x0d\x0a$/s,
-    'chunked final chunk');
+	'chunked final chunk');
 
 # the same with proxy_buffering set to off
 
 like(http_get_11('/un/length'), qr/unfinished.*no-last-chunk/s,
-    'unbuffered length no final chunk');
+	'unbuffered length no final chunk');
 like(http_get_11('/un/chunked'), qr/unfinished.*no-last-chunk/s,
-    'unbuffered chunked no final chunk');
+	'unbuffered chunked no final chunk');
 
 like(http_get_11('/un/length/ok'), qr/finished\x0d\x0a$/s,
-    'unbuffered length final chunk');
+	'unbuffered length final chunk');
 like(http_get_11('/un/chunked/ok'), qr/finished\x0d\x0a$/s,
-    'unbuffered chunked final chunk');
+	'unbuffered chunked final chunk');
 
 # big responses
 
@@ -156,106 +156,106 @@ chmod(0700, $t->testdir() . '/proxy_temp');
 ###############################################################################
 
 sub http_get_11 {
-    my ($uri, %extra) = @_;
+	my ($uri, %extra) = @_;
 
-    return http_content(http(
-        "GET $uri HTTP/1.1" . CRLF .
-        "Connection: close" . CRLF .
-        "Host: localhost" . CRLF . CRLF,
-        %extra
-    ));
+	return http_content(http(
+		"GET $uri HTTP/1.1" . CRLF .
+		"Connection: close" . CRLF .
+		"Host: localhost" . CRLF . CRLF,
+		%extra
+	));
 }
 
 ###############################################################################
 
 sub http_daemon {
-    my $server = IO::Socket::INET->new(
-        Proto => 'tcp',
-        LocalAddr => '127.0.0.1:' . port(8081),
-        Listen => 5,
-        Reuse => 1
-    )
-        or die "Can't create listening socket: $!\n";
+	my $server = IO::Socket::INET->new(
+		Proto => 'tcp',
+		LocalAddr => '127.0.0.1:' . port(8081),
+		Listen => 5,
+		Reuse => 1
+	)
+		or die "Can't create listening socket: $!\n";
 
-    local $SIG{PIPE} = 'IGNORE';
+	local $SIG{PIPE} = 'IGNORE';
 
-    while (my $client = $server->accept()) {
-        $client->autoflush(1);
+	while (my $client = $server->accept()) {
+		$client->autoflush(1);
 
-        my $headers = '';
-        my $uri = '';
+		my $headers = '';
+		my $uri = '';
 
-        while (<$client>) {
-            $headers .= $_;
-            last if (/^\x0d?\x0a?$/);
-        }
+		while (<$client>) {
+			$headers .= $_;
+			last if (/^\x0d?\x0a?$/);
+		}
 
-        $uri = $1 if $headers =~ /^\S+\s+([^ ]+)\s+HTTP/i;
+		$uri = $1 if $headers =~ /^\S+\s+([^ ]+)\s+HTTP/i;
 
-        if ($uri eq '/length') {
-            print $client
-                "HTTP/1.1 200 OK" . CRLF .
-                "Content-Length: 100" . CRLF .
-                "Cache-Control: max-age=300" . CRLF .
-                "Connection: close" . CRLF .
-                CRLF .
-                "unfinished" . CRLF;
+		if ($uri eq '/length') {
+			print $client
+				"HTTP/1.1 200 OK" . CRLF .
+				"Content-Length: 100" . CRLF .
+				"Cache-Control: max-age=300" . CRLF .
+				"Connection: close" . CRLF .
+				CRLF .
+				"unfinished" . CRLF;
 
-        } elsif ($uri eq '/length/ok') {
-            print $client
-                "HTTP/1.1 200 OK" . CRLF .
-                "Content-Length: 10" . CRLF .
-                "Cache-Control: max-age=300" . CRLF .
-                "Connection: close" . CRLF .
-                CRLF .
-                "finished" . CRLF;
+		} elsif ($uri eq '/length/ok') {
+			print $client
+				"HTTP/1.1 200 OK" . CRLF .
+				"Content-Length: 10" . CRLF .
+				"Cache-Control: max-age=300" . CRLF .
+				"Connection: close" . CRLF .
+				CRLF .
+				"finished" . CRLF;
 
-        } elsif ($uri eq '/big') {
-            print $client
-                "HTTP/1.1 200 OK" . CRLF .
-                "Content-Length: 1000100" . CRLF .
-                "Cache-Control: max-age=300" . CRLF .
-                "Connection: close" . CRLF .
-                CRLF;
-            for (1 .. 10000) {
-                print $client ("X" x 98) . CRLF;
-            }
-            print $client "unfinished" . CRLF;
+		} elsif ($uri eq '/big') {
+			print $client
+				"HTTP/1.1 200 OK" . CRLF .
+				"Content-Length: 1000100" . CRLF .
+				"Cache-Control: max-age=300" . CRLF .
+				"Connection: close" . CRLF .
+				CRLF;
+			for (1 .. 10000) {
+				print $client ("X" x 98) . CRLF;
+			}
+			print $client "unfinished" . CRLF;
 
-        } elsif ($uri eq '/big/ok') {
-            print $client
-                "HTTP/1.1 200 OK" . CRLF .
-                "Content-Length: 1000010" . CRLF .
-                "Cache-Control: max-age=300" . CRLF .
-                "Connection: close" . CRLF .
-                CRLF;
-            for (1 .. 10000) {
-                print $client ("X" x 98) . CRLF;
-            }
-            print $client "finished" . CRLF;
+		} elsif ($uri eq '/big/ok') {
+			print $client
+				"HTTP/1.1 200 OK" . CRLF .
+				"Content-Length: 1000010" . CRLF .
+				"Cache-Control: max-age=300" . CRLF .
+				"Connection: close" . CRLF .
+				CRLF;
+			for (1 .. 10000) {
+				print $client ("X" x 98) . CRLF;
+			}
+			print $client "finished" . CRLF;
 
-        } elsif ($uri eq '/chunked') {
-            print $client
-                "HTTP/1.1 200 OK" . CRLF .
-                "Transfer-Encoding: chunked" . CRLF .
-                "Cache-Control: max-age=300" . CRLF .
-                "Connection: close" . CRLF .
-                CRLF .
-                "ff" . CRLF .
-                "unfinished" . CRLF;
+		} elsif ($uri eq '/chunked') {
+			print $client
+				"HTTP/1.1 200 OK" . CRLF .
+				"Transfer-Encoding: chunked" . CRLF .
+				"Cache-Control: max-age=300" . CRLF .
+				"Connection: close" . CRLF .
+				CRLF .
+				"ff" . CRLF .
+				"unfinished" . CRLF;
 
-        } elsif ($uri eq '/chunked/ok') {
-            print $client
-                "HTTP/1.1 200 OK" . CRLF .
-                "Transfer-Encoding: chunked" . CRLF .
-                "Cache-Control: max-age=300" . CRLF .
-                "Connection: close" . CRLF .
-                CRLF .
-                "a" . CRLF .
-                "finished" . CRLF .
-                CRLF . "0" . CRLF . CRLF;
-        }
-    }
+		} elsif ($uri eq '/chunked/ok') {
+			print $client
+				"HTTP/1.1 200 OK" . CRLF .
+				"Transfer-Encoding: chunked" . CRLF .
+				"Cache-Control: max-age=300" . CRLF .
+				"Connection: close" . CRLF .
+				CRLF .
+				"a" . CRLF .
+				"finished" . CRLF .
+				CRLF . "0" . CRLF . CRLF;
+		}
+	}
 }
 
 ###############################################################################

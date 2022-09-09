@@ -196,7 +196,7 @@ struct ngx_connection_s {
     unsigned            num_async_fds:8;
 #endif
 
-#if (NGX_HAVE_AIO_SENDFILE || NGX_COMPAT)
+#if (NGX_HAVE_SENDFILE_NODISKIO || NGX_COMPAT)
     unsigned            busy_count:2;
 #endif
 

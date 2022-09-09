@@ -26,7 +26,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http sub proxy/)->plan(2)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -77,28 +77,28 @@ like(http_get('/negative'), qr/xyz/, 'negative match');
 ###############################################################################
 
 sub http_daemon {
-    my $server = IO::Socket::INET->new(
-        Proto => 'tcp',
-        LocalHost => '127.0.0.1:' . port(8081),
-        Listen => 5,
-        Reuse => 1
-    )
-        or die "Can't create listening socket: $!\n";
+	my $server = IO::Socket::INET->new(
+		Proto => 'tcp',
+		LocalHost => '127.0.0.1:' . port(8081),
+		Listen => 5,
+		Reuse => 1
+	)
+		or die "Can't create listening socket: $!\n";
 
-    local $SIG{PIPE} = 'IGNORE';
+	local $SIG{PIPE} = 'IGNORE';
 
-    while (my $client = $server->accept()) {
-        $client->autoflush(1);
+	while (my $client = $server->accept()) {
+		$client->autoflush(1);
 
-        while (<$client>) {
-            last if /^\x0d?\x0a?$/;
-        }
+		while (<$client>) {
+			last if /^\x0d?\x0a?$/;
+		}
 
-        print $client
-            "HTTP/1.1 200 OK" . CRLF .
-            "Content-Length: 10" . CRLF . CRLF .
-            "xyz";
-    }
+		print $client
+			"HTTP/1.1 200 OK" . CRLF .
+			"Content-Length: 10" . CRLF . CRLF .
+			"xyz";
+	}
 }
 
 ###############################################################################

@@ -64,31 +64,24 @@ $s->read(all => [{ type => 'PING' }]);
 
 $t->stop();
 
-TODO: {
-local $TODO = 'not yet' unless $t->has_version('1.17.4');
-
 like($t->read_file('access.log'), qr/ (?!504)\d{3} /, 'shutdown timeout');
-
-}
-
-$t->todo_alerts() unless $t->has_version('1.17.4');
 
 ###############################################################################
 
 sub http_silent_daemon {
-    my $server = IO::Socket::INET->new(
-        Proto => 'tcp',
-        LocalAddr => '127.0.0.1:' . port(8081),
-        Listen => 5,
-        Reuse => 1
-    )
-        or die "Can't create listening socket: $!\n";
+	my $server = IO::Socket::INET->new(
+		Proto => 'tcp',
+		LocalAddr => '127.0.0.1:' . port(8081),
+		Listen => 5,
+		Reuse => 1
+	)
+		or die "Can't create listening socket: $!\n";
 
-    while (my $client = $server->accept()) {
-        $client->autoflush(1);
+	while (my $client = $server->accept()) {
+		$client->autoflush(1);
 
-        while (<$client>) { }
-    }
+		while (<$client>) { }
+	}
 }
 
 ###############################################################################

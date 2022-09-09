@@ -24,7 +24,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http rewrite proxy access/)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -78,7 +78,7 @@ $t->write_file('lif.conf', 'return 200 LIF;');
 $t->write_file('lmt.conf', 'deny all;');
 $t->write_file('ups.conf', "server 127.0.0.1:$p;");
 
-$t->try_run('no include in any context')->plan(5);
+$t->run()->plan(5);
 
 ###############################################################################
 
@@ -92,8 +92,8 @@ unlike(http_get('/'), qr/ 200 /, 'no include');
 ###############################################################################
 
 sub http_post {
-    my ($uri) = @_;
-    http(<<EOF);
+	my ($uri) = @_;
+	http(<<EOF);
 POST $uri HTTP/1.0
 Host: localhost
 

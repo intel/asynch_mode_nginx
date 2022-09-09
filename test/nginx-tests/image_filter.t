@@ -29,7 +29,7 @@ eval { require GD; };
 plan(skip_all => 'GD not installed') if $@;
 
 my $t = Test::Nginx->new()->has(qw/http proxy map image_filter/)->plan(39)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -189,7 +189,7 @@ like(http_get('/test/off/txt'), qr/SEE-THIS/, 'off');
 
 is(http_get_body('/size/txt'), '{}' . CRLF, 'size wrong type');
 like(http_head('/size/txt'), qr!Content-Type: application/json!,
-    'size content-type');
+	'size content-type');
 like(http_get('/size/jpeg'), qr/"width": 100/, 'size width');
 like(http_get('/size/jpeg'), qr/"height": 120/, 'size height');
 like(http_get('/size/jpeg'), qr/"type": "jpeg"/, 'size jpeg');
@@ -214,7 +214,7 @@ is($im->transparent, 0, 'gif transparent white');
 
 SKIP: {
 skip 'broken/unknown libgd', 1
-    unless has_gdversion('2.1.0') or $ENV{TEST_NGINX_UNSAFE};
+	unless has_gdversion('2.1.0') or $ENV{TEST_NGINX_UNSAFE};
 
 $im = GD::Image->newFromGifData(http_get_body('/interlaced/gif'));
 is($im->interlaced, 1, 'gif interlaced on');
@@ -246,14 +246,14 @@ like(http_get('/resize/jpeg'), qr/quality = 75/, 'quality default');
 like(http_get('/quality/jpeg'), qr/quality = 50/, 'quality');
 like(http_get('/quality_var/jpeg?q=40'), qr/quality = 40/, 'quality var');
 like(http_get('/quality_var/quality/jpeg?q=40'), qr/quality = 60/,
-    'quality nested');
+	'quality nested');
 
 is(gif_size('/crop/gif'), '60 80', 'crop');
 is(gif_size('/crop_var/gif?w=10&h=20'), '10 20', 'crop var');
 is(gif_size('/crop_rotate/gif?w=5&h=6&r=90'), '5 5', 'rotate before crop');
 is(gif_size('/resize_rotate/gif?w=5&h=6&r=90'), '6 5', 'rotate after resize');
 is(gif_size('/resize_rotate/resize/gif??w=5&h=6&r=90'), '10 12',
-    'resize rotate nested');
+	'resize rotate nested');
 
 like(http_get('/buffer/jpeg'), qr/415 Unsupported/, 'small buffer');
 isnt(http_get('/proxy_buffer/jpeg'), undef, 'small buffer proxy');
@@ -261,39 +261,39 @@ isnt(http_get('/proxy_buffer/jpeg'), undef, 'small buffer proxy');
 ###############################################################################
 
 sub gif_size {
-    join ' ', unpack("x6v2", http_get_body(@_));
+	join ' ', unpack("x6v2", http_get_body(@_));
 }
 
 sub http_get_body {
-    my ($uri) = @_;
+	my ($uri) = @_;
 
-    return undef if !defined $uri;
+	return undef if !defined $uri;
 
-    my $text = http_get($uri);
+	my $text = http_get($uri);
 
-    if ($text !~ /(.*?)\x0d\x0a?\x0d\x0a?(.*)/ms) {
-        return undef;
-    }
+	if ($text !~ /(.*?)\x0d\x0a?\x0d\x0a?(.*)/ms) {
+		return undef;
+	}
 
-    return $2;
+	return $2;
 }
 
 sub has_gdversion {
-    my ($need) = @_;
+	my ($need) = @_;
 
-    my $v_str = `gdlib-config --version 2>&1`
-        || eval { GD::VERSION_STRING() } or return 0;
-    ($v_str) = $v_str =~ m!^([0-9.]+)!m or return 0;
-    my @v = split(/\./, $v_str);
-    my ($n, $v);
+	my $v_str = `gdlib-config --version 2>&1`
+		|| eval { GD::VERSION_STRING() } or return 0;
+	($v_str) = $v_str =~ m!^([0-9.]+)!m or return 0;
+	my @v = split(/\./, $v_str);
+	my ($n, $v);
 
-    for $n (split(/\./, $need)) {
-        $v = shift @v || 0;
-        return 0 if $n > $v;
-        return 1 if $v > $n;
-    }
+	for $n (split(/\./, $need)) {
+		$v = shift @v || 0;
+		return 0 if $n > $v;
+		return 1 if $v > $n;
+	}
 
-    return 1;
+	return 1;
 }
 
 ###############################################################################
@@ -301,44 +301,44 @@ sub has_gdversion {
 # serve static files without Content-Length
 
 sub http_daemon {
-    my ($t) = @_;
+	my ($t) = @_;
 
-    my $server = IO::Socket::INET->new(
-        Proto => 'tcp',
-        LocalHost => '127.0.0.1',
-        LocalPort => port(8081),
-        Listen => 5,
-        Reuse => 1
-    )
-        or die "Can't create listening socket: $!\n";
+	my $server = IO::Socket::INET->new(
+		Proto => 'tcp',
+		LocalHost => '127.0.0.1',
+		LocalPort => port(8081),
+		Listen => 5,
+		Reuse => 1
+	)
+		or die "Can't create listening socket: $!\n";
 
-    local $SIG{PIPE} = 'IGNORE';
+	local $SIG{PIPE} = 'IGNORE';
 
-    while (my $client = $server->accept()) {
-        $client->autoflush(1);
+	while (my $client = $server->accept()) {
+		$client->autoflush(1);
 
-        my $headers = '';
-        my $uri = '';
+		my $headers = '';
+		my $uri = '';
 
-        while (<$client>) {
-            $headers .= $_;
-            last if (/^\x0d?\x0a?$/);
-        }
+		while (<$client>) {
+			$headers .= $_;
+			last if (/^\x0d?\x0a?$/);
+		}
 
-        next if $headers eq '';
-        $uri = $1 if $headers =~ /^\S+\s+([^ ]+)\s+HTTP/i;
-        my $data = $t->read_file($uri);
+		next if $headers eq '';
+		$uri = $1 if $headers =~ /^\S+\s+([^ ]+)\s+HTTP/i;
+		my $data = $t->read_file($uri);
 
-        print $client <<EOF;
+		print $client <<EOF;
 HTTP/1.1 200 OK
 Connection: close
 
 $data
 EOF
 
-    } continue {
-        close $client;
-    }
+	} continue {
+		close $client;
+	}
 }
 
 ###############################################################################

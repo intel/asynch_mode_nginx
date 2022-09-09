@@ -24,7 +24,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http proxy cache/)->plan(1)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -79,8 +79,8 @@ like(http_head('/big.html'), qr/200 OK/, 'head request');
 
 # once proxy_read_timeout expires, nginx will call
 # ngx_http_finalize_upstream_request() with u->pipe->downstream_error set
-# and rc = NGX_HTTP_GATEWAY_BAD_GATEWAY; after revision ad3f342f14ba046c this
-# will result in ngx_http_finalize_request(NGX_HTTP_GATEWAY_BAD_GATEWAY),
+# and rc = NGX_HTTP_BAD_GATEWAY; after revision ad3f342f14ba046c this
+# will result in ngx_http_finalize_request(NGX_HTTP_BAD_GATEWAY),
 # leading to an attempt to return additional error response and
 # the "header already sent" alert; fixed in 93abb5a855d6
 

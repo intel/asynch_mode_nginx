@@ -99,56 +99,56 @@ $t->run();
 my ($p0, $p1) = (port(8080), port(8081));
 
 is(http_get_location("http://127.0.0.1:$p0/impl_default/test.html"),
-    "http://127.0.0.1:$p0/impl_default/test.html", 'implicit default');
+	"http://127.0.0.1:$p0/impl_default/test.html", 'implicit default');
 is(http_get_location("http://127.0.0.1:$p0/expl_default/test.html"),
-    "http://127.0.0.1:$p0/expl_default/test.html", 'explicit default');
+	"http://127.0.0.1:$p0/expl_default/test.html", 'explicit default');
 
 is(http_get_refresh("http://127.0.0.1:$p0/impl_default/test.html"),
-    '7; url=/impl_default/test.html', 'implicit default (refresh)');
+	'7; url=/impl_default/test.html', 'implicit default (refresh)');
 is(http_get_refresh("http://127.0.0.1:$p0/expl_default/test.html"),
-    '7; url=/expl_default/test.html', 'explicit default (refresh)');
+	'7; url=/expl_default/test.html', 'explicit default (refresh)');
 
 is(http_get_location("http://127.0.0.1:$p0/var_in_second/test.html"),
-    "http://127.0.0.1:$p0/var_here/test.html", 'variable in second arg');
+	"http://127.0.0.1:$p0/var_here/test.html", 'variable in second arg');
 is(http_get_refresh("http://127.0.0.1:$p0/var_in_second/test.html"),
-    '7; url=/var_here/test.html', 'variable in second arg (refresh)');
+	'7; url=/var_here/test.html', 'variable in second arg (refresh)');
 
 is(http_get_location("http://127.0.0.1:$p0/off/test.html"),
-    "http://127.0.0.1:$p1/test.html", 'rewrite off');
+	"http://127.0.0.1:$p1/test.html", 'rewrite off');
 is(http_get_location("http://127.0.0.1:$p0/off/on/test.html"),
-    "http://127.0.0.1:$p0/on/test.html", 'rewrite off overwrite');
+	"http://127.0.0.1:$p0/on/test.html", 'rewrite off overwrite');
 
 is(http_get_location("http://127.0.0.1:$p0/off/on/on/test.html"),
-    "http://127.0.0.1:$p0/on/on/test.html", 'rewrite inheritance');
+	"http://127.0.0.1:$p0/on/on/test.html", 'rewrite inheritance');
 
 is(http_get_location("http://127.0.0.1:$p0/var_here/test.html"),
-    "http://127.0.0.1:$p0/replaced/test.html", 'variable in first arg');
+	"http://127.0.0.1:$p0/replaced/test.html", 'variable in first arg');
 is(http_get_refresh("http://127.0.0.1:$p0/var_here/test.html"),
-    '7; url=/replaced/test.html', 'variable in first arg (refresh)');
+	'7; url=/replaced/test.html', 'variable in first arg (refresh)');
 
 is(http_get_location("http://127.0.0.1:$p0/ReeegEX/test.html"),
-    "http://127.0.0.1:$p0/replaced/test.html", 'caseless regexp');
+	"http://127.0.0.1:$p0/replaced/test.html", 'caseless regexp');
 is(http_get_location("http://127.0.0.1:$p0/regex_w_captures/test.html"),
-    "http://127.0.0.1:$p1/captures/test.html", 'regexp w/captures');
+	"http://127.0.0.1:$p1/captures/test.html", 'regexp w/captures');
 
 is(http_get_refresh("http://127.0.0.1:$p0/ReeegEX/test.html"),
-    '7; url=/replaced/test.html', 'caseless regexp (refresh)');
+	'7; url=/replaced/test.html', 'caseless regexp (refresh)');
 is(http_get_refresh("http://127.0.0.1:$p0/regex_w_captures/test.html"),
-    "7; url=http://127.0.0.1:$p1/captures/test.html",
-    'regexp w/captures (refresh)');
+	"7; url=http://127.0.0.1:$p1/captures/test.html",
+	'regexp w/captures (refresh)');
 
 ###############################################################################
 
 sub http_get_location {
-    my ($url) = @_;
-    http_get($url) =~ /^Location:\s(.+?)\x0d?$/mi;
-    return $1;
+	my ($url) = @_;
+	http_get($url) =~ /^Location:\s(.+?)\x0d?$/mi;
+	return $1;
 }
 
 sub http_get_refresh {
-    my ($url) = @_;
-    http_get($url) =~ /^Refresh:\s(.+?)\x0d?$/mi;
-    return $1;
+	my ($url) = @_;
+	http_get($url) =~ /^Refresh:\s(.+?)\x0d?$/mi;
+	return $1;
 }
 
 ###############################################################################

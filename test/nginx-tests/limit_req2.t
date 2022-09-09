@@ -93,6 +93,6 @@ like(http_get('/t2.html?a=3'), qr/^HTTP\/1.. 503 /m, 'nodelay slow - rejected');
 like(http_get('/t2.html?a=4&b=4'), qr/^HTTP\/1.. 200 /m, 'nodelay both');
 select undef, undef, undef, 0.1;
 like(http_get('/t2.html?a=4&b=4'), qr/^HTTP\/1.. 503 /m,
-    'nodelay both - rejected');
+	'nodelay both - rejected');
 
 ###############################################################################

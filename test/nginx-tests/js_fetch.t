@@ -29,7 +29,7 @@ eval { require JSON::PP; };
 plan(skip_all => "JSON::PP not installed") if $@;
 
 my $t = Test::Nginx->new()->has(qw/http/)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -73,6 +73,10 @@ http {
 
         location /header {
             js_content test.header;
+        }
+
+        location /header_iter {
+            js_content test.header_iter;
         }
 
         location /multi {
@@ -191,7 +195,6 @@ $t->write_file('test.js', <<EOF);
             ['http://127.0.0.1:1/loc'],
             ['http://127.0.0.1:80800/loc'],
             [Symbol.toStringTag],
-            ['https://127.0.0.1:$p0/loc'],
         ];
 
         return process_errors(r, tests);
@@ -276,6 +279,22 @@ $t->write_file('test.js', <<EOF);
         .catch(e => r.return(501, e.message))
     }
 
+    async function header_iter(r) {
+        let url = `http://127.0.0.1:$p2/\${r.args.loc}`;
+
+        let response = await ngx.fetch(url);
+
+        let headers = response.headers;
+        let out = [];
+        for (let key in response.headers) {
+            if (key != 'Connection') {
+                out.push(`\${key}:\${headers.get(key)}`);
+            }
+        }
+
+        r.return(200, njs.dump(out));
+    }
+
     function multi(r) {
         var results = [];
         var tests = [
@@ -337,226 +356,248 @@ $t->write_file('test.js', <<EOF);
     }
 
      export default {njs: test_njs, body, broken, broken_response,
-                     chain, chunked, header, multi, loc, property};
+                     chain, chunked, header, header_iter, multi, loc, property};
 EOF
 
-$t->try_run('no njs.fetch')->plan(27);
+$t->try_run('no njs.fetch')->plan(28);
 
 $t->run_daemon(\&http_daemon, port(8082));
 $t->waitforsocket('127.0.0.1:' . port(8082));
 
 ###############################################################################
 
-local $TODO = 'not yet'
-    unless http_get('/njs') =~ /^([.0-9]+)$/m && $1 ge '0.5.1';
-
 like(http_get('/body?getter=arrayBuffer&loc=loc'), qr/200 OK.*"aaa:GET:::"$/s,
-    'fetch body arrayBuffer');
+	'fetch body arrayBuffer');
 like(http_get('/body?getter=text&loc=loc'), qr/200 OK.*"aaa:GET:::"$/s,
-    'fetch body text');
+	'fetch body text');
 like(http_get('/body?getter=json&loc=json&path=b.c'),
-    qr/200 OK.*"FIELD"$/s, 'fetch body json');
+	qr/200 OK.*"FIELD"$/s, 'fetch body json');
 like(http_get('/body?getter=json&loc=loc'), qr/501/s,
-    'fetch body json invalid');
+	'fetch body json invalid');
 like(http_get('/property?pr=bodyUsed'), qr/false$/s,
-    'fetch bodyUsed false');
+	'fetch bodyUsed false');
 like(http_get('/property?pr=bodyUsed&readBody=1'), qr/true$/s,
-    'fetch bodyUsed true');
+	'fetch bodyUsed true');
 like(http_get('/property?pr=ok'), qr/200 OK.*true$/s,
-    'fetch ok true');
+	'fetch ok true');
 like(http_get('/property?pr=ok&code=401'), qr/200 OK.*false$/s,
-    'fetch ok false');
+	'fetch ok false');
 like(http_get('/property?pr=redirected'), qr/200 OK.*false$/s,
-    'fetch redirected false');
+	'fetch redirected false');
 like(http_get('/property?pr=statusText'), qr/200 OK.*OK$/s,
-    'fetch statusText OK');
+	'fetch statusText OK');
 like(http_get('/property?pr=statusText&code=403'), qr/200 OK.*Forbidden$/s,
-    'fetch statusText Forbidden');
+	'fetch statusText Forbidden');
 like(http_get('/property?pr=type'), qr/200 OK.*basic$/s,
-    'fetch type');
+	'fetch type');
 like(http_get('/header?loc=duplicate_header&h=BAR'), qr/200 OK.*c$/s,
-    'fetch header');
+	'fetch header');
 like(http_get('/header?loc=duplicate_header&h=BARR'), qr/200 OK.*null$/s,
-    'fetch no header');
+	'fetch no header');
 like(http_get('/header?loc=duplicate_header&h=foo'), qr/200 OK.*a,b$/s,
-    'fetch header duplicate');
+	'fetch header duplicate');
 like(http_get('/header?loc=duplicate_header&h=BAR&method=getAll'),
-    qr/200 OK.*\['c']$/s, 'fetch getAll header');
+	qr/200 OK.*\['c']$/s, 'fetch getAll header');
 like(http_get('/header?loc=duplicate_header&h=BARR&method=getAll'),
-    qr/200 OK.*\[]$/s, 'fetch getAll no header');
+	qr/200 OK.*\[]$/s, 'fetch getAll no header');
 like(http_get('/header?loc=duplicate_header&h=FOO&method=getAll'),
-    qr/200 OK.*\['a','b']$/s, 'fetch getAll duplicate');
+	qr/200 OK.*\['a','b']$/s, 'fetch getAll duplicate');
 like(http_get('/header?loc=duplicate_header&h=bar&method=has'),
-    qr/200 OK.*true$/s, 'fetch header has');
+	qr/200 OK.*true$/s, 'fetch header has');
 like(http_get('/header?loc=duplicate_header&h=buz&method=has'),
-    qr/200 OK.*false$/s, 'fetch header does not have');
+	qr/200 OK.*false$/s, 'fetch header does not have');
 like(http_get('/header?loc=chunked/big&h=BAR&readBody=1'), qr/200 OK.*xxx$/s,
-    'fetch chunked header');
+	'fetch chunked header');
 is(get_json('/multi'),
-    '[{"b":"aaa:GET:::","c":201,"u":"http://127.0.0.1:'.$p0.'/loc"},' .
-    '{"b":"bbb:POST:::OK","c":401,"u":"http://127.0.0.1:'.$p0.'/loc"},' .
-    '{"b":"ccc:PATCH::xxx:","c":200,"u":"http://127.0.0.1:'.$p1.'/loc"}]',
-    'fetch multi');
+	'[{"b":"aaa:GET:::","c":201,"u":"http://127.0.0.1:'.$p0.'/loc"},' .
+	'{"b":"bbb:POST:::OK","c":401,"u":"http://127.0.0.1:'.$p0.'/loc"},' .
+	'{"b":"ccc:PATCH::xxx:","c":200,"u":"http://127.0.0.1:'.$p1.'/loc"}]',
+	'fetch multi');
 like(http_get('/multi?throw=1'), qr/500/s, 'fetch destructor');
 is(get_json('/broken'),
-    '[' .
-    '"connect failed",' .
-    '"failed to convert url arg",' .
-    '"invalid url",' .
-    '"unsupported URL prefix"]', 'fetch broken');
+	'[' .
+	'"connect failed",' .
+	'"failed to convert url arg",' .
+	'"invalid url"]', 'fetch broken');
 is(get_json('/broken_response'),
-    '["invalid fetch content length",' .
-    '"invalid fetch header",' .
-    '"invalid fetch status line",' .
-    '"prematurely closed connection",' .
-    '"prematurely closed connection"]', 'fetch broken response');
+	'["invalid fetch content length",' .
+	'"invalid fetch header",' .
+	'"invalid fetch status line",' .
+	'"prematurely closed connection",' .
+	'"prematurely closed connection"]', 'fetch broken response');
 is(get_json('/chunked'),
-    '[10,100010,25500,' .
-    '"invalid fetch chunked response",' .
-    '"prematurely closed connection",' .
-    '"very large fetch chunked response"]', 'fetch chunked');
+	'[10,100010,25500,' .
+	'"invalid fetch chunked response",' .
+	'"prematurely closed connection",' .
+	'"very large fetch chunked response"]', 'fetch chunked');
 like(http_get('/chain'), qr/200 OK.*SUCCESS$/s, 'fetch chain');
+
+TODO: {
+todo_skip 'leaves coredump', 1 unless $ENV{TEST_NGINX_UNSAFE}
+	or http_get('/njs') =~ /^([.0-9]+)$/m && $1 ge '0.7.4';
+
+like(http_get('/header_iter?loc=duplicate_header_large'),
+	qr/\['A:a','B:a','C:a','D:a','E:a','F:a','G:a','H:a','Foo:a,b']$/s,
+	'fetch header duplicate large');
+
+}
 
 ###############################################################################
 
 sub recode {
-    my $json;
-    eval { $json = JSON::PP::decode_json(shift) };
+	my $json;
+	eval { $json = JSON::PP::decode_json(shift) };
 
-    if ($@) {
-        return "<failed to parse JSON>";
-    }
+	if ($@) {
+		return "<failed to parse JSON>";
+	}
 
-    JSON::PP->new()->canonical()->encode($json);
+	JSON::PP->new()->canonical()->encode($json);
 }
 
 sub get_json {
-    http_get(shift) =~ /\x0d\x0a?\x0d\x0a?(.*)/ms;
-    recode($1);
+	http_get(shift) =~ /\x0d\x0a?\x0d\x0a?(.*)/ms;
+	recode($1);
 }
 
 ###############################################################################
 
 sub http_daemon {
-    my $port = shift;
+	my $port = shift;
 
-    my $server = IO::Socket::INET->new(
-        Proto => 'tcp',
-        LocalAddr => '127.0.0.1:' . $port,
-        Listen => 5,
-        Reuse => 1
-    ) or die "Can't create listening socket: $!\n";
+	my $server = IO::Socket::INET->new(
+		Proto => 'tcp',
+		LocalAddr => '127.0.0.1:' . $port,
+		Listen => 5,
+		Reuse => 1
+	) or die "Can't create listening socket: $!\n";
 
-    local $SIG{PIPE} = 'IGNORE';
+	local $SIG{PIPE} = 'IGNORE';
 
-    while (my $client = $server->accept()) {
-        $client->autoflush(1);
+	while (my $client = $server->accept()) {
+		$client->autoflush(1);
 
-        my $headers = '';
-        my $uri = '';
+		my $headers = '';
+		my $uri = '';
 
-        while (<$client>) {
-            $headers .= $_;
-            last if (/^\x0d?\x0a?$/);
-        }
+		while (<$client>) {
+			$headers .= $_;
+			last if (/^\x0d?\x0a?$/);
+		}
 
-        $uri = $1 if $headers =~ /^\S+\s+([^ ]+)\s+HTTP/i;
+		$uri = $1 if $headers =~ /^\S+\s+([^ ]+)\s+HTTP/i;
 
-        if ($uri eq '/status_line') {
-            print $client
-                "HTTP/1.1 2A";
+		if ($uri eq '/status_line') {
+			print $client
+				"HTTP/1.1 2A";
 
-        } elsif ($uri eq '/content_length') {
-            print $client
-                "HTTP/1.1 200 OK" . CRLF .
-                "Content-Length: " . CRLF .
-                "Connection: close" . CRLF .
-                CRLF;
+		} elsif ($uri eq '/content_length') {
+			print $client
+				"HTTP/1.1 200 OK" . CRLF .
+				"Content-Length: " . CRLF .
+				"Connection: close" . CRLF .
+				CRLF;
 
-        } elsif ($uri eq '/header') {
-            print $client
-                "HTTP/1.1 200 OK" . CRLF .
-                "@#" . CRLF .
-                "Connection: close" . CRLF .
-                CRLF;
+		} elsif ($uri eq '/header') {
+			print $client
+				"HTTP/1.1 200 OK" . CRLF .
+				"@#" . CRLF .
+				"Connection: close" . CRLF .
+				CRLF;
 
-        } elsif ($uri eq '/duplicate_header') {
-            print $client
-                "HTTP/1.1 200 OK" . CRLF .
-                "Foo: a" . CRLF .
-                "bar: c" . CRLF .
-                "Foo: b" . CRLF .
-                "Connection: close" . CRLF .
-                CRLF;
+		} elsif ($uri eq '/duplicate_header') {
+			print $client
+				"HTTP/1.1 200 OK" . CRLF .
+				"Foo: a" . CRLF .
+				"bar: c" . CRLF .
+				"Foo: b" . CRLF .
+				"Connection: close" . CRLF .
+				CRLF;
 
-        } elsif ($uri eq '/headers') {
-            print $client
-                "HTTP/1.1 200 OK" . CRLF .
-                "Connection: close" . CRLF;
+		} elsif ($uri eq '/duplicate_header_large') {
+			print $client
+				"HTTP/1.1 200 OK" . CRLF .
+				"A: a" . CRLF .
+				"B: a" . CRLF .
+				"C: a" . CRLF .
+				"D: a" . CRLF .
+				"E: a" . CRLF .
+				"F: a" . CRLF .
+				"G: a" . CRLF .
+				"H: a" . CRLF .
+				"Foo: a" . CRLF .
+				"Foo: b" . CRLF .
+				"Connection: close" . CRLF .
+				CRLF;
 
-        } elsif ($uri eq '/length') {
-            print $client
-                "HTTP/1.1 200 OK" . CRLF .
-                "Content-Length: 100" . CRLF .
-                "Connection: close" . CRLF .
-                CRLF .
-                "unfinished" . CRLF;
+		} elsif ($uri eq '/headers') {
+			print $client
+				"HTTP/1.1 200 OK" . CRLF .
+				"Connection: close" . CRLF;
 
-        } elsif ($uri eq '/big') {
-            print $client
-                "HTTP/1.1 200 OK" . CRLF .
-                "Content-Length: 100100" . CRLF .
-                "Connection: close" . CRLF .
-                CRLF;
-            for (1 .. 1000) {
-                print $client ("X" x 98) . CRLF;
-            }
-            print $client "unfinished" . CRLF;
+		} elsif ($uri eq '/length') {
+			print $client
+				"HTTP/1.1 200 OK" . CRLF .
+				"Content-Length: 100" . CRLF .
+				"Connection: close" . CRLF .
+				CRLF .
+				"unfinished" . CRLF;
 
-        } elsif ($uri eq '/big/ok') {
-            print $client
-                "HTTP/1.1 200 OK" . CRLF .
-                "Content-Length: 100010" . CRLF .
-                "Connection: close" . CRLF .
-                CRLF;
-            for (1 .. 1000) {
-                print $client ("X" x 98) . CRLF;
-            }
-            print $client "finished" . CRLF;
+		} elsif ($uri eq '/big') {
+			print $client
+				"HTTP/1.1 200 OK" . CRLF .
+				"Content-Length: 100100" . CRLF .
+				"Connection: close" . CRLF .
+				CRLF;
+			for (1 .. 1000) {
+				print $client ("X" x 98) . CRLF;
+			}
+			print $client "unfinished" . CRLF;
 
-        } elsif ($uri eq '/chunked') {
-            print $client
-                "HTTP/1.1 200 OK" . CRLF .
-                "Transfer-Encoding: chunked" . CRLF .
-                "Connection: close" . CRLF .
-                CRLF .
-                "ff" . CRLF .
-                "unfinished" . CRLF;
+		} elsif ($uri eq '/big/ok') {
+			print $client
+				"HTTP/1.1 200 OK" . CRLF .
+				"Content-Length: 100010" . CRLF .
+				"Connection: close" . CRLF .
+				CRLF;
+			for (1 .. 1000) {
+				print $client ("X" x 98) . CRLF;
+			}
+			print $client "finished" . CRLF;
 
-        } elsif ($uri eq '/chunked/ok') {
-            print $client
-                "HTTP/1.1 200 OK" . CRLF .
-                "Transfer-Encoding: chunked" . CRLF .
-                "Connection: close" . CRLF .
-                CRLF .
-                "a" . CRLF .
-                "finished" . CRLF .
-                CRLF . "0" . CRLF . CRLF;
-        } elsif ($uri eq '/chunked/big') {
-            print $client
-                "HTTP/1.1 200 OK" . CRLF .
-                "Transfer-Encoding: chunked" . CRLF .
-                "Bar: xxx" . CRLF .
-                "Connection: close" . CRLF .
-                CRLF;
+		} elsif ($uri eq '/chunked') {
+			print $client
+				"HTTP/1.1 200 OK" . CRLF .
+				"Transfer-Encoding: chunked" . CRLF .
+				"Connection: close" . CRLF .
+				CRLF .
+				"ff" . CRLF .
+				"unfinished" . CRLF;
 
-            for (1 .. 100) {
-                print $client "ff" . CRLF . ("X" x 255) . CRLF;
-            }
+		} elsif ($uri eq '/chunked/ok') {
+			print $client
+				"HTTP/1.1 200 OK" . CRLF .
+				"Transfer-Encoding: chunked" . CRLF .
+				"Connection: close" . CRLF .
+				CRLF .
+				"a" . CRLF .
+				"finished" . CRLF .
+				CRLF . "0" . CRLF . CRLF;
+		} elsif ($uri eq '/chunked/big') {
+			print $client
+				"HTTP/1.1 200 OK" . CRLF .
+				"Transfer-Encoding: chunked" . CRLF .
+				"Bar: xxx" . CRLF .
+				"Connection: close" . CRLF .
+				CRLF;
 
-            print $client  "0" . CRLF . CRLF;
-        }
-    }
+			for (1 .. 100) {
+				print $client "ff" . CRLF . ("X" x 255) . CRLF;
+			}
+
+		    print $client  "0" . CRLF . CRLF;
+		}
+	}
 }
 
 ###############################################################################

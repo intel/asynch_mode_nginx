@@ -16,7 +16,7 @@ use Test::More;
 BEGIN { use FindBin; chdir($FindBin::Bin); }
 
 use lib 'lib';
-use Test::Nginx qw/ :DEFAULT http_end /;
+use Test::Nginx;
 
 ###############################################################################
 
@@ -24,7 +24,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http proxy cache fastcgi slice rewrite/)
-    ->plan(79);
+	->plan(79);
 
 $t->write_file_expand('nginx.conf', <<'EOF');
 
@@ -115,7 +115,7 @@ http {
         location / {
             if ($http_range = "") {
                 set $limit_rate 100;
-        }
+	    }
         }
     }
 }
@@ -135,13 +135,7 @@ like(http_get('/cache/t'), qr/ 200 .*0123456789abcdef$/ms, 'no range');
 $r = get('/proxy/t', 'Range: bytes=3-4');
 like($r, qr/ 206 /, 'proxy - 206 partial reply');
 like($r, qr/^34$/m, 'proxy - correct content');
-
-TODO: {
-local $TODO = 'not yet' unless $t->has_version('1.19.2');
-
 unlike($r, qr/Accept-Ranges/, 'proxy - no original accept-ranges');
-
-}
 
 $r = get('/cache/t?single', "Range: bytes=0-0");
 like($r, qr/ 206 /, 'single - 206 partial reply');
@@ -273,23 +267,23 @@ like($r, qr/^23$/m, 'if-range skip slice - skipped - correct content');
 like($r, qr/MISS/, 'if-range skip bytes - skipped - cache status');
 
 SKIP: {
-    eval { require FCGI; };
-    skip 'FCGI not installed', 5 if $@;
-    skip 'win32', 5 if $^O eq 'MSWin32';
+	eval { require FCGI; };
+	skip 'FCGI not installed', 5 if $@;
+	skip 'win32', 5 if $^O eq 'MSWin32';
 
-    $t->run_daemon(\&fastcgi_daemon);
-    $t->waitforsocket('127.0.0.1:' . port(8082));
+	$t->run_daemon(\&fastcgi_daemon);
+	$t->waitforsocket('127.0.0.1:' . port(8082));
 
-    like(http_get('/fastcgi'), qr/200 OK.*MISS.*^012345678$/ms, 'fastcgi');
-    like(http_get('/fastcgi'), qr/200 OK.*HIT.*^012345678$/ms,
-        'fastcgi cached');
+	like(http_get('/fastcgi'), qr/200 OK.*MISS.*^012345678$/ms, 'fastcgi');
+	like(http_get('/fastcgi'), qr/200 OK.*HIT.*^012345678$/ms,
+		'fastcgi cached');
 
-    like(get("/fastcgi?1", "Range: bytes=0-0"), qr/ 206 .*MISS.*^0$/ms,
-        'fastcgi slice');
-    like(get("/fastcgi?1", "Range: bytes=1-1"), qr/ 206 .*HIT.*^1$/ms,
-        'fastcgi slice cached');
-    like(get("/fastcgi?1", "Range: bytes=2-2"), qr/ 206 .*MISS.*^2$/ms,
-        'fastcgi slice next');
+	like(get("/fastcgi?1", "Range: bytes=0-0"), qr/ 206 .*MISS.*^0$/ms,
+		'fastcgi slice');
+	like(get("/fastcgi?1", "Range: bytes=1-1"), qr/ 206 .*HIT.*^1$/ms,
+		'fastcgi slice cached');
+	like(get("/fastcgi?1", "Range: bytes=2-2"), qr/ 206 .*MISS.*^2$/ms,
+		'fastcgi slice next');
 }
 
 # slicing in named location
@@ -298,13 +292,13 @@ $r = http_get('/cache-redirect');
 
 like($r, qr/ 200 .*^0123456789abcdef$/ms, 'in named location');
 is(scalar @{[ glob $t->testdir() . '/cach3/*' ]}, 8,
-    'in named location - cache entries');
+	'in named location - cache entries');
 
 ###############################################################################
 
 sub get {
-    my ($url, $extra) = @_;
-    return http(<<EOF);
+	my ($url, $extra) = @_;
+	return http(<<EOF);
 GET $url HTTP/1.1
 Host: localhost
 Connection: close
@@ -316,29 +310,29 @@ EOF
 ###############################################################################
 
 sub fastcgi_daemon {
-    my $socket = FCGI::OpenSocket('127.0.0.1:' . port(8082), 5);
-    my $request = FCGI::Request(\*STDIN, \*STDOUT, \*STDERR, \%ENV,
-        $socket);
+	my $socket = FCGI::OpenSocket('127.0.0.1:' . port(8082), 5);
+	my $request = FCGI::Request(\*STDIN, \*STDOUT, \*STDERR, \%ENV,
+		$socket);
 
-    my $body = '012345678';
-    my $len = length($body);
+	my $body = '012345678';
+	my $len = length($body);
 
-    while ($request->Accept() >= 0) {
-        my ($start, $stop) = $ENV{Range} =~ /bytes=(\d+)-(\d+)/;
-        my $body = substr($body, $start, ($stop - $start) + 1);
-        $stop = $len - 1 if $stop > $len - 1;
+	while ($request->Accept() >= 0) {
+		my ($start, $stop) = $ENV{Range} =~ /bytes=(\d+)-(\d+)/;
+		my $body = substr($body, $start, ($stop - $start) + 1);
+		$stop = $len - 1 if $stop > $len - 1;
 
-        print <<EOF;
+		print <<EOF;
 Status: 206
 Content-Type: text/html
 Content-Range: bytes $start-$stop/$len
 
 EOF
 
-        print $body;
-    }
+		print $body;
+	}
 
-    FCGI::CloseSocket($socket);
+	FCGI::CloseSocket($socket);
 }
 
 ###############################################################################

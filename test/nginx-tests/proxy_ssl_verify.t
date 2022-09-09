@@ -24,8 +24,8 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http http_ssl proxy/)
-    ->has_daemon('openssl')->plan(6)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->has_daemon('openssl')->plan(6)
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -139,11 +139,11 @@ EOF
 my $d = $t->testdir();
 
 foreach my $name ('1.example.com', '2.example.com') {
-    system('openssl req -x509 -new '
-        . "-config $d/openssl.$name.conf "
-        . "-out $d/$name.crt -keyout $d/$name.key "
-        . ">>$d/openssl.out 2>&1") == 0
-        or die "Can't create certificate for $name: $!\n";
+	system('openssl req -x509 -new '
+		. "-config $d/openssl.$name.conf "
+		. "-out $d/$name.crt -keyout $d/$name.key "
+		. ">>$d/openssl.out 2>&1") == 0
+		or die "Can't create certificate for $name: $!\n";
 }
 
 sleep 1 if $^O eq 'MSWin32';

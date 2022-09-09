@@ -79,27 +79,27 @@ kill 'TERM', $1;
 ###############################################################################
 
 sub dns_daemon {
-    my ($t) = @_;
-    my ($data);
+	my ($t) = @_;
+	my ($data);
 
-    my $socket = IO::Socket::INET->new(
-        LocalAddr => '127.0.0.1',
-        LocalPort => port(8981),
-        Proto => 'udp',
-    )
-        or die "Can't create UDP socket: $!\n";
+	my $socket = IO::Socket::INET->new(
+		LocalAddr => '127.0.0.1',
+		LocalPort => port(8981),
+		Proto => 'udp',
+	)
+		or die "Can't create UDP socket: $!\n";
 
-    # signal we are ready
+	# signal we are ready
 
-    open my $fh, '>', $t->testdir() . '/' . port(8981);
-    close $fh;
+	open my $fh, '>', $t->testdir() . '/' . port(8981);
+	close $fh;
 
-    while (1) {
-        $socket->recv($data, 65536);
-        # truncation bit set
-        $data |= pack("n2", 0, 0x8380);
-        $socket->send($data);
-    }
+	while (1) {
+		$socket->recv($data, 65536);
+		# truncation bit set
+		$data |= pack("n2", 0, 0x8380);
+		$socket->send($data);
+	}
 }
 
 ###############################################################################

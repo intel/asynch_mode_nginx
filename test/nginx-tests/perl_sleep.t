@@ -23,7 +23,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http perl ssi/)->plan(2)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -65,7 +65,7 @@ http {
 EOF
 
 $t->write_file('subrequest.html', ('x' x 200) .
-    'X<!--#include virtual="/sleep" -->X');
+	'X<!--#include virtual="/sleep" -->X');
 
 $t->run();
 

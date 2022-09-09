@@ -29,7 +29,7 @@ eval { IO::Socket::SSL::SSL_VERIFY_NONE(); };
 plan(skip_all => 'IO::Socket::SSL too old') if $@;
 
 my $t = Test::Nginx->new()->has(qw/http http_ssl rewrite/)
-    ->has_daemon('openssl')->plan(3);
+	->has_daemon('openssl')->plan(3);
 
 $t->write_file_expand('nginx.conf', <<'EOF');
 
@@ -74,11 +74,11 @@ EOF
 my $d = $t->testdir();
 
 foreach my $name ('localhost') {
-    system('openssl req -x509 -new '
-        . "-config $d/openssl.conf -subj /CN=$name/ "
-        . "-out $d/$name.crt -keyout $d/$name.key "
-        . ">>$d/openssl.out 2>&1") == 0
-        or die "Can't create certificate for $name: $!\n";
+	system('openssl req -x509 -new '
+		. "-config $d/openssl.conf -subj /CN=$name/ "
+		. "-out $d/$name.crt -keyout $d/$name.key "
+		. ">>$d/openssl.out 2>&1") == 0
+		or die "Can't create certificate for $name: $!\n";
 }
 
 $t->run();
@@ -97,32 +97,32 @@ is($escaped, $cert, 'ssl_client_escaped_cert unescape match');
 ###############################################################################
 
 sub cert {
-    my ($uri) = @_;
-    my $s;
+	my ($uri) = @_;
+	my $s;
 
-    eval {
-        local $SIG{ALRM} = sub { die "timeout\n" };
-        local $SIG{PIPE} = sub { die "sigpipe\n" };
-        alarm(8);
-        $s = IO::Socket::SSL->new(
-            Proto => 'tcp',
-            PeerAddr => '127.0.0.1',
-            PeerPort => port(8443),
-            SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_NONE(),
-            SSL_cert_file => "$d/localhost.crt",
-            SSL_key_file => "$d/localhost.key",
-            SSL_error_trap => sub { die $_[1] },
-        );
-        alarm(0);
-    };
-    alarm(0);
+	eval {
+		local $SIG{ALRM} = sub { die "timeout\n" };
+		local $SIG{PIPE} = sub { die "sigpipe\n" };
+		alarm(8);
+		$s = IO::Socket::SSL->new(
+			Proto => 'tcp',
+			PeerAddr => '127.0.0.1',
+			PeerPort => port(8443),
+			SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_NONE(),
+			SSL_cert_file => "$d/localhost.crt",
+			SSL_key_file => "$d/localhost.key",
+			SSL_error_trap => sub { die $_[1] },
+		);
+		alarm(0);
+	};
+	alarm(0);
 
-    if ($@) {
-        log_in("died: $@");
-        return undef;
-    }
+	if ($@) {
+		log_in("died: $@");
+		return undef;
+	}
 
-    http_get($uri, socket => $s);
+	http_get($uri, socket => $s);
 }
 
 ###############################################################################

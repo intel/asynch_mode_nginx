@@ -55,6 +55,7 @@ typedef struct ngx_thread_pool_s  ngx_thread_pool_t;
 #define NGX_HTTP_KEEPALIVE_DISABLE_MSIE6   0x0004
 #define NGX_HTTP_KEEPALIVE_DISABLE_SAFARI  0x0008
 
+
 #define NGX_HTTP_SERVER_TOKENS_OFF      0
 #define NGX_HTTP_SERVER_TOKENS_ON       1
 #define NGX_HTTP_SERVER_TOKENS_BUILD    2
@@ -301,6 +302,7 @@ typedef struct {
 
 struct ngx_http_core_loc_conf_s {
     ngx_str_t     name;          /* location name */
+    ngx_str_t     escaped_name;
 
 #if (NGX_PCRE)
     ngx_http_regex_t  *regex;
@@ -503,8 +505,8 @@ ngx_int_t ngx_http_gzip_ok(ngx_http_request_t *r);
 
 
 ngx_int_t ngx_http_subrequest(ngx_http_request_t *r,
-    ngx_str_t *uri, ngx_str_t *args, ngx_http_request_t **sr,
-    ngx_http_post_subrequest_t *psr, ngx_uint_t flags);
+    ngx_str_t *uri, ngx_str_t *args, ngx_http_request_t **psr,
+    ngx_http_post_subrequest_t *ps, ngx_uint_t flags);
 ngx_int_t ngx_http_internal_redirect(ngx_http_request_t *r,
     ngx_str_t *uri, ngx_str_t *args);
 ngx_int_t ngx_http_named_location(ngx_http_request_t *r, ngx_str_t *name);

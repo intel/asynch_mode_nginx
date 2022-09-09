@@ -26,22 +26,22 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 eval {
-    require Net::SSLeay;
-    Net::SSLeay::load_error_strings();
-    Net::SSLeay::SSLeay_add_ssl_algorithms();
-    Net::SSLeay::randomize();
+	require Net::SSLeay;
+	Net::SSLeay::load_error_strings();
+	Net::SSLeay::SSLeay_add_ssl_algorithms();
+	Net::SSLeay::randomize();
 };
 plan(skip_all => 'Net::SSLeay not installed') if $@;
 
 eval {
-    my $ctx = Net::SSLeay::CTX_new() or die;
-    my $ssl = Net::SSLeay::new($ctx) or die;
-    Net::SSLeay::set_tlsext_host_name($ssl, 'example.org') == 1 or die;
+	my $ctx = Net::SSLeay::CTX_new() or die;
+	my $ssl = Net::SSLeay::new($ctx) or die;
+	Net::SSLeay::set_tlsext_host_name($ssl, 'example.org') == 1 or die;
 };
 plan(skip_all => 'Net::SSLeay with OpenSSL SNI support required') if $@;
 
 my $t = Test::Nginx->new()->has(qw/http http_ssl sni/)
-    ->has_daemon('openssl')->plan(13);
+	->has_daemon('openssl')->plan(13);
 
 $t->write_file_expand('nginx.conf', <<'EOF');
 
@@ -138,11 +138,11 @@ EOF
 my $d = $t->testdir();
 
 foreach my $name ('1.example.com', '2.example.com', '3.example.com') {
-    system('openssl req -x509 -new '
-        . "-config $d/openssl.conf -subj /CN=$name/ "
-        . "-out $d/$name.crt -keyout $d/$name.key "
-        . ">>$d/openssl.out 2>&1") == 0
-        or die "Can't create certificate for $name: $!\n";
+	system('openssl req -x509 -new '
+		. "-config $d/openssl.conf -subj /CN=$name/ "
+		. "-out $d/$name.crt -keyout $d/$name.key "
+		. ">>$d/openssl.out 2>&1") == 0
+		or die "Can't create certificate for $name: $!\n";
 }
 
 sleep 1 if $^O eq 'MSWin32';
@@ -159,7 +159,7 @@ like(get('no.context'), qr/400 Bad Request/, 'no server cert');
 like(get('optional'), qr/NONE:x/, 'no optional cert');
 like(get('optional', '1.example.com'), qr/400 Bad/, 'bad optional cert');
 like(get('optional.no.ca', '1.example.com'), qr/FAILED.*BEGIN/,
-    'bad optional_no_ca cert');
+	'bad optional_no_ca cert');
 like(get('off', '2.example.com'), qr/NONE/, 'off cert');
 like(get('off', '3.example.com'), qr/NONE/, 'off cert trusted');
 
@@ -180,34 +180,34 @@ like(get('optional', undef, 'localhost'), qr/421 Misdirected/, 'misdirected');
 ###############################################################################
 
 sub get {
-    my ($sni, $cert, $host) = @_;
+	my ($sni, $cert, $host) = @_;
 
-    local $SIG{PIPE} = 'IGNORE';
+	local $SIG{PIPE} = 'IGNORE';
 
-    $host = $sni if !defined $host;
+	$host = $sni if !defined $host;
 
-    my $s = IO::Socket::INET->new('127.0.0.1:' . port(8081));
-    my $ctx = Net::SSLeay::CTX_new() or die("Failed to create SSL_CTX $!");
-    Net::SSLeay::set_cert_and_key($ctx, "$d/$cert.crt", "$d/$cert.key")
-        or die if $cert;
-    my $ssl = Net::SSLeay::new($ctx) or die("Failed to create SSL $!");
-    Net::SSLeay::set_tlsext_host_name($ssl, $sni) == 1 or die;
-    Net::SSLeay::set_fd($ssl, fileno($s));
-    Net::SSLeay::connect($ssl) or die("ssl connect");
+	my $s = IO::Socket::INET->new('127.0.0.1:' . port(8081));
+	my $ctx = Net::SSLeay::CTX_new() or die("Failed to create SSL_CTX $!");
+	Net::SSLeay::set_cert_and_key($ctx, "$d/$cert.crt", "$d/$cert.key")
+		or die if $cert;
+	my $ssl = Net::SSLeay::new($ctx) or die("Failed to create SSL $!");
+	Net::SSLeay::set_tlsext_host_name($ssl, $sni) == 1 or die;
+	Net::SSLeay::set_fd($ssl, fileno($s));
+	Net::SSLeay::connect($ssl) or die("ssl connect");
 
-    Net::SSLeay::write($ssl, 'GET /t HTTP/1.0' . CRLF);
-    Net::SSLeay::write($ssl, "Host: $host" . CRLF . CRLF);
-    my $buf = Net::SSLeay::read($ssl);
-    log_in($buf);
-    return $buf unless wantarray();
+	Net::SSLeay::write($ssl, 'GET /t HTTP/1.0' . CRLF);
+	Net::SSLeay::write($ssl, "Host: $host" . CRLF . CRLF);
+	my $buf = Net::SSLeay::read($ssl);
+	log_in($buf);
+	return $buf unless wantarray();
 
-    my $list = Net::SSLeay::get_client_CA_list($ssl);
-    my @names;
-    for my $i (0 .. Net::SSLeay::sk_X509_NAME_num($list) - 1) {
-        my $name = Net::SSLeay::sk_X509_NAME_value($list, $i);
-        push @names, Net::SSLeay::X509_NAME_oneline($name);
-    }
-    return @names;
+	my $list = Net::SSLeay::get_client_CA_list($ssl);
+	my @names;
+	for my $i (0 .. Net::SSLeay::sk_X509_NAME_num($list) - 1) {
+		my $name = Net::SSLeay::sk_X509_NAME_value($list, $i);
+		push @names, Net::SSLeay::X509_NAME_oneline($name);
+	}
+	return @names;
 }
 
 ###############################################################################

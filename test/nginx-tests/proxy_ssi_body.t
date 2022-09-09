@@ -67,19 +67,19 @@ $t->run();
 # If later a subrequest tries to use body, it fails.
 
 like(http_get_body('/proxy/ssi.html', "1234567890"), qr/^XYYX$/m,
-    'body in file in proxied subrequest');
+	'body in file in proxied subrequest');
 
 ###############################################################################
 
 sub http_get_body {
-    my ($url, $body, %extra) = @_;
+	my ($url, $body, %extra) = @_;
 
-    my $p = "GET $url HTTP/1.0" . CRLF
-        . "Host: localhost" . CRLF
-        . "Content-Length: " . (length $body) . CRLF . CRLF
-        . $body;
+	my $p = "GET $url HTTP/1.0" . CRLF
+		. "Host: localhost" . CRLF
+		. "Content-Length: " . (length $body) . CRLF . CRLF
+		. $body;
 
-    return http($p, %extra);
+	return http($p, %extra);
 }
 
 ###############################################################################

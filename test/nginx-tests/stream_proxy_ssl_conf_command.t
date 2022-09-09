@@ -17,15 +17,18 @@ BEGIN { use FindBin; chdir($FindBin::Bin); }
 
 use lib 'lib';
 use Test::Nginx;
-use Test::Nginx::Stream qw/ stream /;
 
 ###############################################################################
 
 select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
-my $t = Test::Nginx->new()->has(qw/stream stream_ssl stream_return/)
-    ->has_daemon('openssl');
+my $t = Test::Nginx->new()->has(qw/stream stream_ssl http http_ssl/)
+	->has_daemon('openssl');
+
+$t->{_configure_args} =~ /OpenSSL ([\d\.]+)/;
+plan(skip_all => 'OpenSSL too old') unless defined $1 and $1 ge '1.0.2';
+plan(skip_all => 'no ssl_conf_command') if $t->has_module('BoringSSL');
 
 $t->write_file_expand('nginx.conf', <<'EOF');
 
@@ -50,14 +53,20 @@ stream {
         proxy_ssl_conf_command Certificate override.crt;
         proxy_ssl_conf_command PrivateKey override.key;
     }
+}
+
+http {
+    %%TEST_GLOBALS_HTTP%%
 
     server {
-        listen       127.0.0.1:8081 ssl  %%SSL_ASYNCH%%;
-        return       $ssl_client_s_dn;
+        listen       127.0.0.1:8081 ssl %%SSL_ASYNCH%%;
+        server_name  localhost;
 
         ssl_certificate localhost.crt;
         ssl_certificate_key localhost.key;
         ssl_verify_client optional_no_ca;
+
+        add_header X-Cert $ssl_client_s_dn always;
     }
 }
 
@@ -74,19 +83,18 @@ EOF
 my $d = $t->testdir();
 
 foreach my $name ('localhost', 'override') {
-    system('openssl req -x509 -new '
-        . "-config $d/openssl.conf -subj /CN=$name/ "
-        . "-out $d/$name.crt -keyout $d/$name.key "
-        . ">>$d/openssl.out 2>&1") == 0
-        or die "Can't create certificate for $name: $!\n";
+	system('openssl req -x509 -new '
+		. "-config $d/openssl.conf -subj /CN=$name/ "
+		. "-out $d/$name.crt -keyout $d/$name.key "
+		. ">>$d/openssl.out 2>&1") == 0
+		or die "Can't create certificate for $name: $!\n";
 }
 
 $t->write_file('index.html', '');
-$t->try_run('no proxy_ssl_conf_command')->plan(1);
+$t->run()->plan(1);
 
 ###############################################################################
 
-like(stream('127.0.0.1:' . port(8080))->read(), qr/CN=override/,
-    'Certificate');
+like(http_get('/'), qr/CN=override/, 'proxy_ssl_conf_command');
 
 ###############################################################################

@@ -75,10 +75,10 @@ like(get('/both', 'foo', 'bar'), qr/Header: none.*Body: none/s, 'both');
 ###############################################################################
 
 sub get {
-    my ($uri, $header, $body) = @_;
-    my $cl = length("$body\n");
+	my ($uri, $header, $body) = @_;
+	my $cl = length("$body\n");
 
-    http(<<EOF);
+	http(<<EOF);
 GET $uri HTTP/1.0
 Host: localhost
 X-Header: $header
@@ -89,42 +89,42 @@ EOF
 }
 
 sub http_daemon {
-    my $server = IO::Socket::INET->new(
-        Proto => 'tcp',
-        LocalHost => '127.0.0.1:' . port(8081),
-        Listen => 5,
-        Reuse => 1
-    )
-        or die "Can't create listening socket: $!\n";
+	my $server = IO::Socket::INET->new(
+		Proto => 'tcp',
+		LocalHost => '127.0.0.1:' . port(8081),
+		Listen => 5,
+		Reuse => 1
+	)
+		or die "Can't create listening socket: $!\n";
 
-    local $SIG{PIPE} = 'IGNORE';
+	local $SIG{PIPE} = 'IGNORE';
 
-    while (my $client = $server->accept()) {
-        $client->autoflush(1);
+	while (my $client = $server->accept()) {
+		$client->autoflush(1);
 
-        my $r = '';
+		my $r = '';
 
-        eval {
-            local $SIG{ALRM} = sub { die "timeout\n" };
-            local $SIG{PIPE} = sub { die "sigpipe\n" };
-            alarm(2);
-            $client->sysread($r, 4096);
-            alarm(0);
-        };
-        alarm(0);
-        if ($@) {
-            log_in("died: $@");
-            next;
-        }
+		eval {
+			local $SIG{ALRM} = sub { die "timeout\n" };
+			local $SIG{PIPE} = sub { die "sigpipe\n" };
+			alarm(2);
+			$client->sysread($r, 4096);
+			alarm(0);
+		};
+		alarm(0);
+		if ($@) {
+			log_in("died: $@");
+			next;
+		}
 
-        next if $r eq '';
+		next if $r eq '';
 
-        Test::Nginx::log_core('|| <<', $r);
+		Test::Nginx::log_core('|| <<', $r);
 
-        my $header = $r =~ /x-header: (\S+)/i && $1 || 'none';
-        my $body = $r =~ /\x0d\x0a?\x0d\x0a?(.+)/ && $1 || 'none';
+		my $header = $r =~ /x-header: (\S+)/i && $1 || 'none';
+		my $body = $r =~ /\x0d\x0a?\x0d\x0a?(.+)/ && $1 || 'none';
 
-        print $client <<"EOF";
+		print $client <<"EOF";
 HTTP/1.1 200 OK
 Connection: close
 X-Header: $header
@@ -132,8 +132,8 @@ X-Body: $body
 
 EOF
 
-        close $client;
-    }
+		close $client;
+	}
 }
 
 ###############################################################################

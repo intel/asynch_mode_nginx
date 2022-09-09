@@ -26,7 +26,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http/)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -86,7 +86,7 @@ $t->write_file('time', '');
 $t->write_file('safari', '');
 $t->write_file('none', '');
 $t->write_file('zero', '');
-$t->try_run('no keepalive_time')->plan(21);
+$t->run()->plan(21);
 
 ###############################################################################
 
@@ -100,17 +100,17 @@ is(count_keepalive(http_keepalive('/r', req => 5)), 3, 'keepalive merge limit');
 # keepalive_disable
 
 like(http_keepalive('/', method => 'POST', ua => "MSIE 5.0"),
-    qr/Connection: close/, 'keepalive disable msie6');
+	qr/Connection: close/, 'keepalive disable msie6');
 like(http_keepalive('/', ua => "MSIE 5.0"), qr/Connection: keep-alive/,
-    'keepalive disable msie6 GET');
+	'keepalive disable msie6 GET');
 like(http_keepalive('/', method => 'POST', ua => "MSIE 7.0"),
-    qr/Connection: keep-alive/, 'keepalive disable msie6 modern');
+	qr/Connection: keep-alive/, 'keepalive disable msie6 modern');
 like(http_keepalive('/', ua => "Mac OS X Safari/7534.48.3"),
-    qr/Connection: keep-alive/, 'keepalive disable msie6 safari');
+	qr/Connection: keep-alive/, 'keepalive disable msie6 safari');
 like(http_keepalive('/safari', ua => "Mac OS X Safari/7534.48.3"),
-    qr/Connection: close/, 'keepalive disable safari');
+	qr/Connection: close/, 'keepalive disable safari');
 like(http_keepalive('/none', method => 'POST', ua => "MSIE 5.0"),
-    qr/Connection: keep-alive/, 'keepalive disable none');
+	qr/Connection: keep-alive/, 'keepalive disable none');
 
 # keepalive_timeout
 
@@ -144,13 +144,7 @@ EOF
 read_keepalive($s);
 shutdown($s, 1);
 
-TODO: {
-local $TODO = 'not yet' unless ($^O eq 'MSWin32' or $^O eq 'solaris')
-    or $t->has_version('1.19.9');
-
 ok(IO::Select->new($s)->can_read(3), 'EOF in discard body');
-
-}
 
 $t->stop();
 
@@ -165,52 +159,52 @@ is($t->read_file('test2.log'), "timeout=9\n-\n", 'sent_http_keep_alive');
 ###############################################################################
 
 sub http_keepalive {
-    my ($url, %opts) = @_;
-    my $total = '';
+	my ($url, %opts) = @_;
+	my $total = '';
 
-    $opts{ua} = $opts{ua} || '';
-    $opts{req} = $opts{req} || 1;
-    $opts{sleep} = $opts{sleep} || 0;
-    $opts{method} = $opts{method} || 'GET';
+	$opts{ua} = $opts{ua} || '';
+	$opts{req} = $opts{req} || 1;
+	$opts{sleep} = $opts{sleep} || 0;
+	$opts{method} = $opts{method} || 'GET';
 
-    local $SIG{PIPE} = 'IGNORE';
+	local $SIG{PIPE} = 'IGNORE';
 
-    my $s = http('', start => 1);
+	my $s = http('', start => 1);
 
-    for my $i (1 .. $opts{req}) {
+	for my $i (1 .. $opts{req}) {
 
-        my $sleep = ($i == 1 ? $opts{sleep} : 0);
+		my $sleep = ($i == 1 ? $opts{sleep} : 0);
 
-        http(<<EOF, socket => $s, start => 1, sleep => $sleep);
+		http(<<EOF, socket => $s, start => 1, sleep => $sleep);
 $opts{method} $url HTTP/1.1
 Host: localhost
 User-Agent: $opts{ua}
 
 EOF
 
-        $total .= read_keepalive($s);
-    }
+		$total .= read_keepalive($s);
+	}
 
-    return $total;
+	return $total;
 }
 
 sub read_keepalive {
-    my ($s) = @_;
-    my $data = '';
+	my ($s) = @_;
+	my $data = '';
 
-    while (IO::Select->new($s)->can_read(3)) {
-        sysread($s, my $buffer, 4096) or last;
-        $data .= $buffer;
-        last if $data =~ /^\x0d\x0a/ms;
-    }
+	while (IO::Select->new($s)->can_read(3)) {
+		sysread($s, my $buffer, 4096) or last;
+		$data .= $buffer;
+		last if $data =~ /^\x0d\x0a/ms;
+	}
 
-    log_in($data);
-    return $data;
+	log_in($data);
+	return $data;
 }
 
 sub count_keepalive {
-    my ($str) = @_;
-    return $str =~ s/Connection: keep-alive//g;
+	my ($str) = @_;
+	return $str =~ s/Connection: keep-alive//g;
 }
 
 ###############################################################################

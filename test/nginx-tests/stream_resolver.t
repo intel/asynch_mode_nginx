@@ -25,7 +25,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/stream stream_map stream_return/)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -117,80 +117,80 @@ like($log, qr/nx.example.com could not be resolved/, 'log - not found');
 ###############################################################################
 
 sub reply_handler {
-    my ($recv_data, $port) = @_;
+	my ($recv_data, $port) = @_;
 
-    my (@name, @rdata);
+	my (@name, @rdata);
 
-    use constant NOERROR    => 0;
-    use constant A          => 1;
-    use constant IN         => 1;
+	use constant NOERROR	=> 0;
+	use constant A		=> 1;
+	use constant IN 	=> 1;
 
-    # default values
+	# default values
 
-    my ($hdr, $rcode, $ttl) = (0x8180, NOERROR, 3600);
+	my ($hdr, $rcode, $ttl) = (0x8180, NOERROR, 3600);
 
-    # decode name
+	# decode name
 
-    my ($len, $offset) = (undef, 12);
-    while (1) {
-        $len = unpack("\@$offset C", $recv_data);
-        last if $len == 0;
-        $offset++;
-        push @name, unpack("\@$offset A$len", $recv_data);
-        $offset += $len;
-    }
+	my ($len, $offset) = (undef, 12);
+	while (1) {
+		$len = unpack("\@$offset C", $recv_data);
+		last if $len == 0;
+		$offset++;
+		push @name, unpack("\@$offset A$len", $recv_data);
+		$offset += $len;
+	}
 
-    $offset -= 1;
-    my ($id, $type, $class) = unpack("n x$offset n2", $recv_data);
+	$offset -= 1;
+	my ($id, $type, $class) = unpack("n x$offset n2", $recv_data);
 
-    my $name = join('.', @name);
-    if ($name eq 'a.example.com' && $type == A) {
-        push @rdata, rd_addr($ttl, '127.0.0.1');
+	my $name = join('.', @name);
+	if ($name eq 'a.example.com' && $type == A) {
+		push @rdata, rd_addr($ttl, '127.0.0.1');
 
-    } elsif ($name =~ qr/many.example.com/ && $type == A) {
-        push @rdata, rd_addr($ttl, '127.0.0.2');
-        push @rdata, rd_addr($ttl, '127.0.0.2');
-        push @rdata, rd_addr($ttl, '127.0.0.1');
-    }
+	} elsif ($name =~ qr/many.example.com/ && $type == A) {
+		push @rdata, rd_addr($ttl, '127.0.0.2');
+		push @rdata, rd_addr($ttl, '127.0.0.2');
+		push @rdata, rd_addr($ttl, '127.0.0.1');
+	}
 
-    $len = @name;
-    pack("n6 (C/a*)$len x n2", $id, $hdr | $rcode, 1, scalar @rdata,
-        0, 0, @name, $type, $class) . join('', @rdata);
+	$len = @name;
+	pack("n6 (C/a*)$len x n2", $id, $hdr | $rcode, 1, scalar @rdata,
+		0, 0, @name, $type, $class) . join('', @rdata);
 }
 
 sub rd_addr {
-    my ($ttl, $addr) = @_;
+	my ($ttl, $addr) = @_;
 
-    my $code = 'split(/\./, $addr)';
+	my $code = 'split(/\./, $addr)';
 
-    return pack 'n3N', 0xc00c, A, IN, $ttl if $addr eq '';
+	return pack 'n3N', 0xc00c, A, IN, $ttl if $addr eq '';
 
-    pack 'n3N nC4', 0xc00c, A, IN, $ttl, eval "scalar $code", eval($code);
+	pack 'n3N nC4', 0xc00c, A, IN, $ttl, eval "scalar $code", eval($code);
 }
 
 sub dns_daemon {
-    my ($port, $t) = @_;
+	my ($port, $t) = @_;
 
-    my ($data, $recv_data);
-    my $socket = IO::Socket::INET->new(
-        LocalAddr    => '127.0.0.1',
-        LocalPort    => $port,
-        Proto        => 'udp',
-    )
-        or die "Can't create listening socket: $!\n";
+	my ($data, $recv_data);
+	my $socket = IO::Socket::INET->new(
+		LocalAddr    => '127.0.0.1',
+		LocalPort    => $port,
+		Proto        => 'udp',
+	)
+		or die "Can't create listening socket: $!\n";
 
-    local $SIG{PIPE} = 'IGNORE';
+	local $SIG{PIPE} = 'IGNORE';
 
-    # signal we are ready
+	# signal we are ready
 
-    open my $fh, '>', $t->testdir() . '/' . $port;
-    close $fh;
+	open my $fh, '>', $t->testdir() . '/' . $port;
+	close $fh;
 
-    while (1) {
-        $socket->recv($recv_data, 65536);
-        $data = reply_handler($recv_data, $port);
-        $socket->send($data);
-    }
+	while (1) {
+		$socket->recv($recv_data, 65536);
+		$data = reply_handler($recv_data, $port);
+		$socket->send($data);
+	}
 }
 
 ###############################################################################

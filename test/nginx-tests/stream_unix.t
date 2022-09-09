@@ -66,8 +66,8 @@ $t->run();
 # wait for unix socket to appear
 
 for (1 .. 50) {
-    last if -S $path;
-    select undef, undef, undef, 0.1;
+	last if -S $path;
+	select undef, undef, undef, 0.1;
 }
 
 ###############################################################################
@@ -80,31 +80,31 @@ is(stream('127.0.0.1:' . port(8081))->io($str), $str, 'upstream');
 ###############################################################################
 
 sub stream_daemon {
-    my $server = IO::Socket::UNIX->new(
-        Proto => 'tcp',
-        Local => shift,
-        Listen => 5,
-        Reuse => 1
-    )
-        or die "Can't create listening socket: $!\n";
+	my $server = IO::Socket::UNIX->new(
+		Proto => 'tcp',
+		Local => shift,
+		Listen => 5,
+		Reuse => 1
+	)
+		or die "Can't create listening socket: $!\n";
 
-    local $SIG{PIPE} = 'IGNORE';
+	local $SIG{PIPE} = 'IGNORE';
 
-    while (my $client = $server->accept()) {
-        $client->autoflush(1);
+	while (my $client = $server->accept()) {
+		$client->autoflush(1);
 
-        log2c("(new connection $client)");
+		log2c("(new connection $client)");
 
-        $client->sysread(my $buffer, 65536) or next;
+		$client->sysread(my $buffer, 65536) or next;
 
-        log2i("$client $buffer");
+		log2i("$client $buffer");
 
-        log2o("$client $buffer");
+		log2o("$client $buffer");
 
-        $client->syswrite($buffer);
+		$client->syswrite($buffer);
 
-        close $client;
-    }
+		close $client;
+	}
 }
 
 sub log2i { Test::Nginx::log_core('|| <<', @_); }

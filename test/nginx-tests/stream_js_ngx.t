@@ -25,7 +25,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/stream stream_return/)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -84,7 +84,7 @@ $t->try_run('no njs ngx')->plan(4);
 
 TODO: {
 local $TODO = 'not yet'
-    unless http_get('/njs') =~ /^([.0-9]+)$/m && $1 ge '0.5.0';
+	unless http_get('/njs') =~ /^([.0-9]+)$/m && $1 ge '0.5.0';
 
 is(stream('127.0.0.1:' . port(8081))->read(), 'OK', 'log var');
 

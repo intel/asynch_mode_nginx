@@ -23,7 +23,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http proxy cache/)->plan(17)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -77,7 +77,7 @@ $t->waitforsocket('127.0.0.1:' . port(8081));
 # sequential requests
 
 for my $i (1 .. 5) {
-    like(http_get('/seq'), qr/request 1/, 'sequential request ' . $i);
+	like(http_get('/seq'), qr/request 1/, 'sequential request ' . $i);
 }
 
 # parallel requests
@@ -85,11 +85,11 @@ for my $i (1 .. 5) {
 my @sockets;
 
 for my $i (1 .. 5) {
-    $sockets[$i] = http_get('/par1', start => 1);
+	$sockets[$i] = http_get('/par1', start => 1);
 }
 
 for my $i (1 .. 5) {
-    like(http_end($sockets[$i]), qr/request 1/, 'parallel request ' . $i);
+	like(http_end($sockets[$i]), qr/request 1/, 'parallel request ' . $i);
 }
 
 like(http_get('/par1'), qr/request 1/, 'first request cached');
@@ -97,7 +97,7 @@ like(http_get('/par1'), qr/request 1/, 'first request cached');
 # since 1.7.8, parallel requests with cache lock timeout expired are not cached
 
 for my $i (1 .. 3) {
-    $sockets[$i] = http_get('/timeout', start => 1);
+	$sockets[$i] = http_get('/timeout', start => 1);
 }
 
 like(http_end($sockets[1]), qr/request 1/, 'lock timeout - first');
@@ -111,7 +111,7 @@ like(http_get('/timeout'), qr/request 1/, 'lock timeout - first only cached');
 # no lock
 
 for my $i (1 .. 3) {
-    $sockets[$i] = http_get('/nolock', start => 1);
+	$sockets[$i] = http_get('/nolock', start => 1);
 }
 
 $rest = join '', map { http_end($sockets[$_]) } (1 .. 3);
@@ -123,43 +123,43 @@ like(http_get('/nolock'), qr/request 3/, 'nolock - last cached');
 ###############################################################################
 
 sub http_fake_daemon {
-    my $server = IO::Socket::INET->new(
-        Proto => 'tcp',
-        LocalAddr => '127.0.0.1:' . port(8081),
-        Listen => 5,
-        Reuse => 1
-    )
-        or die "Can't create listening socket: $!\n";
+	my $server = IO::Socket::INET->new(
+		Proto => 'tcp',
+		LocalAddr => '127.0.0.1:' . port(8081),
+		Listen => 5,
+		Reuse => 1
+	)
+		or die "Can't create listening socket: $!\n";
 
-    my $num = 0;
-    my $uri = '';
+	my $num = 0;
+	my $uri = '';
 
-    while (my $client = $server->accept()) {
-        $client->autoflush(1);
+	while (my $client = $server->accept()) {
+		$client->autoflush(1);
 
-        while (<$client>) {
-            if (/GET (.*) HTTP/ && $1 ne $uri) {
-                $uri = $1;
-                $num = 0;
-            }
+		while (<$client>) {
+			if (/GET (.*) HTTP/ && $1 ne $uri) {
+				$uri = $1;
+				$num = 0;
+			}
 
-            $uri = $1 if /GET (.*) HTTP/;
-            last if /^\x0d?\x0a?$/;
-        }
+			$uri = $1 if /GET (.*) HTTP/;
+			last if /^\x0d?\x0a?$/;
+		}
 
-        next unless $uri;
+		next unless $uri;
 
-        select(undef, undef, undef, 1.1);
+		select(undef, undef, undef, 1.1);
 
-        $num++;
-        print $client <<"EOF";
+		$num++;
+		print $client <<"EOF";
 HTTP/1.1 200 OK
 Cache-Control: max-age=300
 Connection: close
 
 request $num
 EOF
-    }
+	}
 }
 
 ###############################################################################

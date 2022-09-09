@@ -32,7 +32,7 @@ eval { IO::Socket::SSL->can_alpn() or die; };
 plan(skip_all => 'OpenSSL ALPN support required') if $@;
 
 my $t = Test::Nginx->new()->has(qw/http http_ssl sni http_v2/)
-    ->has_daemon('openssl');
+	->has_daemon('openssl');
 
 $t->write_file_expand('nginx.conf', <<'EOF');
 
@@ -54,7 +54,7 @@ http {
     add_header X-Verify $ssl_client_verify;
 
     server {
-        listen       127.0.0.1:8080 ssl http2;
+        listen       127.0.0.1:8080 ssl http2 %%SSL_ASYNCH%%;
         server_name  localhost;
 
         ssl_client_certificate client.crt;
@@ -63,7 +63,7 @@ http {
     }
 
     server {
-        listen       127.0.0.1:8080 ssl http2;
+        listen       127.0.0.1:8080 ssl http2 %%SSL_ASYNCH%%;
         server_name  example.com;
 
         location / { }
@@ -83,11 +83,11 @@ EOF
 my $d = $t->testdir();
 
 foreach my $name ('localhost', 'client') {
-    system('openssl req -x509 -new '
-        . "-config $d/openssl.conf -subj /CN=$name/ "
-        . "-out $d/$name.crt -keyout $d/$name.key "
-        . ">>$d/openssl.out 2>&1") == 0
-        or die "Can't create certificate for $name: $!\n";
+	system('openssl req -x509 -new '
+		. "-config $d/openssl.conf -subj /CN=$name/ "
+		. "-out $d/$name.crt -keyout $d/$name.key "
+		. ">>$d/openssl.out 2>&1") == 0
+		or die "Can't create certificate for $name: $!\n";
 }
 
 $t->write_file('t', 'SEE-THIS');
@@ -109,52 +109,52 @@ is(get('localhost', 'example.com')->{':status'}, '421', 'misdirected');
 ###############################################################################
 
 sub get_ssl_socket {
-    my ($sni) = @_;
-    my $s;
+	my ($sni) = @_;
+	my $s;
 
-    eval {
-        local $SIG{ALRM} = sub { die "timeout\n" };
-        local $SIG{PIPE} = sub { die "sigpipe\n" };
-        alarm(8);
-        $s = IO::Socket::SSL->new(
-            Proto => 'tcp',
-            PeerAddr => '127.0.0.1',
-            PeerPort => port(8080),
-            SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_NONE(),
-            SSL_alpn_protocols => [ 'h2' ],
-            SSL_hostname => $sni,
-            SSL_cert_file => "$d/client.crt",
-            SSL_key_file => "$d/client.key",
-            SSL_error_trap => sub { die $_[1] }
-        );
-        alarm(0);
-    };
-    alarm(0);
+	eval {
+		local $SIG{ALRM} = sub { die "timeout\n" };
+		local $SIG{PIPE} = sub { die "sigpipe\n" };
+		alarm(8);
+		$s = IO::Socket::SSL->new(
+			Proto => 'tcp',
+			PeerAddr => '127.0.0.1',
+			PeerPort => port(8080),
+			SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_NONE(),
+			SSL_alpn_protocols => [ 'h2' ],
+			SSL_hostname => $sni,
+			SSL_cert_file => "$d/client.crt",
+			SSL_key_file => "$d/client.key",
+			SSL_error_trap => sub { die $_[1] }
+		);
+		alarm(0);
+	};
+	alarm(0);
 
-    if ($@) {
-        log_in("died: $@");
-        return undef;
-    }
+	if ($@) {
+		log_in("died: $@");
+		return undef;
+	}
 
-    return $s;
+	return $s;
 }
 
 sub get {
-    my ($sni, $host) = @_;
+	my ($sni, $host) = @_;
 
-    $host = $sni if !defined $host;
+	$host = $sni if !defined $host;
 
-    my $s = get_ssl_socket($sni);
-    my $sess = Test::Nginx::HTTP2->new(port(8080), socket => $s);
-    my $sid = $sess->new_stream({ headers => [
-        { name => ':method', value => 'GET', mode => 0 },
-        { name => ':scheme', value => 'http', mode => 0 },
-        { name => ':path', value => '/t', mode => 1 },
-        { name => ':authority', value => $host, mode => 1 }]});
-    my $frames = $sess->read(all => [{ sid => $sid, fin => 1 }]);
+	my $s = get_ssl_socket($sni);
+	my $sess = Test::Nginx::HTTP2->new(port(8080), socket => $s);
+	my $sid = $sess->new_stream({ headers => [
+		{ name => ':method', value => 'GET', mode => 0 },
+		{ name => ':scheme', value => 'http', mode => 0 },
+		{ name => ':path', value => '/t', mode => 1 },
+		{ name => ':authority', value => $host, mode => 1 }]});
+	my $frames = $sess->read(all => [{ sid => $sid, fin => 1 }]);
 
-    my ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
-    return $frame->{'headers'};
+	my ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
+	return $frame->{'headers'};
 }
 
 ###############################################################################

@@ -95,58 +95,58 @@ is(many('/close2', 30, delay => 0.2), "$p1: 6, $p2: 24", 'failures delay');
 ###############################################################################
 
 sub many {
-    my ($uri, $count, %opts) = @_;
-    my %ports;
+	my ($uri, $count, %opts) = @_;
+	my %ports;
 
-    for (1 .. $count) {
-        if (http_get($uri) =~ /X-Port: (\d+)/) {
-            $ports{$1} = 0 unless defined $ports{$1};
-            $ports{$1}++;
-        }
+	for (1 .. $count) {
+		if (http_get($uri) =~ /X-Port: (\d+)/) {
+			$ports{$1} = 0 unless defined $ports{$1};
+			$ports{$1}++;
+		}
 
-        select undef, undef, undef, $opts{delay} if $opts{delay};
-    }
+		select undef, undef, undef, $opts{delay} if $opts{delay};
+	}
 
-    my @keys = map { my $p = $_; grep { $p == $_ } keys %ports } @ports;
-    return join ', ', map { $_ . ": " . $ports{$_} } @keys;
+	my @keys = map { my $p = $_; grep { $p == $_ } keys %ports } @ports;
+	return join ', ', map { $_ . ": " . $ports{$_} } @keys;
 }
 
 ###############################################################################
 
 sub http_daemon {
-    my ($port) = @_;
-    my $count = 1;
+	my ($port) = @_;
+	my $count = 1;
 
-    my $server = IO::Socket::INET->new(
-        Proto => 'tcp',
-        LocalHost => '127.0.0.1',
-        LocalPort => $port,
-        Listen => 5,
-        Reuse => 1
-    )
-        or die "Can't create listening socket: $!\n";
+	my $server = IO::Socket::INET->new(
+		Proto => 'tcp',
+		LocalHost => '127.0.0.1',
+		LocalPort => $port,
+		Listen => 5,
+		Reuse => 1
+	)
+		or die "Can't create listening socket: $!\n";
 
-    local $SIG{PIPE} = 'IGNORE';
+	local $SIG{PIPE} = 'IGNORE';
 
-    while (my $client = $server->accept()) {
-        $client->autoflush(1);
+	while (my $client = $server->accept()) {
+		$client->autoflush(1);
 
-        my $headers = '';
-        my $uri = '';
+		my $headers = '';
+		my $uri = '';
 
-        while (<$client>) {
-            $headers .= $_;
-            last if (/^\x0d?\x0a?$/);
-        }
+		while (<$client>) {
+			$headers .= $_;
+			last if (/^\x0d?\x0a?$/);
+		}
 
-        $uri = $1 if $headers =~ /^\S+\s+([^ ]+)\s+HTTP/i;
+		$uri = $1 if $headers =~ /^\S+\s+([^ ]+)\s+HTTP/i;
 
-        if ($uri =~ 'close' && $port == port(8081) && $count++ % 3 == 0)
-        {
-            next;
-        }
+		if ($uri =~ 'close' && $port == port(8081) && $count++ % 3 == 0)
+		{
+			next;
+		}
 
-        print $client <<EOF;
+		print $client <<EOF;
 HTTP/1.1 200 OK
 Connection: close
 X-Port: $port
@@ -154,8 +154,8 @@ X-Port: $port
 OK
 EOF
 
-        close $client;
-    }
+		close $client;
+	}
 }
 
 ###############################################################################

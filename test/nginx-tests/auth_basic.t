@@ -24,8 +24,8 @@ use Test::Nginx;
 select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
-my $t = Test::Nginx->new()->has(qw/http auth_basic/)->plan(21)
-    ->write_file_expand('nginx.conf', <<'EOF');
+my $t = Test::Nginx->new()->has(qw/http auth_basic/)->plan(24)
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -49,6 +49,12 @@ http {
                 auth_basic off;
                 alias %%TESTDIR%%/;
             }
+
+            location /var {
+                # prepended with conf_prefix
+                auth_basic_user_file $arg_f;
+                alias %%TESTDIR%%/;
+	    }
         }
     }
 }
@@ -58,19 +64,19 @@ EOF
 $t->write_file('index.html', 'SEETHIS');
 
 $t->write_file(
-    'htpasswd',
-    'crypt:' . crypt('password', 'salt') . "\n" .
-    'crypt1:' . crypt('password', '$1$salt$') . "\n" .
-    'crypt2:' . '$1$' . "\n" .
-    'apr1:' . '$apr1$salt$Xxd1irWT9ycqoYxGFn4cb.' . "\n" .
-    'apr12:' . '$apr1$' . "\n" .
-    'plain:' . '{PLAIN}password' . "\n" .
-    'ssha:' . '{SSHA}yI6cZwQadOA1e+/f+T+H3eCQQhRzYWx0' . "\n" .
-    'ssha2:' . '{SSHA}_____wQadOA1e+/f+T+H3eCQQhRzYWx0' . "\n" .
-    'ssha3:' . '{SSHA}Zm9vCg==' . "\n" .
-    'sha:' . '{SHA}W6ph5Mm5Pz8GgiULbPgzG37mj9g=' . "\n" .
-    'sha2:' . '{SHA}_____Mm5Pz8GgiULbPgzG37mj9g=' . "\n" .
-    'sha3:' . '{SHA}Zm9vCg==' . "\n"
+	'htpasswd',
+	'crypt:' . crypt('password', 'salt') . "\n" .
+	'crypt1:' . crypt('password', '$1$salt$') . "\n" .
+	'crypt2:' . '$1$' . "\n" .
+	'apr1:' . '$apr1$salt$Xxd1irWT9ycqoYxGFn4cb.' . "\n" .
+	'apr12:' . '$apr1$' . "\n" .
+	'plain:' . '{PLAIN}password' . "\n" .
+	'ssha:' . '{SSHA}yI6cZwQadOA1e+/f+T+H3eCQQhRzYWx0' . "\n" .
+	'ssha2:' . '{SSHA}_____wQadOA1e+/f+T+H3eCQQhRzYWx0' . "\n" .
+	'ssha3:' . '{SSHA}Zm9vCg==' . "\n" .
+	'sha:' . '{SHA}W6ph5Mm5Pz8GgiULbPgzG37mj9g=' . "\n" .
+	'sha2:' . '{SHA}_____Mm5Pz8GgiULbPgzG37mj9g=' . "\n" .
+	'sha3:' . '{SHA}Zm9vCg==' . "\n"
 );
 
 $t->run();
@@ -90,7 +96,7 @@ like(http_get_auth('/', 'crypt1', 'password'), qr!SEETHIS!, 'crypt $1$ (md5)');
 unlike(http_get_auth('/', 'crypt1', '123'), qr!SEETHIS!, 'crypt $1$ wrong');
 
 like(http_get_auth('/', 'crypt2', '1'), qr!401 Unauthorized!,
-    'crypt $1$ broken');
+	'crypt $1$ broken');
 
 }
 
@@ -113,14 +119,21 @@ like(http_get_auth('/', 'sha3', '1'), qr!401 Unauthorized!, 'sha broken 2');
 like(http_get_auth('/', 'notfound', '1'), qr!401 Unauthorized!, 'not found');
 like(http_get('/inner/'), qr!SEETHIS!, 'inner off');
 
+like(http_get_auth('/var/?f=htpasswd', 'apr1', 'password'), qr!SEETHIS!,
+	'user file variable');
+unlike(http_get_auth('/var/?f=nx', 'apr1', 'password'), qr!SEETHIS!,
+	'user file variable not found');
+unlike(http_get_auth('/var/', 'apr1', 'password'), qr!SEETHIS!,
+	'user file variable bad value');
+
 ###############################################################################
 
 sub http_get_auth {
-    my ($url, $user, $password) = @_;
+	my ($url, $user, $password) = @_;
 
-    my $auth = encode_base64($user . ':' . $password, '');
+	my $auth = encode_base64($user . ':' . $password, '');
 
-    return http(<<EOF);
+	return http(<<EOF);
 GET $url HTTP/1.0
 Host: localhost
 Authorization: Basic $auth

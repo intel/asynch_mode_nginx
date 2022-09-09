@@ -64,17 +64,17 @@ like(many('/', 20), qr/first: 12, second: 2, third: 6/, 'split');
 ###############################################################################
 
 sub many {
-    my ($uri, $count) = @_;
-    my %dist;
+	my ($uri, $count) = @_;
+	my %dist;
 
-    for (1 .. $count) {
-        if (my $data = stream('127.0.0.1:' . port(8080))->read()) {
-            $dist{$data} = 0 unless defined $data;
-            $dist{$data}++;
-        }
-    }
+	for (1 .. $count) {
+		if (my $data = stream('127.0.0.1:' . port(8080))->read()) {
+			$dist{$data} = 0 unless defined $data;
+			$dist{$data}++;
+		}
+	}
 
-    return join ', ', map { $_ . ": " . $dist{$_} } sort keys %dist;
+	return join ', ', map { $_ . ": " . $dist{$_} } sort keys %dist;
 }
 
 ###############################################################################

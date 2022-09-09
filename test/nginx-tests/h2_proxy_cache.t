@@ -25,7 +25,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http http_v2 proxy cache/)->plan(9)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -91,11 +91,11 @@ is($frame->{data}, 'SEE-THIS', 'proxy cache - DATA payload');
 $t->write_file('t.html', 'NOOP');
 
 $sid = $s->new_stream({ headers => [
-    { name => ':method', value => 'GET', mode => 0 },
-    { name => ':scheme', value => 'http', mode => 0 },
-    { name => ':path', value => '/cache/t.html' },
-    { name => ':authority', value => 'localhost', mode => 1 },
-    { name => 'if-none-match', value => $etag }]});
+	{ name => ':method', value => 'GET', mode => 0 },
+	{ name => ':scheme', value => 'http', mode => 0 },
+	{ name => ':path', value => '/cache/t.html' },
+	{ name => ':authority', value => 'localhost', mode => 1 },
+	{ name => 'if-none-match', value => $etag }]});
 $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
@@ -131,12 +131,12 @@ ok(!grep ({ $_->{type} eq "DATA" } @$frames), 'proxy cache HEAD - no body');
 
 $s = Test::Nginx::HTTP2->new();
 $sid = $s->new_stream(
-    { path => '/proxy_buffering_off/t.html?1', method => 'HEAD' });
+	{ path => '/proxy_buffering_off/t.html?1', method => 'HEAD' });
 
 $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 push @$frames, $_ for @{$s->read(all => [{ sid => $sid }], wait => 0.2)};
 ok(!grep ({ $_->{type} eq "DATA" } @$frames),
-    'proxy cache HEAD buffering off - no body');
+	'proxy cache HEAD buffering off - no body');
 
 SKIP: {
 skip 'win32', 1 if $^O eq 'MSWin32';

@@ -29,7 +29,7 @@ select STDOUT; $| = 1;
 local $SIG{PIPE} = 'IGNORE';
 
 my $t = Test::Nginx->new()->has(qw/mail smtp http rewrite/)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -93,7 +93,7 @@ http {
 EOF
 
 $t->run_daemon(\&Test::Nginx::SMTP::smtp_test_daemon);
-$t->try_run('no proxy_protocol')->plan(8);
+$t->run()->plan(8);
 
 $t->waitforsocket('127.0.0.1:' . port(8026));
 
@@ -113,7 +113,7 @@ $s->authok('auth with proxy_protocol');
 
 $s->send('XPROXY');
 $s->check(qr/^211 PROXY TCP4 127.0.0.1 127.0.0.1 \d+ \d+/,
-    'proxy protocol to backend');
+	'proxy protocol to backend');
 
 # connection with PROXY protocol and set_realip_from
 
@@ -130,6 +130,6 @@ $s->authok('auth with proxy_protocol and realip');
 
 $s->send('XPROXY');
 $s->check(qr/^211 PROXY TCP4 192.0.2.1 127.0.0.1 \d+ \d+/,
-    'proxy_protocol to backend and realip');
+	'proxy_protocol to backend and realip');
 
 ###############################################################################

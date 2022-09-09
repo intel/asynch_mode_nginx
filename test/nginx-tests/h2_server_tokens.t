@@ -25,7 +25,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http http_v2 rewrite/)
-    ->write_file_expand('nginx.conf', <<'EOF');
+	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -116,25 +116,25 @@ like(body('/b/404'), qr/$re/, 'http2 tokens build 404 body');
 ###############################################################################
 
 sub header_server {
-    my ($path) = shift;
+	my ($path) = shift;
 
-    my $s = Test::Nginx::HTTP2->new();
-    my $sid = $s->new_stream({ path => $path });
-    my $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
+	my $s = Test::Nginx::HTTP2->new();
+	my $sid = $s->new_stream({ path => $path });
+	my $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
-    my ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
-    return $frame->{headers}->{'server'};
+	my ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
+	return $frame->{headers}->{'server'};
 }
 
 sub body {
-    my ($path) = shift;
+	my ($path) = shift;
 
-    my $s = Test::Nginx::HTTP2->new();
-    my $sid = $s->new_stream({ path => $path });
-    my $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
+	my $s = Test::Nginx::HTTP2->new();
+	my $sid = $s->new_stream({ path => $path });
+	my $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
-    my ($frame) = grep { $_->{type} eq "DATA" } @$frames;
-    return $frame->{'data'};
+	my ($frame) = grep { $_->{type} eq "DATA" } @$frames;
+	return $frame->{'data'};
 }
 
 ###############################################################################

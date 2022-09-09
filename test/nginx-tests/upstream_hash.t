@@ -181,13 +181,8 @@ like(many('/c?a=1', 10), qr/($p1|$p2|$p3): 10/, 'stable hash - consistent');
 
 # fallback to round-robin
 
-TODO: {
-local $TODO = 'not yet' unless $t->has_version('1.17.1');
-
 like(many('/?a=', 6), qr/$p1: 2, $p2: 2, $p3: 2/, 'empty key');
 like(many('/c?a=', 6), qr/$p1: 2, $p2: 2, $p3: 2/, 'empty key - consistent');
-
-}
 
 my @res = iter('/', 10);
 
@@ -208,9 +203,9 @@ is(@res, 20, 'all hashed peers - bad');
 is(@res, 20, 'all hashed peers - bad consistent');
 
 like(http_get('/busy'), qr/X-IP: 127.0.0.1:$p1, bad/,
-    'upstream name - busy');
+	'upstream name - busy');
 like(http_get('/cbusy'), qr/X-IP: 127.0.0.1:$p1, cbad/,
-    'upstream name - busy consistent');
+	'upstream name - busy consistent');
 
 ###############################################################################
 
@@ -218,45 +213,45 @@ like(http_get('/cbusy'), qr/X-IP: 127.0.0.1:$p1, cbad/,
 # by @args present in $p, but absent in $p2, for the same indices.
 
 sub cmp_peers {
-    my ($p, $p2, @args) = @_;
+	my ($p, $p2, @args) = @_;
 
-    for my $i (0 .. $#$p) {
-        next if @{$p}[$i] == @{$p2}[$i];
-        next if (grep $_ == @{$p}[$i], @args);
-        return 0;
-    }
+	for my $i (0 .. $#$p) {
+		next if @{$p}[$i] == @{$p2}[$i];
+		next if (grep $_ == @{$p}[$i], @args);
+		return 0;
+	}
 
-    return 1;
+	return 1;
 }
 
 # series of requests, each with unique hash key
 
 sub iter {
-    my ($uri, $count) = @_;
-    my @res;
+	my ($uri, $count) = @_;
+	my @res;
 
-    for my $i (1 .. $count) {
-        if (http_get("$uri/?a=$i") =~ /X-Port: (\d+)/) {
-            push @res, $1 if defined $1;
-        }
-    }
+	for my $i (1 .. $count) {
+		if (http_get("$uri/?a=$i") =~ /X-Port: (\d+)/) {
+			push @res, $1 if defined $1;
+		}
+	}
 
-    return @res;
+	return @res;
 }
 
 sub many {
-    my ($uri, $count) = @_;
-    my %ports;
+	my ($uri, $count) = @_;
+	my %ports;
 
-    for (1 .. $count) {
-        if (http_get($uri) =~ /X-Port: (\d+)/) {
-            $ports{$1} = 0 unless defined $ports{$1};
-            $ports{$1}++;
-        }
-    }
+	for (1 .. $count) {
+		if (http_get($uri) =~ /X-Port: (\d+)/) {
+			$ports{$1} = 0 unless defined $ports{$1};
+			$ports{$1}++;
+		}
+	}
 
-    my @keys = map { my $p = $_; grep { $p == $_ } keys %ports } @ports;
-    return join ', ', map { $_ . ": " . $ports{$_} } @keys;
+	my @keys = map { my $p = $_; grep { $p == $_ } keys %ports } @ports;
+	return join ', ', map { $_ . ": " . $ports{$_} } @keys;
 }
 
 ###############################################################################

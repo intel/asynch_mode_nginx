@@ -246,7 +246,7 @@ is($data{geo_from_addr}, 'loopback', 'geo from addr');
 is($data{geo_from_var}, 'test', 'geo from var');
 
 is(stream('127.0.0.1:' . port(8085))->read(), 'default',
-    'geo delete range from variable');
+	'geo delete range from variable');
 
 is(stream('127.0.0.1:' . port(8081))->read(), 'default', 'geo default');
 is(stream('127.0.0.1:' . port(8082))->read(), 'world', 'geo world');

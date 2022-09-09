@@ -25,12 +25,12 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http rewrite http_v2 grpc/)
-    ->has(qw/upstream_keepalive http_ssl/)->has_daemon('openssl');
+	->has(qw/upstream_keepalive http_ssl/)->has_daemon('openssl');
 
 $t->{_configure_args} =~ /OpenSSL ([\d\.]+)/;
 plan(skip_all => 'OpenSSL too old') unless defined $1 and $1 ge '1.0.2';
 
-$t->write_file_expand('nginx.conf', <<'EOF')->plan(33);
+$t->write_file_expand('nginx.conf', <<'EOF')->plan(38);
 
 %%TEST_GLOBALS%%
 
@@ -57,6 +57,8 @@ http {
         ssl_verify_client optional;
         ssl_client_certificate client.crt;
 
+        http2_body_preread_size 128k;
+
         location / {
             grpc_pass 127.0.0.1:8082;
             add_header X-Connection $connection;
@@ -67,6 +69,7 @@ http {
         listen       127.0.0.1:8080 http2;
         server_name  localhost;
         %%GRPC_ASYNCH_ENABLE%%
+        http2_body_preread_size 128k;
 
         location / {
             grpc_pass grpcs://127.0.0.1:8081;
@@ -106,23 +109,23 @@ EOF
 my $d = $t->testdir();
 
 foreach my $name ('localhost') {
-    system('openssl req -x509 -new '
-        . "-config $d/openssl.conf -subj /CN=$name/ "
-        . "-out $d/$name.crt -keyout $d/$name.key "
-        . ">>$d/openssl.out 2>&1") == 0
-        or die "Can't create certificate for $name: $!\n";
+	system('openssl req -x509 -new '
+		. "-config $d/openssl.conf -subj /CN=$name/ "
+		. "-out $d/$name.crt -keyout $d/$name.key "
+		. ">>$d/openssl.out 2>&1") == 0
+		or die "Can't create certificate for $name: $!\n";
 }
 
 foreach my $name ('client') {
-    system("openssl genrsa -out $d/$name.key -passout pass:$name "
-        . "-aes128 2048 >>$d/openssl.out 2>&1") == 0
-        or die "Can't create private key: $!\n";
-    system('openssl req -x509 -new '
-        . "-config $d/openssl.conf -subj /CN=$name/ "
-        . "-out $d/$name.crt "
-        . "-key $d/$name.key -passin pass:$name"
-        . ">>$d/openssl.out 2>&1") == 0
-        or die "Can't create certificate for $name: $!\n";
+	system("openssl genrsa -out $d/$name.key -passout pass:$name "
+		. "-aes128 2048 >>$d/openssl.out 2>&1") == 0
+		or die "Can't create private key: $!\n";
+	system('openssl req -x509 -new '
+		. "-config $d/openssl.conf -subj /CN=$name/ "
+		. "-out $d/$name.crt "
+		. "-key $d/$name.key -passin pass:$name"
+		. ">>$d/openssl.out 2>&1") == 0
+		or die "Can't create certificate for $name: $!\n";
 }
 
 sleep 1 if $^O eq 'MSWin32';
@@ -145,7 +148,7 @@ is($frame->{headers}{':scheme'}, 'http', 'request - scheme');
 is($frame->{headers}{':path'}, '/SayHello', 'request - path');
 is($frame->{headers}{':authority'}, "127.0.0.1:$p", 'request - authority');
 is($frame->{headers}{'content-type'}, 'application/grpc',
-    'request - content type');
+	'request - content type');
 is($frame->{headers}{te}, 'trailers', 'request - te');
 
 $frames = $f->{data}('Hello');
@@ -166,7 +169,7 @@ is($frame->{flags}, 4, 'response - HEADERS flags');
 is($frame->{sid}, 1, 'response - HEADERS sid');
 is($frame->{headers}{':status'}, '200', 'response - status');
 is($frame->{headers}{'content-type'}, 'application/grpc',
-    'response - content type');
+	'response - content type');
 ok($frame->{headers}{server}, 'response - server');
 ok($frame->{headers}{date}, 'response - date');
 ok(my $c = $frame->{headers}{'x-connection'}, 'response - connection');
@@ -191,6 +194,31 @@ $frames = $f->{http_end}();
 ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
 cmp_ok($frame->{headers}{'x-connection'}, '>', $c, 'response 2 - connection');
 
+# flow control
+
+$f->{http_start}('/FlowControl');
+$frames = $f->{data_len}(('Hello' x 13000) . ('x' x 550), 65535);
+my $sum = eval join '+', map { $_->{type} eq "DATA" && $_->{length} } @$frames;
+is($sum, 65535, 'flow control - iws length');
+
+$f->{update}(10);
+$f->{update_sid}(10);
+
+$frames = $f->{data_len}(undef, 10);
+($frame) = grep { $_->{type} eq "DATA" } @$frames;
+is($frame->{length}, 10, 'flow control - update length');
+is($frame->{flags}, 0, 'flow control - update flags');
+
+$f->{update_sid}(10);
+$f->{update}(10);
+
+$frames = $f->{data_len}(undef, 5);
+($frame) = grep { $_->{type} eq "DATA" } @$frames;
+is($frame->{length}, 5, 'flow control - rest length');
+is($frame->{flags}, 1, 'flow control - rest flags');
+
+$f->{http_end}();
+
 # upstream keepalive
 
 $f->{http_start}('/KeepAlive');
@@ -208,86 +236,97 @@ is($frame->{headers}{'x-connection'}, $c, 'keepalive - connection reuse');
 ###############################################################################
 
 sub grpc {
-    my ($server, $client, $f, $s, $c, $sid, $uri);
+	my ($server, $client, $f, $s, $c, $sid, $uri);
 
-    $server = IO::Socket::INET->new(
-        Proto => 'tcp',
-        LocalHost => '127.0.0.1',
-        LocalPort => $p,
-        Listen => 5,
-        Reuse => 1
-    )
-        or die "Can't create listening socket: $!\n";
+	$server = IO::Socket::INET->new(
+		Proto => 'tcp',
+		LocalHost => '127.0.0.1',
+		LocalPort => $p,
+		Listen => 5,
+		Reuse => 1
+	)
+		or die "Can't create listening socket: $!\n";
 
-    $f->{http_start} = sub {
-        ($uri, my %extra) = @_;
-        my $body_more = 1 if $uri !~ /LongHeader/;
-        $s = Test::Nginx::HTTP2->new() if !defined $s;
-        $s->new_stream({ body_more => $body_more, headers => [
-            { name => ':method', value => 'POST', mode => 0 },
-            { name => ':scheme', value => 'http', mode => 0 },
-            { name => ':path', value => $uri, },
-            { name => ':authority', value => 'localhost' },
-            { name => 'content-type', value => 'application/grpc' },
-            { name => 'te', value => 'trailers', mode => 2 }]});
+	$f->{http_start} = sub {
+		($uri, my %extra) = @_;
+		my $body_more = 1 if $uri !~ /LongHeader/;
+		$s = Test::Nginx::HTTP2->new() if !defined $s;
+		$s->new_stream({ body_more => $body_more, headers => [
+			{ name => ':method', value => 'POST', mode => 0 },
+			{ name => ':scheme', value => 'http', mode => 0 },
+			{ name => ':path', value => $uri, },
+			{ name => ':authority', value => 'localhost' },
+			{ name => 'content-type', value => 'application/grpc' },
+			{ name => 'te', value => 'trailers', mode => 2 }]});
 
-        if (!$extra{reuse}) {
-            eval {
-                local $SIG{ALRM} = sub { die "timeout\n" };
-                alarm(5);
+		if (!$extra{reuse}) {
+			eval {
+				local $SIG{ALRM} = sub { die "timeout\n" };
+				alarm(5);
 
-                $client = $server->accept() or return;
+				$client = $server->accept() or return;
 
-                alarm(0);
-            };
-            alarm(0);
-            if ($@) {
-                log_in("died: $@");
-                return undef;
-            }
+				alarm(0);
+			};
+			alarm(0);
+			if ($@) {
+				log_in("died: $@");
+				return undef;
+			}
 
-            log2c("(new connection $client)");
+			log2c("(new connection $client)");
 
-            $client->sysread(my $buf, 24) == 24 or return; # preface
+			$client->sysread(my $buf, 24) == 24 or return; # preface
 
-            $c = Test::Nginx::HTTP2->new(1, socket => $client,
-                pure => 1, preface => "") or return;
-        }
+			$c = Test::Nginx::HTTP2->new(1, socket => $client,
+				pure => 1, preface => "") or return;
+		}
 
-        my $frames = $c->read(all => [{ fin => 4 }]);
+		my $frames = $c->read(all => [{ fin => 4 }]);
 
-        if (!$extra{reuse}) {
-            $c->h2_settings(0);
-            $c->h2_settings(1);
-        }
+		if (!$extra{reuse}) {
+			$c->h2_settings(0);
+			$c->h2_settings(1);
+		}
 
-        my ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
-        $sid = $frame->{sid};
-        return $frames;
-    };
-    $f->{data} = sub {
-        my ($body, %extra) = @_;
-        $s->h2_body($body, { %extra });
-        return $c->read(all => [{ sid => $sid,
-            length => length($body) }]);
-    };
-    $f->{http_end} = sub {
-        $c->new_stream({ body_more => 1, headers => [
-            { name => ':status', value => '200', mode => 0 },
-            { name => 'content-type', value => 'application/grpc',
-                mode => 1, huff => 1 },
-        ]}, $sid);
-        $c->h2_body('Hello world', { body_more => 1 });
-        $c->new_stream({ headers => [
-            { name => 'grpc-status', value => '0',
-                mode => 2, huff => 1 },
-            { name => 'grpc-message', value => '',
-                mode => 2, huff => 1 },
-        ]}, $sid);
+		my ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
+		$sid = $frame->{sid};
+		return $frames;
+	};
+	$f->{data_len} = sub {
+		my ($body, $len) = @_;
+		$s->h2_body($body) if defined $body;
+		return $c->read(all => [{ sid => $sid, length => $len }]);
+	};
+	$f->{update} = sub {
+		$c->h2_window(shift);
+	};
+	$f->{update_sid} = sub {
+		$c->h2_window(shift, $sid);
+	};
+	$f->{data} = sub {
+		my ($body, %extra) = @_;
+		$s->h2_body($body, { %extra });
+		return $c->read(all => [{ sid => $sid,
+			length => length($body) }]);
+	};
+	$f->{http_end} = sub {
+		$c->new_stream({ body_more => 1, headers => [
+			{ name => ':status', value => '200', mode => 0 },
+			{ name => 'content-type', value => 'application/grpc',
+				mode => 1, huff => 1 },
+		]}, $sid);
+		$c->h2_body('Hello world', { body_more => 1 });
+		$c->new_stream({ headers => [
+			{ name => 'grpc-status', value => '0',
+				mode => 2, huff => 1 },
+			{ name => 'grpc-message', value => '',
+				mode => 2, huff => 1 },
+		]}, $sid);
 
-        return $s->read(all => [{ fin => 1 }]);
-    };
-    return $f;
+		return $s->read(all => [{ fin => 1 }]);
+	};
+	return $f;
 }
 
 sub log2i { Test::Nginx::log_core('|| <<', @_); }

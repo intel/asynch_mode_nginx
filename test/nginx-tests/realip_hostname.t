@@ -71,7 +71,7 @@ $t->write_file('2', '');
 $t->run();
 
 plan(skip_all => 'no 127.0.0.1 on host')
-    if http_get('/1') !~ /X-IP: 127.0.0.1/m;
+	if http_get('/1') !~ /X-IP: 127.0.0.1/m;
 
 $t->plan(4);
 
