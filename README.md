@@ -279,6 +279,11 @@ is configured as
         insmod ./usdm_drv.ko max_huge_pages=2048 max_huge_pages_per_process=32
     ```
 
+* AES-CBC-HMAC-SHA algorithm won't be offloaded to QAT_HW if Encrypt then MAC(ETM) mode 
+  is used for SSL connection(by default). Refer to [QAT_Engine] for more details.
+
+[QAT_Engine]: https://github.com/intel/QAT_Engine/blob/master/docs/limitations.md#limitations
+
 ## Installation Instructions
 
 ### Asynch Mode for NGINX\* Installation
