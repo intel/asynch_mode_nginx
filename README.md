@@ -640,8 +640,8 @@ This is a sample configure file shows how to configure QAT in nginx.conf. This f
 
 ## Known Issues
 **'Orphan ring' errors in `dmesg` output when Nginx exit**<br/>
-   Working with current QAT driver (version 4.6.0 in 01.org), Nginx workers exit
-   with 'Orphan ring' errors. This issue has been fixed in future QAT driver release
+   Working with current QAT driver, Nginx workers exit with 'Orphan ring'
+   errors. This issue has been fixed in future QAT driver release.
 
 **Cache manager/loader process will allocate QAT instance via QAT engine**<br/>
    According to current QAT engine design, child process forked by master
@@ -672,6 +672,10 @@ This is a sample configure file shows how to configure QAT in nginx.conf. This f
 
 **Performance drop under OpenSSL 3.0**<br/>
    Both ECDH and PRF cause performance drop under OpenSSL 3.0.
+
+**AES-GCM HW is not recommended**<br/>
+   AES-GCM shows errors in QAT_HW asynchronous offload, so it is not recommended
+   to enable QAT_HW AES-GCM offloading.
 
 ## Intended Audience
 
