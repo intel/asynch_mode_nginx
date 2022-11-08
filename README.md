@@ -73,7 +73,7 @@ Asynch Mode for NGINX\* supports Crypto and Compression offload to the following
 This release was validated on the following:
 
 * Asynch Mode for NGINX\* has been tested with the latest Intel&reg; QuickAssist Acceleration Driver.
-Please download the QAT driver from the link https://01.org/intel-quickassist-technology
+Please download the QAT driver from the link [https://01.org/intel-quickassist-technology](https://www.intel.com/content/www/us/en/developer/topic-technology/open/quick-assist-technology/overview.html](https://www.intel.com/content/www/us/en/developer/topic-technology/open/quick-assist-technology/overview.html)
 * OpenSSL-1.1.1l
 * QAT engine v0.6.10
 * QATzip v1.0.6
