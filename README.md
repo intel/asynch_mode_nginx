@@ -74,46 +74,47 @@ This release was validated on the following:
 
 * Asynch Mode for NGINX\* has been tested with the latest Intel&reg; QuickAssist Acceleration Driver.
 Please download the QAT driver from the link https://01.org/intel-quickassist-technology
-* OpenSSL-1.1.1l
-* QAT engine v0.6.10
-* QATzip v1.0.6
+* OpenSSL-1.1.1q
+* openssl-3.0.5
+* QAT engine v0.6.16
+* QATzip v1.1.0
 
 ## Additional Information
 
-* Asynch Mode for NGINX\* is developed based on Nginx-1.22.0.
+* Asynch Mode for NGINX\* is developed based on Nginx-1.22.1.
 
-* Generate patch against official Nginx-1.22.0.
+* Generate patch against official Nginx-1.22.1.
 
 ```bash
   git clone https://github.com/intel/asynch_mode_nginx.git
-  wget http://nginx.org/download/nginx-1.22.0.tar.gz
-  tar -xvzf nginx-1.22.0.tar.gz
-  diff -Naru -x .git nginx-1.22.0 asynch_mode_nginx > async_mode_nginx_1.22.0.patch
+  wget http://nginx.org/download/nginx-1.22.1.tar.gz
+  tar -xvzf nginx-1.22.1.tar.gz
+  diff -Naru -x .git nginx-1.22.1 asynch_mode_nginx > async_mode_nginx_1.22.1.patch
 ```
 
-* Apply patch to official Nginx-1.22.0.
+* Apply patch to official Nginx-1.22.1.
 
 ```bash
-  wget http://nginx.org/download/nginx-1.22.0.tar.gz
-  tar -xvzf nginx-1.22.0.tar.gz
-  patch -p0 < async_mode_nginx_1.22.0.patch
+  wget http://nginx.org/download/nginx-1.22.1.tar.gz
+  tar -xvzf nginx-1.22.1.tar.gz
+  patch -p0 < async_mode_nginx_1.22.1.patch
 ```
 
 * Generate patch against github official read-only mirror
 
 ```bash
   git clone https://github.com/intel/asynch_mode_nginx.git
-  wget https://github.com/nginx/nginx/archive/release-1.22.0.tar.gz
-  tar -xvzf release-1.22.0.tar.gz
-  diff -Naru -x .git -x .hgtags nginx-release-1.22.0 asynch_mode_nginx > async_mode_nginx_1.22.0.patch
+  wget https://github.com/nginx/nginx/archive/release-1.22.1.tar.gz
+  tar -xvzf release-1.22.1.tar.gz
+  diff -Naru -x .git -x .hgtags nginx-release-1.22.1 asynch_mode_nginx > async_mode_nginx_1.22.1.patch
 ```
 
 * Apply patch to the github release pachage.
 
 ```bash
-  wget https://github.com/nginx/nginx/archive/release-1.22.0.tar.gz
-  tar -xvzf release-1.22.0.tar.gz
-  patch -p0 < async_mode_nginx_1.22.0.patch
+  wget https://github.com/nginx/nginx/archive/release-1.22.1.tar.gz
+  tar -xvzf release-1.22.1.tar.gz
+  patch -p0 < async_mode_nginx_1.22.1.patch
 ```
 
 * Asynch Mode for NGINX\* SSL engine framework provides new directives:
