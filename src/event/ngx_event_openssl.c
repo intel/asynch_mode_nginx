@@ -3493,11 +3493,11 @@ ngx_ssl_shutdown(ngx_connection_t *c)
 
     rc = NGX_OK;
 
-    ngx_ssl_ocsp_cleanup(c);
-
     if(!c->ssl) {
         return NGX_OK;
     }
+
+    ngx_ssl_ocsp_cleanup(c);
 
     if (SSL_in_init(c->ssl->connection)) {
         /*
