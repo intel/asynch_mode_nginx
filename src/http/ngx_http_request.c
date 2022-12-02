@@ -3374,6 +3374,9 @@ ngx_http_keepalive_handler(ngx_event_t *rev)
     c->log_error = NGX_ERROR_INFO;
 
     if (n == NGX_AGAIN) {
+        /* Do NOT mark this connection as destroyed if n == NGX_AGAIN. */
+        c->destroyed = 0;
+
         if (ngx_handle_read_event(rev, 0) != NGX_OK) {
             ngx_http_close_connection(c);
             return;
@@ -3406,6 +3409,8 @@ ngx_http_keepalive_handler(ngx_event_t *rev)
 
         return;
     }
+    /* Mark this connection as destroyed. */
+    c->destroyed = 1;
 
     if (n == NGX_ERROR) {
         ngx_http_close_connection(c);
