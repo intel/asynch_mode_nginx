@@ -667,16 +667,12 @@ This is a sample configure file shows how to configure QAT in nginx.conf. This f
    memory and hard disk space. Disk space exhausted or out of memory would cause core dump when
    nginx receives HUP signal during handshake phase.
 
-**TLS1.3 Early data function may failed when enable HKDF offload in QAT Engine**<br/>
-   When enable HKDF offload in QAT Engine, and enable early data function with TLS1.3 protocol in
-   Nginx configuration, early data operation in session reuse case may failed.
-
 **Performance drop under OpenSSL 3.0**<br/>
    Both ECDH and PRF cause performance drop under OpenSSL 3.0.
 
-**AES-GCM HW is not recommended**<br/>
-   AES-GCM shows errors in QAT_HW asynchronous offload, so it is not recommended
-   to enable QAT_HW AES-GCM offloading.
+**The 0-RTT (early data) issue**<br/>
+  The 0-RTT (early data) feature does not support async mode in current asynch_mode_nginx,
+  so it's not recommended to use async offload to QAT hardware during early data process.
 
 ## Intended Audience
 
