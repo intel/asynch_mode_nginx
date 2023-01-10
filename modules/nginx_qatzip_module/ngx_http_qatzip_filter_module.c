@@ -794,8 +794,7 @@ ngx_http_qatzip_filter_compress(ngx_http_request_t *r, ngx_http_qatzip_ctx_t *ct
     }
     ctx->qzstream.out = ctx->out_buf->last;
 
-    if (0 == ctx->avail_out &&
-        ctx->qzstream.pending_out > 0) {
+    if (0 == ctx->avail_out) {
         /*more data pending out */
 
         cl = ngx_alloc_chain_link(r->pool);
@@ -807,10 +806,10 @@ ngx_http_qatzip_filter_compress(ngx_http_request_t *r, ngx_http_qatzip_ctx_t *ct
         cl->next = NULL;
         *ctx->last_out = cl;
         ctx->last_out = &cl->next;
-
-        ctx->redo = 1;
-
-        return NGX_AGAIN;
+        if (ctx->qzstream.pending_out > 0) {
+            ctx->redo = 1;
+            return NGX_AGAIN;
+        }
     }
 
     ctx->redo = 0;
