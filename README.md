@@ -674,6 +674,10 @@ This is a sample configure file shows how to configure QAT in nginx.conf. This f
   The 0-RTT (early data) feature does not support async mode in current asynch_mode_nginx,
   so it's not recommended to use async offload to QAT hardware during early data process.
 
+**CHACHA-POLY and AES-GCM throughput performance issue**<br/>
+  With the bottleneck of memory allocation, the throughput of CHACHA-Poly and
+  AES-GCM can not reach the peak value when running with 4 or more QAT devices.
+
 ## Intended Audience
 
 The target audience may be software developers, test and validation engineers,
