@@ -285,6 +285,9 @@ is configured as
 
 [QAT_Engine]: https://github.com/intel/QAT_Engine/blob/master/docs/limitations.md#limitations
 
+* QATzip module supports GZIP compression acceleration now, does not support
+  user define dictionary compression yet.
+
 ## Installation Instructions
 
 ### Asynch Mode for NGINX\* Installation
@@ -651,10 +654,6 @@ This is a sample configure file shows how to configure QAT in nginx.conf. This f
    will be allocated in the same way as worker process. Cache manager/loader
    processes do not perform modules' `exit process` method in Nginx native design
    which will introduce "Orphan ring" error message in `dmesg` output.
-
-**QATzip module does not support dictionary compression**<br/>
-   QATzip module supports GZIP compression acceleration now, does not support
-   user define dictionary compression yet.
 
 **Segment fault happens while sending HUP signal when QAT instances not enough**<br/>
    If the available qat instance number is less than 2x Nginx worker process number, segment fault
