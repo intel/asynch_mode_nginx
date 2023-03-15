@@ -104,7 +104,7 @@ cd $NGINX_SRC_DIR
 --add-dynamic-module=$NGINX_SRC_DIR/modules/nginx_qat_module \
 --add-dynamic-module=$NGINX_SRC_DIR/modules/nginx_qatzip_module \
 --with-cc-opt="-DNGX_SECURE_MEM -DNGX_INTEL_SDL -I$OPENSSL_LIB/include -I$ICP_ROOT/quickassist/include -I$ICP_ROOT/quickassist/include/dc -I$QZ_ROOT/include -Wno-error=deprecated-declarations" \
---with-ld-opt="-Wl,-rpath=$openssl_lib -L$openssl_lib -L$QZ_ROOT/src -lqatzip -lz"
+--with-ld-opt="-Wl,-rpath=$openssl_lib:$QZ_ROOT/src/.libs -L$openssl_lib -L$QZ_ROOT/src/.libs -lqatzip -lz"
 
 make -j$(nproc) && make install
 
