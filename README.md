@@ -288,6 +288,8 @@ is configured as
 * QATzip module supports GZIP compression acceleration now, does not support
   user define dictionary compression yet.
 
+* The HTTP2 protocol does not support asynchronous functionality.
+
 ## Installation Instructions
 
 ### Asynch Mode for NGINX\* Installation

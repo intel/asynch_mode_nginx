@@ -32,7 +32,7 @@ plan(skip_all => 'OpenSSL too old') unless defined $1 and $1 ge '1.0.2';
 
 $t->write_file_expand('nginx.conf', <<'EOF')->plan(38);
 
-%%TEST_GLOBALS%%
+%%TEST_SYNC_GLOBALS%%
 
 daemon off;
 
@@ -48,7 +48,7 @@ http {
     }
 
     server {
-        listen       127.0.0.1:8081 http2 ssl %%SSL_ASYNCH%%;
+        listen       127.0.0.1:8081 http2 ssl;
         server_name  localhost;
 
         ssl_certificate_key localhost.key;
@@ -68,7 +68,6 @@ http {
     server {
         listen       127.0.0.1:8080 http2;
         server_name  localhost;
-        %%GRPC_ASYNCH_ENABLE%%
         http2_body_preread_size 128k;
 
         location / {

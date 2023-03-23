@@ -225,6 +225,11 @@ sub has_module($) {
 		return 1 if $ENV{TEST_NGINX_GLOBALS} =~ $re;
 	}
 
+	if (defined $module && defined $ENV{TEST_NGINX_SYNC_GLOBALS}) {
+		$re = qr/load_module\s+[^;]*\Q$module\E[-\w]*\.so\s*;/;
+		return 1 if $ENV{TEST_NGINX_SYNC_GLOBALS} =~ $re;
+	}
+
 	return 0;
 }
 
@@ -347,7 +352,7 @@ sub run(;$) {
 	die "Unable to fork(): $!\n" unless defined $pid;
 
 	if ($pid == 0) {
-		my @globals = $self->{_test_globals} ?
+		my @globals = ($self->{_test_globals} || $self->{_test_sync_globals}) ?
 			() : ('-g', "pid $testdir/nginx.pid; "
 			. "error_log $testdir/error.log debug;");
 		my @error = $self->has_version('1.19.5') ?
@@ -422,7 +427,7 @@ sub dump_config() {
 
 	my $testdir = $self->{_testdir};
 
-	my @globals = $self->{_test_globals} ?
+	my @globals = ($self->{_test_globals} || $self->{_test_sync_globals}) ?
 		() : ('-g', "pid $testdir/nginx.pid; "
 		. "error_log $testdir/error.log debug;");
 	my @error = $self->has_version('1.19.5') ?
@@ -478,7 +483,7 @@ sub reload() {
 
 	if ($^O eq 'MSWin32') {
 		my $testdir = $self->{_testdir};
-		my @globals = $self->{_test_globals} ?
+		my @globals = ($self->{_test_globals} || $self->{_test_sync_globals}) ?
 			() : ('-g', "pid $testdir/nginx.pid; "
 			. "error_log $testdir/error.log debug;");
 		my @error = $self->has_version('1.19.5') ?
@@ -503,7 +508,7 @@ sub stop() {
 
 	if ($^O eq 'MSWin32') {
 		my $testdir = $self->{_testdir};
-		my @globals = $self->{_test_globals} ?
+		my @globals = ($self->{_test_globals} || $self->{_test_sync_globals}) ?
 			() : ('-g', "pid $testdir/nginx.pid; "
 			. "error_log $testdir/error.log debug;");
 		my @error = $self->has_version('1.19.5') ?
@@ -527,7 +532,7 @@ sub stop() {
 	if (!$exited) {
 		if ($^O eq 'MSWin32') {
 			my $testdir = $self->{_testdir};
-			my @globals = $self->{_test_globals} ?
+			my @globals = ($self->{_test_globals} || $self->{_test_sync_globals}) ?
 				() : ('-g', "pid $testdir/nginx.pid; "
 				. "error_log $testdir/error.log debug;");
 			my @error = $self->has_version('1.19.5') ?
@@ -600,6 +605,7 @@ sub write_file_expand($$) {
 	my ($self, $name, $content) = @_;
 
 	$content =~ s/%%TEST_GLOBALS%%/$self->test_globals()/gmse;
+	$content =~ s/%%TEST_SYNC_GLOBALS%%/$self->_test_sync_globals()/gmse;
 	$content =~ s/%%TEST_GLOBALS_HTTP%%/$self->test_globals_http()/gmse;
 	$content =~ s/%%TEST_GLOBALS_STREAM%%/$self->test_globals_stream()/gmse;
     $content =~ s/%%TEST_GLOBALS_HTTPS%%/$self->test_globals_https()/gmse;
@@ -671,6 +677,26 @@ sub test_globals() {
 	$s .= $self->test_globals_perl5lib() if $s !~ /env PERL5LIB/;
 
 	$self->{_test_globals} = $s;
+}
+
+sub _test_sync_globals() {
+	my ($self) = @_;
+
+	return $self->{_test_sync_globals}
+		if defined $self->{_test_sync_globals};
+
+	my $s = '';
+
+	$s .= "pid $self->{_testdir}/nginx.pid;\n";
+	$s .= "error_log $self->{_testdir}/error.log debug;\n";
+
+	$s .= $ENV{TEST_NGINX_SYNC_GLOBALS}
+		if $ENV{TEST_NGINX_SYNC_GLOBALS};
+
+	$s .= $self->test_globals_modules();
+	$s .= $self->test_globals_perl5lib() if $s !~ /env PERL5LIB/;
+
+	$self->{_test_sync_globals} = $s;
 }
 
 sub test_globals_modules() {

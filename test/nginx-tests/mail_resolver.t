@@ -32,10 +32,10 @@ plan(skip_all => 'IO::Socket::SSL too old') if $@;
 local $SIG{PIPE} = 'IGNORE';
 
 my $t = Test::Nginx->new()->has(qw/mail mail_ssl smtp http rewrite/)
-	->has_daemon('openssl')->plan(11)
+        ->has_daemon('openssl')->plan(11)
 	->write_file_expand('nginx.conf', <<'EOF');
 
-%%TEST_GLOBALS%%
+%%TEST_SYNC_GLOBALS%%
 
 daemon off;
 
@@ -102,7 +102,7 @@ mail {
         ssl_certificate_key localhost.key;
         ssl_certificate localhost.crt;
 
-        listen    127.0.0.1:8033 ssl %%SSL_ASYNCH%%;
+        listen    127.0.0.1:8033 ssl;
         protocol  smtp;
         resolver  127.0.0.1:%%PORT_8983_UDP%%;
     }

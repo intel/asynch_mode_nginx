@@ -26,7 +26,7 @@ select STDOUT; $| = 1;
 my $t = Test::Nginx->new()->has(qw/http http_ssl http_v2 grpc rewrite/)
 	->has_daemon('openssl')->write_file_expand('nginx.conf', <<'EOF');
 
-%%TEST_GLOBALS%%
+%%TEST_SYNC_GLOBALS%%
 
 daemon off;
 
@@ -55,7 +55,6 @@ http {
         }
 
         location /grpcs {
-            %%GRPC_ASYNCH_ENABLE%%
             grpc_pass grpcs://$host:%%PORT_8082%%;
         }
 
@@ -66,7 +65,7 @@ http {
 
     server {
         listen       127.0.0.1:8081 http2;
-        listen       127.0.0.1:8082 http2 ssl %%SSL_ASYNCH%%;
+        listen       127.0.0.1:8082 http2 ssl ;
         server_name  localhost;
 
         ssl_certificate_key localhost.key;

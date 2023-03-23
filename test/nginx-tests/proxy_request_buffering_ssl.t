@@ -30,7 +30,7 @@ my $t = Test::Nginx->new()->has(qw/http http_ssl proxy rewrite/)
 
 $t->write_file_expand('nginx.conf', <<'EOF');
 
-%%TEST_GLOBALS%%
+%%TEST_SYNC_GLOBALS%%
 
 daemon off;
 
@@ -43,7 +43,6 @@ http {
     server {
         listen       127.0.0.1:8080;
         server_name  localhost;
-        %%PROXY_ASYNCH_ENABLE%%
 
         client_header_buffer_size 1k;
         proxy_request_buffering off;
@@ -77,7 +76,6 @@ http {
     server {
         listen       127.0.0.1:8081 ssl;
         server_name  localhost;
-        %%TEST_NGINX_GLOBALS_HTTPS%%
 
         ssl_certificate_key localhost.key;
         ssl_certificate localhost.crt;

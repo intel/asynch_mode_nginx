@@ -142,6 +142,18 @@ if [ $1 == 'qat' ];then
         }
     }
     "
+    export TEST_NGINX_SYNC_GLOBALS="
+    $TEST_LOAD_NGINX_MODULE
+    $TEST_LOAD_QATZIP_MODULE
+    ssl_engine {
+        use_engine qatengine;
+        default_algorithms ALL;
+        qat_engine {
+            qat_offload_mode sync;
+            qat_notify_mode poll;
+        }
+    }
+    "
     export TEST_NGINX_GLOBALS_HTTP="qatzip_sw only;"
     export TEST_NGINX_GLOBALS_HTTPS="ssl_asynch on;"
     export GRPC_ASYNCH_ENABLE="grpc_ssl_asynch on;"

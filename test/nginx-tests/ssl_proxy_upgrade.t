@@ -38,7 +38,7 @@ plan(skip_all => 'IO::Socket::SSL too old') if $@;
 my $t = Test::Nginx->new()->has(qw/http proxy http_ssl/)->has_daemon('openssl')
 	->write_file_expand('nginx.conf', <<'EOF')->plan(30);
 
-%%TEST_GLOBALS%%
+%%TEST_SYNC_GLOBALS%%
 
 daemon off;
 
@@ -54,7 +54,6 @@ http {
     server {
         listen       127.0.0.1:8080 ssl;
         server_name  localhost;
-        %%TEST_NGINX_GLOBALS_HTTPS%%
 
         ssl_certificate_key localhost.key;
         ssl_certificate localhost.crt;

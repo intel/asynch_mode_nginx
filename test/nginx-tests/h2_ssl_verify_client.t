@@ -36,7 +36,7 @@ my $t = Test::Nginx->new()->has(qw/http http_ssl sni http_v2/)
 
 $t->write_file_expand('nginx.conf', <<'EOF');
 
-%%TEST_GLOBALS%%
+%%TEST_SYNC_GLOBALS%%
 
 daemon off;
 
@@ -54,7 +54,7 @@ http {
     add_header X-Verify $ssl_client_verify;
 
     server {
-        listen       127.0.0.1:8080 ssl http2 %%SSL_ASYNCH%%;
+        listen       127.0.0.1:8080 ssl http2;
         server_name  localhost;
 
         ssl_client_certificate client.crt;
@@ -63,7 +63,7 @@ http {
     }
 
     server {
-        listen       127.0.0.1:8080 ssl http2 %%SSL_ASYNCH%%;
+        listen       127.0.0.1:8080 ssl http2;
         server_name  example.com;
 
         location / { }

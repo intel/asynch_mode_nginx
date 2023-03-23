@@ -31,7 +31,7 @@ my $t = Test::Nginx->new()->has(qw/http http_ssl http_v2 proxy/)
 
 $t->write_file_expand('nginx.conf', <<'EOF');
 
-%%TEST_GLOBALS%%
+%%TEST_SYNC_GLOBALS%%
 
 daemon off;
 
@@ -44,7 +44,6 @@ http {
     server {
         listen       127.0.0.1:8080 http2;
         server_name  localhost;
-        %%PROXY_ASYNCH_ENABLE%%
 
         location / {
             proxy_request_buffering off;
@@ -60,7 +59,7 @@ http {
     }
 
     server {
-        listen       127.0.0.1:8082 ssl %%SSL_ASYNCH%%;
+        listen       127.0.0.1:8082 ssl;
         server_name  localhost;
 
         ssl_certificate_key localhost.key;

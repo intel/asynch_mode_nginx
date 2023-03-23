@@ -43,7 +43,11 @@ TEST_NGINX_UNSAFE
 
 TEST_NGINX_GLOBALS
 
-    Sets additional directives in main context.
+    Sets additional directives in main context for async.
+
+TEST_NGINX_SYNC_GLOBALS
+
+    Sets additional directives in main context for sync.
 
 TEST_NGINX_GLOBALS_HTTP
 
