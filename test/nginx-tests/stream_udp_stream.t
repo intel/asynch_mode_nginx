@@ -55,6 +55,8 @@ $t->run();
 
 ###############################################################################
 
+select undef, undef, undef, 12;
+
 my $s = dgram('127.0.0.1:' . port(8980));
 my $data = $s->io('1', read_timeout => 0.5);
 isnt($data, '', 'udp_stream response 1');
