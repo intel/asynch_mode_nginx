@@ -74,10 +74,9 @@ This release was validated on the following:
 
 * Asynch Mode for NGINX\* has been tested with the latest Intel&reg; QuickAssist Acceleration Driver.
 Please download the QAT driver from the link https://www.intel.com/content/www/us/en/developer/topic-technology/open/quick-assist-technology/overview.html
-* OpenSSL-1.1.1s
-* OpenSSL-3.0.7
-* QAT engine v0.6.18
-* QATzip v1.1.1
+* OpenSSL-3.0.10
+* QAT engine v1.3.1
+* QATzip v1.1.2
 
 ## Additional Information
 
@@ -303,17 +302,6 @@ is configured as
 `QZ_ROOT` is the directory where the QATzip has been compiled to
 
 **Configure nginx for compilation:**
-
-    Configure Nginx against OpenSSL 1.1.1
-    ```bash
-    ./configure \
-        --prefix=$NGINX_INSTALL_DIR \
-        --with-http_ssl_module \
-        --add-dynamic-module=modules/nginx_qatzip_module \
-        --add-dynamic-module=modules/nginx_qat_module/ \
-        --with-cc-opt="-DNGX_SECURE_MEM -I$OPENSSL_LIB/include -I$ICP_ROOT/quickassist/include -I$ICP_ROOT/quickassist/include/dc -I$QZ_ROOT/include -Wno-error=deprecated-declarations" \
-        --with-ld-opt="-Wl,-rpath=$OPENSSL_LIB/lib -L$OPENSSL_LIB/lib -L$QZ_ROOT/src -lqatzip -lz"
-    ```
 
     Configure Nginx against OpenSSL 3.0
     ```bash
@@ -669,7 +657,9 @@ This is a sample configure file shows how to configure QAT in nginx.conf. This f
    nginx receives HUP signal during handshake phase.
 
 **Performance drop under OpenSSL 3.0**<br/>
-   Both ECDH and PRF cause performance drop under OpenSSL 3.0.
+   * Both ECDH and PRF cause performance drop under OpenSSL 3.0.
+   * Due to changes in the OpenSSL 3.0 framework, TLS handshake performance is significantly degraded. 
+   See [this issue](https://github.com/openssl/openssl/issues/21833) for details.
 
 **The 0-RTT (early data) issue**<br/>
   The 0-RTT (early data) feature does not support async mode in current asynch_mode_nginx,
