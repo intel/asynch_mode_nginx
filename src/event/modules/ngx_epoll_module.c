@@ -1005,7 +1005,7 @@ ngx_epoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
 #if (NGX_SSL)
         aev = c->async;
 
-        if ((revents & EPOLLIN) && aev->active && async) {
+        if ((revents & EPOLLIN) && async && aev->active) {
 
             if (c->async_fd == -1 || aev->instance!= instance) {
                 /*
