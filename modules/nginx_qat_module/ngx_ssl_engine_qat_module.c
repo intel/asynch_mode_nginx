@@ -580,8 +580,7 @@ qat_engine_heartbeat_poll_handler(ngx_event_t *ev)
 {
     qat_engine_heartbeat_poll(ev->log);
 
-    if (ngx_event_timer_rbtree.root != ngx_event_timer_rbtree.sentinel ||
-        !ngx_exiting) {
+    if (!ngx_exiting && !ngx_quit) {
         ngx_add_timer(ev, HEARTBEAT_POLL_TIMEOUT);
     }
 }
@@ -609,8 +608,7 @@ qat_engine_external_poll_handler(ngx_event_t *ev)
         qat_engine_poll(ev->log);
     }
 
-    if (ngx_event_timer_rbtree.root != ngx_event_timer_rbtree.sentinel ||
-        !ngx_exiting) {
+    if (!ngx_exiting && !ngx_quit) {
         ngx_add_timer(ev, qat_engine_external_poll_interval);
     }
 }
@@ -651,8 +649,7 @@ qat_engine_heuristic_poll_handler(ngx_event_t *ev)
     if (*num_asym_requests_in_flight + *num_kdf_requests_in_flight
            + *num_cipher_requests_in_flight + *num_asym_mb_items_in_queue
            + *num_kdf_mb_items_in_queue + *num_sym_mb_items_in_queue > 0) {
-        if (ngx_event_timer_rbtree.root != ngx_event_timer_rbtree.sentinel ||
-            !ngx_exiting) {
+        if (!ngx_exiting && !ngx_quit) {
             num_heuristic_poll = 0;
             ngx_add_timer(ev, HEURISTIC_POLL_DEFAULT_INTERVAL);
         }
