@@ -649,7 +649,8 @@ qat_engine_heuristic_poll_handler(ngx_event_t *ev)
     if (*num_asym_requests_in_flight + *num_kdf_requests_in_flight
            + *num_cipher_requests_in_flight + *num_asym_mb_items_in_queue
            + *num_kdf_mb_items_in_queue + *num_sym_mb_items_in_queue > 0) {
-        if (!ngx_exiting && !ngx_quit) {
+        if (ngx_event_timer_rbtree.root != ngx_event_timer_rbtree.sentinel ||
+            !ngx_exiting) {
             num_heuristic_poll = 0;
             ngx_add_timer(ev, HEURISTIC_POLL_DEFAULT_INTERVAL);
         }
