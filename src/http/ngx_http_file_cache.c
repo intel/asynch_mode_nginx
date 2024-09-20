@@ -14,7 +14,7 @@
 static ngx_int_t ngx_http_file_cache_lock(ngx_http_request_t *r,
     ngx_http_cache_t *c);
 static void ngx_http_file_cache_lock_wait_handler(ngx_event_t *ev);
-static void ngx_http_file_cache_lock_wait(ngx_http_request_t *r,
+static ngx_int_t ngx_http_file_cache_lock_wait(ngx_http_request_t *r,
     ngx_http_cache_t *c);
 static ngx_int_t ngx_http_file_cache_read(ngx_http_request_t *r,
     ngx_http_cache_t *c);
@@ -463,6 +463,7 @@ ngx_http_file_cache_lock(ngx_http_request_t *r, ngx_http_cache_t *c)
 static void
 ngx_http_file_cache_lock_wait_handler(ngx_event_t *ev)
 {
+    ngx_int_t            rc;
     ngx_connection_t    *c;
     ngx_http_request_t  *r;
 
@@ -474,13 +475,31 @@ ngx_http_file_cache_lock_wait_handler(ngx_event_t *ev)
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http file cache wait: \"%V?%V\"", &r->uri, &r->args);
 
-    ngx_http_file_cache_lock_wait(r, r->cache);
+    rc = ngx_http_file_cache_lock_wait(r, r->cache);
 
+    if (rc == NGX_AGAIN) {
+        return;
+    }
+
+    r->cache->waiting = 0;
+    r->main->blocked--;
+
+    if (r->main->terminated) {
+        /*
+         * trigger connection event handler if the request was
+         * terminated
+         */
+
+        c->write->handler(c->write);
+
+    } else {
+        r->write_event_handler(r);
     ngx_http_run_posted_requests(c);
+}
 }
 
 
-static void
+static ngx_int_t
 ngx_http_file_cache_lock_wait(ngx_http_request_t *r, ngx_http_cache_t *c)
 {
     ngx_uint_t              wait;
@@ -495,7 +514,7 @@ ngx_http_file_cache_lock_wait(ngx_http_request_t *r, ngx_http_cache_t *c)
         ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
                       "cache lock timeout");
         c->lock_timeout = 0;
-        goto wakeup;
+        return NGX_OK;
     }
 
     cache = c->file_cache;
@@ -513,14 +532,10 @@ ngx_http_file_cache_lock_wait(ngx_http_request_t *r, ngx_http_cache_t *c)
 
     if (wait) {
         ngx_add_timer(&c->wait_event, (timer > 500) ? 500 : timer);
-        return;
+        return NGX_AGAIN;
     }
 
-wakeup:
-
-    c->waiting = 0;
-    r->main->blocked--;
-    r->write_event_handler(r);
+    return NGX_OK;
 }
 
 
@@ -690,6 +705,8 @@ ngx_http_file_cache_aio_read(ngx_http_request_t *r, ngx_http_cache_t *c)
         c->file.aio->data = r;
         c->file.aio->handler = ngx_http_cache_aio_event_handler;
 
+        ngx_add_timer(&c->file.aio->event, 60000);
+
         r->main->blocked++;
         r->aio = 1;
 
@@ -737,12 +754,32 @@ ngx_http_cache_aio_event_handler(ngx_event_t *ev)
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http file cache aio: \"%V?%V\"", &r->uri, &r->args);
 
+    if (ev->timedout) {
+        ngx_log_error(NGX_LOG_ALERT, c->log, 0,
+                      "aio operation took too long");
+        ev->timedout = 0;
+        return;
+    }
+
+    if (ev->timer_set) {
+        ngx_del_timer(ev);
+    }
+
     r->main->blocked--;
     r->aio = 0;
 
-    r->write_event_handler(r);
+    if (r->main->terminated) {
+        /*
+         * trigger connection event handler if the request was
+         * terminated
+         */
 
+        c->write->handler(c->write);
+
+    } else {
+        r->write_event_handler(r);
     ngx_http_run_posted_requests(c);
+}
 }
 
 #endif
@@ -786,6 +823,8 @@ ngx_http_cache_thread_handler(ngx_thread_task_t *task, ngx_file_t *file)
         return NGX_ERROR;
     }
 
+    ngx_add_timer(&task->event, 60000);
+
     r->main->blocked++;
     r->aio = 1;
 
@@ -807,12 +846,32 @@ ngx_http_cache_thread_event_handler(ngx_event_t *ev)
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http file cache thread: \"%V?%V\"", &r->uri, &r->args);
 
+    if (ev->timedout) {
+        ngx_log_error(NGX_LOG_ALERT, c->log, 0,
+                      "thread operation took too long");
+        ev->timedout = 0;
+        return;
+    }
+
+    if (ev->timer_set) {
+        ngx_del_timer(ev);
+    }
+
     r->main->blocked--;
     r->aio = 0;
 
-    r->write_event_handler(r);
+    if (r->main->terminated) {
+        /*
+         * trigger connection event handler if the request was
+         * terminated
+         */
 
+        c->write->handler(c->write);
+
+    } else {
+        r->write_event_handler(r);
     ngx_http_run_posted_requests(c);
+}
 }
 
 #endif
@@ -1575,10 +1634,6 @@ ngx_http_cache_send(ngx_http_request_t *r)
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http file cache send: %s", c->file.name.data);
 
-    if (r != r->main && c->length - c->body_start == 0) {
-        return ngx_http_send_header(r);
-    }
-
     /* we need to allocate all before the header would be sent */
 
     b = ngx_calloc_buf(r->pool);
@@ -1603,6 +1658,7 @@ ngx_http_cache_send(ngx_http_request_t *r)
     b->in_file = (c->length - c->body_start) ? 1: 0;
     b->last_buf = (r == r->main) ? 1: 0;
     b->last_in_chain = 1;
+    b->sync = (b->last_buf || b->in_file) ? 0 : 1;
 
     b->file->fd = c->file.fd;
     b->file->name = c->file.name;
@@ -1753,6 +1809,11 @@ ngx_http_file_cache_forced_expire(ngx_http_file_cache_t *cache)
         if (fcn->count == 0) {
             ngx_http_file_cache_delete(cache, q, name);
             wait = 0;
+            break;
+        }
+
+        if (fcn->deleting) {
+            wait = 1;
             break;
         }
 

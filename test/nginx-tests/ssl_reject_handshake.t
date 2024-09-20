@@ -23,12 +23,8 @@ use Test::Nginx;
 select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
-eval { require IO::Socket::SSL; };
-plan(skip_all => 'IO::Socket::SSL not installed') if $@;
-eval { IO::Socket::SSL->can_client_sni() or die; };
-plan(skip_all => 'IO::Socket::SSL with OpenSSL SNI support required') if $@;
-
-my $t = Test::Nginx->new()->has(qw/http http_ssl sni/)->has_daemon('openssl');
+my $t = Test::Nginx->new()->has(qw/http http_ssl sni socket_ssl/)
+	->has_daemon('openssl')->plan(7);
 
 $t->write_file_expand('nginx.conf', <<'EOF');
 
@@ -52,16 +48,7 @@ http {
     }
 
     server {
-        listen       127.0.0.1:8081;
-        server_name  ssl;
-
-        ssl on;
-        ssl_reject_handshake on;
-    }
-
-    server {
-        listen       127.0.0.1:8080 ssl %%SSL_ASYNCH%%;
-        listen       127.0.0.1:8081 ssl %%SSL_ASYNCH%%;
+        listen       127.0.0.1:8080;
         server_name  virtual;
 
         ssl_certificate localhost.crt;
@@ -77,12 +64,12 @@ http {
     }
 
     server {
-        listen       127.0.0.1:8082 ssl %%SSL_ASYNCH%%;
+        listen       127.0.0.1:8082;
         server_name  virtual1;
     }
 
     server {
-        listen       127.0.0.1:8082 ssl %%SSL_ASYNCH%%;
+        listen       127.0.0.1:8082;
         server_name  virtual2;
 
         ssl_reject_handshake on;
@@ -110,12 +97,7 @@ foreach my $name ('localhost') {
 }
 
 $t->write_file('index.html', '');
-
-# suppress deprecation warning
-
-open OLDERR, ">&", \*STDERR; close STDERR;
-$t->run()->plan(9);
-open STDERR, ">&", \*OLDERR;
+$t->run();
 
 ###############################################################################
 
@@ -124,11 +106,6 @@ open STDERR, ">&", \*OLDERR;
 like(get('default', 8080), qr/unrecognized name/, 'default rejected');
 like(get(undef, 8080), qr/unrecognized name/, 'absent sni rejected');
 like(get('virtual', 8080), qr/virtual/, 'virtual accepted');
-
-# default virtual server rejected - ssl on
-
-like(get('default', 8081), qr/unrecognized name/, 'default rejected - ssl on');
-like(get('virtual', 8081), qr/virtual/, 'virtual accepted - ssl on');
 
 # non-default server "virtual2" rejected
 
@@ -141,44 +118,14 @@ like(get('virtual2', 8082), qr/unrecognized name/, 'virtual 2 rejected');
 
 sub get {
 	my ($host, $port) = @_;
-	my $s = get_ssl_socket($host, $port) or return $@;
-	$host = 'localhost' if !defined $host;
-	my $r = http(<<EOF, socket => $s);
-GET / HTTP/1.0
-Host: $host
-
-EOF
-
-	$s->close();
+	my $r = http(
+		"GET / HTTP/1.0\nHost: " . ($host || 'localhost') . "\n\n",
+		PeerAddr => '127.0.0.1:' . port($port),
+		SSL => 1,
+		SSL_hostname => $host
+	)
+		or return "$@";
 	return $r;
-}
-
-sub get_ssl_socket {
-	my ($host, $port) = @_;
-	my $s;
-
-	eval {
-		local $SIG{ALRM} = sub { die "timeout\n" };
-		local $SIG{PIPE} = sub { die "sigpipe\n" };
-		alarm(8);
-		$s = IO::Socket::SSL->new(
-			Proto => 'tcp',
-			PeerAddr => '127.0.0.1',
-			PeerPort => port($port),
-			SSL_hostname => $host,
-			SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_NONE(),
-			SSL_error_trap => sub { die $_[1] },
-		);
-		alarm(0);
-	};
-	alarm(0);
-
-	if ($@) {
-		log_in("died: $@");
-		return undef;
-	}
-
-	return $s;
 }
 
 ###############################################################################

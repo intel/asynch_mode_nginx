@@ -20,25 +20,19 @@ BEGIN { use FindBin; chdir($FindBin::Bin); }
 
 use lib 'lib';
 use Test::Nginx;
+use Test::Nginx::Stream qw/ stream /;
 
 ###############################################################################
 
 select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
-eval {
-	require Net::SSLeay;
-	Net::SSLeay::load_error_strings();
-	Net::SSLeay::SSLeay_add_ssl_algorithms();
-	Net::SSLeay::randomize();
-};
-plan(skip_all => 'Net::SSLeay not installed') if $@;
-
 plan(skip_all => 'win32') if $^O eq 'MSWin32';
 
-my $t = Test::Nginx->new()->has(qw/stream stream_ssl/)->has_daemon('openssl');
+my $t = Test::Nginx->new()->has(qw/stream stream_ssl socket_ssl/)
+	->has_daemon('openssl');
 
-$t->plan(7)->write_file_expand('nginx.conf', <<'EOF');
+$t->plan(5)->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -52,44 +46,39 @@ stream {
 
     ssl_certificate_key localhost.key;
     ssl_certificate localhost.crt;
-    ssl_session_tickets off;
 
     # inherited by server "inherits"
     ssl_password_file password_stream;
 
     server {
-        listen      127.0.0.1:8080 ssl;
+	listen      127.0.0.1:8443 ssl;
         %%TEST_NGINX_GLOBALS_HTTPS%%
         proxy_pass  127.0.0.1:8081;
 
-        ssl_session_cache builtin;
         ssl_password_file password;
     }
 
     server {
-        listen      127.0.0.1:8082 ssl;
+	listen      127.0.0.1:8444 ssl;
         %%TEST_NGINX_GLOBALS_HTTPS%%
         proxy_pass  127.0.0.1:8081;
 
-        ssl_session_cache off;
         ssl_password_file password_many;
     }
 
     server {
-        listen      127.0.0.1:8083 ssl;
+	listen      127.0.0.1:8445 ssl;
         %%TEST_NGINX_GLOBALS_HTTPS%%
         proxy_pass  127.0.0.1:8081;
 
-        ssl_session_cache builtin:1000;
         ssl_password_file password_fifo;
     }
 
     server {
-        listen      127.0.0.1:8084 ssl;
+	listen      127.0.0.1:8446 ssl;
         %%TEST_NGINX_GLOBALS_HTTPS%%
         proxy_pass  127.0.0.1:8081;
 
-        ssl_session_cache shared:SSL:1m;
         ssl_certificate_key inherits.key;
         ssl_certificate inherits.crt;
     }
@@ -120,9 +109,6 @@ foreach my $name ('localhost', 'inherits') {
 		or die "Can't create certificate for $name: $!\n";
 }
 
-
-my $ctx = Net::SSLeay::CTX_new() or die("Failed to create SSL_CTX $!");
-
 $t->write_file('password', 'localhost');
 $t->write_file('password_many', "wrong$CRLF" . "localhost$CRLF");
 $t->write_file('password_stream', 'inherits');
@@ -143,57 +129,30 @@ $t->waitforsocket('127.0.0.1:' . port(8081));
 
 ###############################################################################
 
-my ($s, $ssl, $ses);
-
-($s, $ssl) = get_ssl_socket(port(8080));
-Net::SSLeay::write($ssl, "GET / HTTP/1.0$CRLF$CRLF");
-like(Net::SSLeay::read($ssl), qr/200 OK/, 'ssl');
-
-# ssl_session_cache
-
-($s, $ssl) = get_ssl_socket(port(8080));
-$ses = Net::SSLeay::get_session($ssl);
-
-($s, $ssl) = get_ssl_socket(port(8080), $ses);
-is(Net::SSLeay::session_reused($ssl), 1, 'builtin session reused');
-
-($s, $ssl) = get_ssl_socket(port(8082));
-$ses = Net::SSLeay::get_session($ssl);
-
-($s, $ssl) = get_ssl_socket(port(8082), $ses);
-isnt(Net::SSLeay::session_reused($ssl), 1, 'session not reused');
-
-($s, $ssl) = get_ssl_socket(port(8083));
-$ses = Net::SSLeay::get_session($ssl);
-
-($s, $ssl) = get_ssl_socket(port(8083), $ses);
-is(Net::SSLeay::session_reused($ssl), 1, 'builtin size session reused');
-
-($s, $ssl) = get_ssl_socket(port(8084));
-$ses = Net::SSLeay::get_session($ssl);
-
-($s, $ssl) = get_ssl_socket(port(8084), $ses);
-is(Net::SSLeay::session_reused($ssl), 1, 'shared session reused');
+like(get(8443), qr/200 OK/, 'ssl');
+like(get(8444), qr/200 OK/, 'ssl password many');
+like(get(8445), qr/200 OK/, 'ssl password fifo');
 
 # ssl_certificate inheritance
 
-($s, $ssl) = get_ssl_socket(port(8080));
-like(Net::SSLeay::dump_peer_certificate($ssl), qr/CN=localhost/, 'CN');
-
-($s, $ssl) = get_ssl_socket(port(8084));
-like(Net::SSLeay::dump_peer_certificate($ssl), qr/CN=inherits/, 'CN inner');
+like(cert(8443), qr/CN=localhost/, 'CN');
+like(cert(8446), qr/CN=inherits/, 'CN inner');
 
 ###############################################################################
 
-sub get_ssl_socket {
-	my ($port, $ses) = @_;
+sub get {
+	my $s = get_socket(@_);
+	return $s->io("GET / HTTP/1.0$CRLF$CRLF");
+}
 
-	my $s = IO::Socket::INET->new('127.0.0.1:' . $port);
-	my $ssl = Net::SSLeay::new($ctx) or die("Failed to create SSL $!");
-	Net::SSLeay::set_session($ssl, $ses) if defined $ses;
-	Net::SSLeay::set_fd($ssl, fileno($s));
-	Net::SSLeay::connect($ssl) or die("ssl connect");
-	return ($s, $ssl);
+sub cert {
+	my $s = get_socket(@_);
+	return $s->socket()->dump_peer_certificate();
+}
+
+sub get_socket {
+	my ($port) = @_;
+	return stream(PeerAddr => '127.0.0.1:' . port($port), SSL => 1);
 }
 
 ###############################################################################

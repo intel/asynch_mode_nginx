@@ -804,6 +804,7 @@ ngx_worker_thread(void *data)
                 ngx_set_shutdown_timer(cycle);
                 ngx_close_listening_sockets(cycle);
                 ngx_close_idle_connections(cycle);
+                ngx_event_process_posted(cycle, &ngx_posted_events);
             }
         }
 
@@ -833,7 +834,7 @@ ngx_worker_process_exit(ngx_cycle_t *cycle)
         }
     }
 
-    if (ngx_exiting) {
+    if (ngx_exiting && !ngx_terminate) {
         c = cycle->connections;
         for (i = 0; i < cycle->connection_n; i++) {
             if (c[i].fd != (ngx_socket_t) -1

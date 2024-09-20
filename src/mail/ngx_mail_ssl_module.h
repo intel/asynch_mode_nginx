@@ -21,7 +21,6 @@
 
 
 typedef struct {
-    ngx_flag_t       enable;
     ngx_flag_t       asynch;
     ngx_flag_t       prefer_server_ciphers;
 

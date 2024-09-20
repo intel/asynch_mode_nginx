@@ -18,33 +18,18 @@ use MIME::Base64 qw/ decode_base64 /;
 BEGIN { use FindBin; chdir($FindBin::Bin); }
 
 use lib 'lib';
-use Test::Nginx;
+use Test::Nginx qw/ :DEFAULT http_end /;
 
 ###############################################################################
 
 select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
-eval {
-	require Net::SSLeay;
-	Net::SSLeay::load_error_strings();
-	Net::SSLeay::SSLeay_add_ssl_algorithms();
-	Net::SSLeay::randomize();
-	Net::SSLeay::SSLeay();
-	defined &Net::SSLeay::set_tlsext_status_type or die;
-};
-plan(skip_all => 'Net::SSLeay not installed or too old') if $@;
+my $t = Test::Nginx->new()->has(qw/http http_ssl sni socket_ssl_sni/)
+	->has_daemon('openssl');
 
-eval {
-	my $ctx = Net::SSLeay::CTX_new() or die;
-	my $ssl = Net::SSLeay::new($ctx) or die;
-	Net::SSLeay::set_tlsext_host_name($ssl, 'example.org') == 1 or die;
-};
-plan(skip_all => 'Net::SSLeay with OpenSSL SNI support required') if $@;
-
-my $t = Test::Nginx->new()->has(qw/http http_ssl sni/)->has_daemon('openssl');
-
-plan(skip_all => 'no OCSP stapling') if $t->has_module('BoringSSL');
+plan(skip_all => 'no OCSP support in BoringSSL')
+	if $t->has_module('BoringSSL');
 
 $t->write_file_expand('nginx.conf', <<'EOF');
 
@@ -63,18 +48,14 @@ http {
     ssl_verify_depth 2;
     ssl_client_certificate trusted.crt;
 
-    ssl_ciphers DEFAULT:ECCdraft;
-
-    ssl_certificate_key ec.key;
-    ssl_certificate ec.crt;
-
     ssl_certificate_key rsa.key;
     ssl_certificate rsa.crt;
 
     ssl_session_cache shared:SSL:1m;
-    ssl_session_tickets off;
+    ssl_session_tickets on;
 
     add_header X-Verify x${ssl_client_verify}:${ssl_session_reused}x always;
+    add_header X-SSL-Protocol $ssl_protocol always;
 
     server {
         listen       127.0.0.1:8443 ssl;
@@ -107,7 +88,7 @@ http {
         listen       127.0.0.1:8445 ssl;
         server_name  localhost;
 
-        ssl_ocsp_responder http://127.0.0.1:8082;
+        ssl_ocsp_responder http://127.0.0.1:8083/test;
     }
 
     server {
@@ -136,7 +117,10 @@ $t->write_file('openssl.conf', <<EOF);
 default_bits = 2048
 encrypt_key = no
 distinguished_name = req_distinguished_name
+x509_extensions = myca_extensions
 [ req_distinguished_name ]
+[ myca_extensions ]
+basicConstraints = critical,CA:TRUE
 EOF
 
 $t->write_file('ca.conf', <<EOF);
@@ -273,13 +257,8 @@ $t->write_file('trusted.crt',
 
 # server cert/key
 
-system("openssl ecparam -genkey -out $d/ec.key -name prime256v1 "
-	. ">>$d/openssl.out 2>&1") == 0 or die "Can't create EC pem: $!\n";
-system("openssl genrsa -out $d/rsa.key 2048 >>$d/openssl.out 2>&1") == 0
-	or die "Can't create RSA pem: $!\n";
-
-foreach my $name ('ec', 'rsa') {
-	system("openssl req -x509 -new -key $d/$name.key "
+foreach my $name ('rsa') {
+	system('openssl req -x509 -new '
 		. "-config $d/openssl.conf -subj /CN=$name/ "
 		. "-out $d/$name.crt -keyout $d/$name.key "
 		. ">>$d/openssl.out 2>&1") == 0
@@ -288,26 +267,26 @@ foreach my $name ('ec', 'rsa') {
 
 $t->run_daemon(\&http_daemon, $t, port(8081));
 $t->run_daemon(\&http_daemon, $t, port(8082));
-$t->run()->plan(14);
+$t->run_daemon(\&http_daemon, $t, port(8083));
+$t->run()->plan(15);
 
 $t->waitforsocket("127.0.0.1:" . port(8081));
 $t->waitforsocket("127.0.0.1:" . port(8082));
-
-my $version = get_version();
+$t->waitforsocket("127.0.0.1:" . port(8083));
 
 ###############################################################################
 
-like(get('RSA', 'end'), qr/200 OK.*SUCCESS/s, 'ocsp leaf');
+like(get('end'), qr/200 OK.*SUCCESS/s, 'ocsp leaf');
 
 # demonstrate that ocsp int request is failed due to missing resolver
 
-like(get('RSA', 'end', sni => 'resolver'),
+like(get('end', sni => 'resolver'),
 	qr/400 Bad.*FAILED:certificate status request failed/s,
 	'ocsp many failed request');
 
 # demonstrate that ocsp int request is actually made by failing ocsp response
 
-like(get('RSA', 'end', port => 8444),
+like(get('end', port => 8444),
 	qr/400 Bad.*FAILED:certificate status request failed/s,
 	'ocsp many failed');
 
@@ -323,11 +302,11 @@ system("openssl ocsp -index $d/certindex -CA $d/root.crt "
 	. ">>$d/openssl.out 2>&1") == 0
 	or die "Can't create OCSP response: $!\n";
 
-like(get('RSA', 'end', port => 8444), qr/200 OK.*SUCCESS/s, 'ocsp many');
+like(get('end', port => 8444), qr/200 OK.*SUCCESS/s, 'ocsp many');
 
 # store into ssl_ocsp_cache
 
-like(get('RSA', 'end', port => 8446), qr/200 OK.*SUCCESS/s, 'cache store');
+like(get('end', port => 8446), qr/200 OK.*SUCCESS/s, 'cache store');
 
 # revoke
 
@@ -346,23 +325,23 @@ system("openssl ocsp -index $d/certindex -CA $d/int.crt "
 	. ">>$d/openssl.out 2>&1") == 0
 	or die "Can't create OCSP response: $!\n";
 
-like(get('RSA', 'end'), qr/400 Bad.*FAILED:certificate revoked/s, 'revoked');
+like(get('end'), qr/400 Bad.*FAILED:certificate revoked/s, 'revoked');
 
 # with different responder where it's still valid
 
-like(get('RSA', 'end', port => 8445), qr/200 OK.*SUCCESS/s, 'ocsp responder');
+like(get('end', port => 8445), qr/200 OK.*SUCCESS/s, 'ocsp responder');
 
 # with different context to responder where it's still valid
 
-like(get('RSA', 'end', sni => 'sni'), qr/200 OK.*SUCCESS/s, 'ocsp context');
+like(get('end', sni => 'sni'), qr/200 OK.*SUCCESS/s, 'ocsp context');
 
 # with cached ocsp response it's still valid
 
-like(get('RSA', 'end', port => 8446), qr/200 OK.*SUCCESS/s, 'cache lookup');
+like(get('end', port => 8446), qr/200 OK.*SUCCESS/s, 'cache lookup');
 
 # ocsp end response signed with invalid (root) cert, expect HTTP 400
 
-like(get('ECDSA', 'ec-end'),
+like(get('ec-end'),
 	qr/400 Bad.*FAILED:certificate status request failed/s,
 	'root ca not trusted');
 
@@ -374,13 +353,22 @@ system("openssl ocsp -index $d/certindex -CA $d/int.crt "
 	. ">>$d/openssl.out 2>&1") == 0
 	or die "Can't create EC OCSP response: $!\n";
 
-like(get('ECDSA', 'ec-end'), qr/200 OK.*SUCCESS/s, 'ocsp ecdsa');
+like(get('ec-end'), qr/200 OK.*SUCCESS/s, 'ocsp ecdsa');
 
-my ($s, $ssl) = get('ECDSA', 'ec-end');
-my $ses = Net::SSLeay::get_session($ssl);
+my $s = session('ec-end');
 
-like(get('ECDSA', 'ec-end', ses => $ses),
+TODO: {
+local $TODO = 'no TLSv1.3 sessions, old Net::SSLeay'
+	if $Net::SSLeay::VERSION < 1.88 && test_tls13();
+local $TODO = 'no TLSv1.3 sessions, old IO::Socket::SSL'
+	if $IO::Socket::SSL::VERSION < 2.061 && test_tls13();
+local $TODO = 'no TLSv1.3 sessions in LibreSSL'
+	if $t->has_module('LibreSSL') && test_tls13();
+
+like(get('ec-end', ses => $s),
 	qr/200 OK.*SUCCESS:r/s, 'session reused');
+
+}
 
 # revoke with saved session
 
@@ -401,78 +389,62 @@ system("openssl ocsp -index $d/certindex -CA $d/int.crt "
 
 # reusing session with revoked certificate
 
-like(get('ECDSA', 'ec-end', ses => $ses),
+TODO: {
+local $TODO = 'no TLSv1.3 sessions, old Net::SSLeay'
+	if $Net::SSLeay::VERSION < 1.88 && test_tls13();
+local $TODO = 'no TLSv1.3 sessions, old IO::Socket::SSL'
+	if $IO::Socket::SSL::VERSION < 2.061 && test_tls13();
+local $TODO = 'no TLSv1.3 sessions in LibreSSL'
+	if $t->has_module('LibreSSL') && test_tls13();
+
+like(get('ec-end', ses => $s),
 	qr/400 Bad.*FAILED:certificate revoked:r/s, 'session reused - revoked');
+
+}
 
 # regression test for self-signed
 
-like(get('RSA', 'root', port => 8447), qr/200 OK.*SUCCESS/s, 'ocsp one');
+like(get('root', port => 8447), qr/200 OK.*SUCCESS/s, 'ocsp one');
+
+# check for errors
+
+like(`grep -F '[crit]' ${\($t->testdir())}/error.log`, qr/^$/s, 'no crit');
 
 ###############################################################################
 
 sub get {
-	my ($type, $cert, %extra) = @_;
-	$type = 'PSS' if $type eq 'RSA' && $version > 0x0303;
-	my ($s, $ssl) = get_ssl_socket($type, $cert, %extra);
-	my $cipher = Net::SSLeay::get_cipher($ssl);
-	Test::Nginx::log_core('||', "cipher: $cipher");
-	my $host = $extra{sni} ? $extra{sni} : 'localhost';
-	Net::SSLeay::write($ssl, "GET /serial HTTP/1.0\nHost: $host\n\n");
-	my $r = Net::SSLeay::read($ssl);
-	Test::Nginx::log_core($r);
-	$s->close();
-	return $r unless wantarray();
-	return ($s, $ssl);
+	my $s = get_socket(@_) || return;
+	return http_end($s);
 }
 
-sub get_ssl_socket {
-	my ($type, $cert, %extra) = @_;
+sub session {
+	my $s = get_socket(@_) || return;
+	http_end($s);
+	return $s;
+}
+
+sub get_socket {
+	my ($cert, %extra) = @_;
 	my $ses = $extra{ses};
-	my $sni = $extra{sni};
+	my $sni = $extra{sni} || 'localhost';
 	my $port = $extra{port} || 8443;
-	my $s;
 
-	eval {
-		local $SIG{ALRM} = sub { die "timeout\n" };
-		local $SIG{PIPE} = sub { die "sigpipe\n" };
-		alarm(8);
-		$s = IO::Socket::INET->new('127.0.0.1:' . port($port));
-		alarm(0);
-	};
-	alarm(0);
-
-	if ($@) {
-		log_in("died: $@");
-		return undef;
-	}
-
-	my $ctx = Net::SSLeay::CTX_new() or die("Failed to create SSL_CTX $!");
-
-	if (defined $type) {
-		my $ssleay = Net::SSLeay::SSLeay();
-		if ($ssleay < 0x1000200f || $ssleay == 0x20000000) {
-			Net::SSLeay::CTX_set_cipher_list($ctx, $type)
-				or die("Failed to set cipher list");
-		} else {
-			# SSL_CTRL_SET_SIGALGS_LIST
-			Net::SSLeay::CTX_ctrl($ctx, 98, 0, $type . '+SHA256')
-				or die("Failed to set sigalgs");
-		}
-	}
-
-	Net::SSLeay::set_cert_and_key($ctx, "$d/$cert.crt", "$d/$cert.key")
-		or die if $cert;
-	my $ssl = Net::SSLeay::new($ctx) or die("Failed to create SSL $!");
-	Net::SSLeay::set_session($ssl, $ses) if defined $ses;
-	Net::SSLeay::set_tlsext_host_name($ssl, $sni) if $sni;
-	Net::SSLeay::set_fd($ssl, fileno($s));
-	Net::SSLeay::connect($ssl) or die("ssl connect");
-	return ($s, $ssl);
+	return http(
+		"GET /serial HTTP/1.0\nHost: $sni\n\n",
+		start => 1, PeerAddr => '127.0.0.1:' . port($port),
+		SSL => 1,
+		SSL_hostname => $sni,
+		SSL_session_cache_size => 100,
+		SSL_reuse_ctx => $ses,
+		$cert ? (
+		SSL_cert_file => "$d/$cert.crt",
+		SSL_key_file => "$d/$cert.key"
+		) : ()
+	);
 }
 
-sub get_version {
-	my ($s, $ssl) = get_ssl_socket();
-	return Net::SSLeay::version($ssl);
+sub test_tls13 {
+	return http_get('/', SSL => 1) =~ /TLSv1.3/;
 }
 
 ###############################################################################
@@ -497,12 +469,17 @@ sub http_daemon {
 		my $resp;
 
 		while (<$client>) {
+			Test::Nginx::log_core('||', $_);
 			$headers .= $_;
 			last if (/^\x0d?\x0a?$/);
 		}
 
 		$uri = $1 if $headers =~ /^\S+\s+\/([^ ]+)\s+HTTP/i;
 		next unless $uri;
+
+		if ($port == port(8083)) {
+			next unless $uri =~ s/^test\///;
+		}
 
 		$uri =~ s/%([0-9A-Fa-f]{2})/chr(hex($1))/eg;
 		my $req = decode_base64($uri);

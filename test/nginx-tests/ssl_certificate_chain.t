@@ -23,12 +23,7 @@ use Test::Nginx;
 select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
-eval { require IO::Socket::SSL; };
-plan(skip_all => 'IO::Socket::SSL not installed') if $@;
-eval { IO::Socket::SSL::SSL_VERIFY_NONE(); };
-plan(skip_all => 'IO::Socket::SSL too old') if $@;
-
-my $t = Test::Nginx->new()->has(qw/http http_ssl/)
+my $t = Test::Nginx->new()->has(qw/http http_ssl socket_ssl/)
 	->has_daemon('openssl')->plan(3);
 
 $t->write_file_expand('nginx.conf', <<'EOF');
@@ -80,7 +75,10 @@ $t->write_file('openssl.conf', <<EOF);
 default_bits = 2048
 encrypt_key = no
 distinguished_name = req_distinguished_name
+x509_extensions = myca_extensions
 [ req_distinguished_name ]
+[ myca_extensions ]
+basicConstraints = critical,CA:TRUE
 EOF
 
 $t->write_file('ca.conf', <<EOF);
@@ -101,6 +99,7 @@ commonName = supplied
 
 [ myca_extensions ]
 basicConstraints = critical,CA:TRUE
+subjectAltName = IP:127.0.0.1
 EOF
 
 foreach my $name ('root') {
@@ -141,41 +140,27 @@ $t->run();
 
 ###############################################################################
 
-is(get_ssl_socket(port(8080)), undef, 'incomplete chain');
-ok(get_ssl_socket(port(8081)), 'intermediate');
-ok(get_ssl_socket(port(8082)), 'intermediate server');
+ok(!get_ssl_socket(8080), 'incomplete chain');
+ok(get_ssl_socket(8081), 'intermediate');
+ok(get_ssl_socket(8082), 'intermediate server');
 
 ###############################################################################
 
 sub get_ssl_socket {
 	my ($port) = @_;
-	my ($s, $verify);
+	my ($verify);
 
-	eval {
-		local $SIG{ALRM} = sub { die "timeout\n" };
-		local $SIG{PIPE} = sub { die "sigpipe\n" };
-		alarm(8);
-		$s = IO::Socket::SSL->new(
-			Proto => 'tcp',
-			PeerAddr => '127.0.0.1',
-			PeerPort => $port,
-			SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_PEER(),
-			SSL_ca_file => "$d/root.crt",
-			SSL_verify_callback => sub {
-				my ($ok) = @_;
-				$verify = $ok;
-				return $ok;
-			},
-			SSL_error_trap => sub { die $_[1] }
-		);
-		alarm(0);
-	};
-	alarm(0);
-
-	if ($@) {
-		log_in("died: $@");
-		return undef;
-	}
+	http(
+		'', PeerAddr => '127.0.0.1:' . port($port), start => 1,
+		SSL => 1,
+		SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_PEER(),
+		SSL_ca_file => "$d/root.crt",
+		SSL_verify_callback => sub {
+			my ($ok) = @_;
+			$verify = $ok;
+			return $ok;
+		}
+	);
 
 	return $verify;
 }
