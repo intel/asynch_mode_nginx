@@ -23,12 +23,9 @@ use Test::Nginx;
 select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
-my $t = Test::Nginx->new()->has(qw/http http_ssl proxy uwsgi http_v2 grpc/)
+my $t = Test::Nginx->new()
+	->has(qw/http http_ssl proxy uwsgi http_v2 grpc openssl:1.0.2/)
 	->has_daemon('openssl');
-
-$t->{_configure_args} =~ /OpenSSL ([\d\.]+)/;
-plan(skip_all => 'OpenSSL too old') unless defined $1 and $1 ge '1.0.2';
-plan(skip_all => 'no ssl_conf_command') if $t->has_module('BoringSSL');
 
 $t->write_file_expand('nginx.conf', <<'EOF');
 
@@ -110,7 +107,12 @@ foreach my $name ('localhost', 'override') {
 }
 
 $t->write_file('index.html', '');
-$t->run()->plan(3);
+
+# suppress deprecation warning
+
+open OLDERR, ">&", \*STDERR; close STDERR;
+$t->try_run('no ssl_conf_command')->plan(3);
+open STDERR, ">&", \*OLDERR;
 
 ###############################################################################
 

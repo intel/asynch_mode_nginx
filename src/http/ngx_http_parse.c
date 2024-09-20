@@ -451,19 +451,16 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
 
             switch (ch) {
             case '/':
-                r->port_end = p;
                 r->uri_start = p;
                 state = sw_after_slash_in_uri;
                 break;
             case '?':
-                r->port_end = p;
                 r->uri_start = p;
                 r->args_start = p + 1;
                 r->empty_path_in_uri = 1;
                 state = sw_uri;
                 break;
             case ' ':
-                r->port_end = p;
                 /*
                  * use single "/" from request line to preserve pointers,
                  * if request line will be copied to large client buffer
@@ -1960,27 +1957,24 @@ unsafe:
 }
 
 
-ngx_int_t
-ngx_http_parse_multi_header_lines(ngx_array_t *headers, ngx_str_t *name,
-    ngx_str_t *value)
+ngx_table_elt_t *
+ngx_http_parse_multi_header_lines(ngx_http_request_t *r,
+    ngx_table_elt_t *headers, ngx_str_t *name, ngx_str_t *value)
 {
-    ngx_uint_t         i;
     u_char            *start, *last, *end, ch;
-    ngx_table_elt_t  **h;
+    ngx_table_elt_t  *h;
 
-    h = headers->elts;
+    for (h = headers; h; h = h->next) {
 
-    for (i = 0; i < headers->nelts; i++) {
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "parse header: \"%V: %V\"", &h->key, &h->value);
 
-        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, headers->pool->log, 0,
-                       "parse header: \"%V: %V\"", &h[i]->key, &h[i]->value);
-
-        if (name->len > h[i]->value.len) {
+        if (name->len > h->value.len) {
             continue;
         }
 
-        start = h[i]->value.data;
-        end = h[i]->value.data + h[i]->value.len;
+        start = h->value.data;
+        end = h->value.data + h->value.len;
 
         while (start < end) {
 
@@ -1994,7 +1988,7 @@ ngx_http_parse_multi_header_lines(ngx_array_t *headers, ngx_str_t *name,
 
             if (value == NULL) {
                 if (start == end || *start == ',') {
-                    return i;
+                    return h;
                 }
 
                 goto skip;
@@ -2014,7 +2008,7 @@ ngx_http_parse_multi_header_lines(ngx_array_t *headers, ngx_str_t *name,
             value->len = last - start;
             value->data = start;
 
-            return i;
+            return h;
 
         skip:
 
@@ -2029,31 +2023,28 @@ ngx_http_parse_multi_header_lines(ngx_array_t *headers, ngx_str_t *name,
         }
     }
 
-    return NGX_DECLINED;
+    return NULL;
 }
 
 
-ngx_int_t
-ngx_http_parse_set_cookie_lines(ngx_array_t *headers, ngx_str_t *name,
-    ngx_str_t *value)
+ngx_table_elt_t *
+ngx_http_parse_set_cookie_lines(ngx_http_request_t *r,
+    ngx_table_elt_t *headers, ngx_str_t *name, ngx_str_t *value)
 {
-    ngx_uint_t         i;
     u_char            *start, *last, *end;
-    ngx_table_elt_t  **h;
+    ngx_table_elt_t  *h;
 
-    h = headers->elts;
+    for (h = headers; h; h = h->next) {
 
-    for (i = 0; i < headers->nelts; i++) {
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "parse header: \"%V: %V\"", &h->key, &h->value);
 
-        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, headers->pool->log, 0,
-                       "parse header: \"%V: %V\"", &h[i]->key, &h[i]->value);
-
-        if (name->len >= h[i]->value.len) {
+        if (name->len >= h->value.len) {
             continue;
         }
 
-        start = h[i]->value.data;
-        end = h[i]->value.data + h[i]->value.len;
+        start = h->value.data;
+        end = h->value.data + h->value.len;
 
         if (ngx_strncasecmp(start, name->data, name->len) != 0) {
             continue;
@@ -2077,10 +2068,10 @@ ngx_http_parse_set_cookie_lines(ngx_array_t *headers, ngx_str_t *name,
         value->len = last - start;
         value->data = start;
 
-        return i;
+        return h;
     }
 
-    return NGX_DECLINED;
+    return NULL;
 }
 
 

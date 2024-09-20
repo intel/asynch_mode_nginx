@@ -60,9 +60,6 @@ Connection: close
 
 EOF
 
-TODO: {
-local $TODO = 'not yet' unless $t->has_version('1.21.1');
-
 like(http(<<EOF), qr/405 Not Allowed(?!.*200 OK)/s, 'connect');
 CONNECT / HTTP/1.1
 Host: localhost
@@ -72,7 +69,5 @@ Host: localhost
 Connection: close
 
 EOF
-
-}
 
 ###############################################################################

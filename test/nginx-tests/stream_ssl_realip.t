@@ -25,13 +25,9 @@ use Test::Nginx qw/ :DEFAULT http_end /;
 select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
-eval { require IO::Socket::SSL; };
-plan(skip_all => 'IO::Socket::SSL not installed') if $@;
-eval { IO::Socket::SSL::SSL_VERIFY_NONE(); };
-plan(skip_all => 'IO::Socket::SSL too old') if $@;
-
 my $t = Test::Nginx->new()->has(qw/stream stream_return stream_realip/)
-	->has(qw/stream_ssl/)->has_daemon('openssl')
+	->has(qw/stream_ssl socket_ssl/)
+	->has_daemon('openssl')
 	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
@@ -48,13 +44,13 @@ stream {
     ssl_certificate localhost.crt;
 
     server {
-        listen      127.0.0.1:8083 proxy_protocol ssl %%SSL_ASYNCH%%;
+        listen      127.0.0.1:8083 proxy_protocol ssl;
         return      $proxy_protocol_addr:$proxy_protocol_port;
     }
 
     server {
-        listen      127.0.0.1:8086 proxy_protocol ssl %%SSL_ASYNCH%%;
-        listen      [::1]:%%PORT_8086%% proxy_protocol ssl %%SSL_ASYNCH%%;
+        listen      127.0.0.1:8086 proxy_protocol ssl;
+        listen      [::1]:%%PORT_8086%% proxy_protocol ssl;
         return      "$remote_addr:$remote_port:
                      $realip_remote_addr:$realip_remote_port";
 
@@ -68,8 +64,8 @@ stream {
     }
 
     server {
-        listen      127.0.0.1:8088 proxy_protocol ssl %%SSL_ASYNCH%%;
-        listen      [::1]:%%PORT_8088%% proxy_protocol ssl %%SSL_ASYNCH%%;
+        listen      127.0.0.1:8088 proxy_protocol ssl;
+        listen      [::1]:%%PORT_8088%% proxy_protocol ssl;
         return      "$remote_addr:$remote_port:
                      $realip_remote_addr:$realip_remote_port";
 

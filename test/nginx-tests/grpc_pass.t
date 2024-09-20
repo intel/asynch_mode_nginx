@@ -65,7 +65,7 @@ http {
 
     server {
         listen       127.0.0.1:8081 http2;
-        listen       127.0.0.1:8082 http2 ssl ;
+        listen       127.0.0.1:8082 http2 ssl;
         server_name  localhost;
 
         ssl_certificate_key localhost.key;
@@ -98,7 +98,12 @@ foreach my $name ('localhost') {
 }
 
 $t->run_daemon(\&dns_daemon, port(8982), $t);
+
+# suppress deprecation warning
+
+open OLDERR, ">&", \*STDERR; close STDERR;
 $t->run()->plan(5);
+open STDERR, ">&", \*OLDERR;
 
 $t->waitforfile($t->testdir . '/' . port(8982));
 
@@ -108,8 +113,9 @@ like(http_get('/basic'), qr/200 OK/, 'no scheme');
 like(http_get('/grpc'), qr/200 OK/, 'grpc scheme');
 
 SKIP: {
-$t->{_configure_args} =~ /OpenSSL ([\d\.]+)/;
-skip 'OpenSSL too old', 1 unless defined $1 and $1 ge '1.0.2';
+skip 'OpenSSL too old', 1
+	if $t->has_module('OpenSSL')
+	and not $t->has_feature('openssl:1.0.2');
 
 like(http_get('/grpcs'), qr/200 OK/, 'grpcs scheme');
 
