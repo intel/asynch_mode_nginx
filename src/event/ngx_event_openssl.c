@@ -3575,6 +3575,7 @@ ngx_ssl_shutdown(ngx_connection_t *c)
     ngx_int_t   rc;
     ngx_err_t   err;
     ngx_uint_t  tries;
+    static ngx_uint_t retries_err = 2;
     rc = NGX_OK;
 
     if(!c->ssl) {
@@ -3737,8 +3738,10 @@ ngx_ssl_shutdown(ngx_connection_t *c)
                 }
             }
 
-            if(ngx_del_conn && c->read->active) {
-               ngx_del_conn(c, NGX_DISABLE_EVENT);
+            if(retries_err) {
+                if(ngx_del_conn && c->read->active) {
+                    ngx_del_conn(c, NGX_DISABLE_EVENT);
+                 }
             }
         }
 
@@ -3749,9 +3752,14 @@ ngx_ssl_shutdown(ngx_connection_t *c)
                 goto failed;
             }
 
-            //Work around: Read write event on shutdown;
-            c->write->ready = 0;
-            c->write->active = 0;
+            if ((n == -1) && (c->asynch) && (retries_err > 0 )) {
+                retries_err--;
+            }
+            else if(( n != -1) && (retries_err > 0 ))
+            {
+               c->write->ready = 0;
+               c->write->active = 0;
+            }
 
             if (sslerr == SSL_ERROR_WANT_READ) {
                 c->read->ready = 0;
