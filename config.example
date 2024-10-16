@@ -2,7 +2,7 @@
 #
 # BSD LICENSE
 #
-# Copyright (c) 2014-2023, Intel Corporation.
+# Copyright (c) 2014-2024, Intel Corporation.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -54,4 +54,4 @@ fi
 --add-dynamic-module=modules/nginx_qatzip_module \
 --add-dynamic-module=modules/nginx_qat_module/ \
 --with-cc-opt="-DNGX_SECURE_MEM -I$OPENSSL_LIB/include -I$QZ_ROOT/include -Wno-error=deprecated-declarations" \
---with-ld-opt="-Wl,-rpath=$OPENSSL_LIB/lib -L$OPENSSL_LIB/lib -L$QZ_ROOT/src -lqatzip -lz"
+--with-ld-opt="-Wl,-rpath=$OPENSSL_LIB/lib64 -L$OPENSSL_LIB/lib64 -L$QZ_ROOT/src -lqatzip -lz"

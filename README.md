@@ -1,297 +1,78 @@
-Asynch Mode for NGINX\*
+# Asynch Mode for NGINX\*
+
+Nginx ("engine x") is an HTTP web server, reverse proxy, content cache,
+load balancer, TCP/UDP proxy server, and mail proxy server.
+Originally written by Igor Sysoev and distributed under the 2-clause BSD License.
+This project provides async capabilities to Nginx using OpenSSL\* ASYNC infrastructure.
+The Async mode Nginx\* with Intel&reg; QuickAssist Technology (QAT) Acceleration can
+provide significant performance improvements.
 
 ## Table of Contents
 
-- [Introduction](#introduction)
-- [Licensing](#licensing)
 - [Features](#features)
 - [Hardware Requirements](#hardware-requirements)
 - [Software Requirements](#software-requirements)
+- [Installation Instructions](#installation-instructions)
+- [Testing](#testing)
+    - [Official Unit tests](#official-unit-tests)
+    - [Performance Testing](#performance-testing)
+- [QAT Configuration](#qat-configuration)
+    - [SSL Engine (QAT Engine) Configuration](#ssl-engine-qat-engine-configuration)
+    - [Nginx Side Polling](#nginx-side-polling)
+    - [QATzip Module Configuration](#qatzip-module-configuration)
 - [Additional Information](#additional-information)
 - [Limitations](#limitations)
-- [Installation Instructions](#installation-instructions)
-    - [Asynch Mode for NGINX\* Installation](#asynch-mode-for-nginx-installation)
-    - [Build OpenSSL\* and QAT engine](#build-openssl-and-qat-engine)
-    - [Build QATzip](#build-qatzip)
-    - [Run Nginx official test](#run-nginx-official-test)
-- [SSL Engine Framework for Configuration](#ssl-engine-framework-for-configuration)
-- [Support for Nginx Side Polling](#support-for-nginx-side-polling)
-    - [External Polling Mode](#external-polling-mode)
-    - [Heuristic Polling Mode](#heuristic-polling-mode)
-- [QATzip Module Configuration](#qatzip-module-configuration)
-- [QAT Sample Configuration](#qat-sample-configuration)
 - [Known Issues](#known-issues)
-- [Intended Audience](#intended-audience)
+- [Licensing](#licensing)
 - [Legal](#legal)
-
-## Introduction
-
-Nginx\* [engine x] is an HTTP and reverse proxy server, a mail proxy server,
-and a generic TCP/UDP proxy server, originally written by Igor Sysoev.
-This project provides an extended Nginx working with asynchronous mode OpenSSL\*.
-With Intel&reg; QuickAssist Technology (QAT) acceleration, Asynch Mode for NGINX\*
-can provide significant performance improvement.
-
-## Licensing
-
-The Licensing of the files within this project is:
-
-Asynch Mode for NGINX\* - BSD License. Please
-see the `LICENSE` file contained in the top level folder. Further details can
-be found in the file headers of the relevant files.
 
 ## Features
 
 * Asynchronous Mode in SSL/TLS processing (including http/stream/mail/proxy module)
+* Support QAT_HW and QAT_SW PKE and symmetric Crypto acceleration
+* Support QAT_HW GZIP compression acceleration
 * SSL Engine Framework for engine configuration
-* Support for external polling mode and heursitic polling mode
+* Support for external polling mode and heuristic polling mode
 * Release hardware resource during worker is shutting down (For more details
   information, please read modules/nginx_qat_module/README)
-* Support OpenSSL Cipher PIPELINE feature
-* Support QATzip module to accelerate GZIP compression with Intel&reg; Quickassist Technology
-* Support software fallback for asymmetric cryptography algorithms.
-* Support [QAT Engine multibuffer feature][10]
-[10]:https://github.com/intel/QAT_Engine#intel-qat-openssl-engine-multibuffer-support
-* Support FreeBSD Operating System.
+* Support OpenSSL Cipher PIPELINE Capability.
+* Support software fallback for asymmetric cryptography algorithms(Linux & FreeBSD) and symmetric
+  algorithms (FreeBSD only)
 
 ## Hardware Requirements
 
-Asynch Mode for NGINX\* supports Crypto and Compression offload to the following acceleration devices:
+Asynch Mode for NGINX\* supports QAT_HW Crypto and Compression acceleration
+on the platforms with the following QAT devices
 
-* [Intel&reg; C62X Series Chipset][1]
-* [Intel&reg; Communications Chipset 8925 to 8955 Series][2]
-* [Intel&reg; Communications Chipset 8960 to 8970 Series][9]
-* [Intel&reg; C3XXX Series Chipset][11]
+* [Intel® QuickAssist 4xxx Series][1]
+* [Intel® QuickAssist Adapter 8970][2]
+* [Intel® QuickAssist Adapter 8960][3]
+* [Intel® QuickAssist Adapter 8950][4]
+* [Intel® Atom&trade; Processor C3000][5]
 
-[1]:https://www.intel.com/content/www/us/en/design/products-and-solutions/processors-and-chipsets/purley/intel-xeon-scalable-processors.html
-[2]:https://www.intel.com/content/www/us/en/ethernet-products/gigabit-server-adapters/quickassist-adapter-8950-brief.html
-[9]:https://www.intel.com/content/www/us/en/ethernet-products/gigabit-server-adapters/quickassist-adapter-8960-8970-brief.html
-[11]:https://www.intel.com/content/www/us/en/products/docs/processors/atom/c-series/c3000-family-brief.html
+QAT_SW acceleration is supported in the platforms starting with [3rd Generation Intel&reg; Xeon&reg; Scalable Processors family][6] and later.
+
+[1]:https://www.intel.com/content/www/us/en/products/details/processors/xeon/scalable.html
+[2]:https://www.intel.com/content/www/us/en/products/sku/125200/intel-quickassist-adapter-8970/downloads.html
+[3]:https://www.intel.com/content/www/us/en/products/sku/125199/intel-quickassist-adapter-8960/downloads.html
+[4]:https://www.intel.com/content/www/us/en/products/sku/80371/intel-communications-chipset-8950/specifications.html
+[5]:https://www.intel.com/content/www/us/en/design/products-and-solutions/processors-and-chipsets/denverton/ns/atom-processor-c3000-series.html
+[6]:https://www.intel.com/content/www/us/en/products/docs/processors/xeon/3rd-gen-xeon-scalable-processors-brief.html
 
 ## Software Requirements
 
-This release was validated on the following:
+This release was validated on the following and its dependent libraries
+mentioned QAT Engine and QATZip software Requirements section.
 
-* Asynch Mode for NGINX\* has been tested with the latest Intel&reg; QuickAssist Acceleration Driver.
-Please download the QAT driver from the link https://www.intel.com/content/www/us/en/developer/topic-technology/open/quick-assist-technology/overview.html
-* OpenSSL-3.0.10
-* QAT engine v1.3.1
-* QATzip v1.1.2
-
-## Additional Information
-
-* Asynch Mode for NGINX\* is developed based on Nginx-1.22.1.
-
-* Generate patch against official Nginx-1.22.1.
-
-```bash
-  git clone https://github.com/intel/asynch_mode_nginx.git
-  wget http://nginx.org/download/nginx-1.22.1.tar.gz
-  tar -xvzf nginx-1.22.1.tar.gz
-  diff -Naru -x .git nginx-1.22.1 asynch_mode_nginx > async_mode_nginx_1.22.1.patch
-```
-
-* Apply patch to official Nginx-1.22.1.
-
-```bash
-  wget http://nginx.org/download/nginx-1.22.1.tar.gz
-  tar -xvzf nginx-1.22.1.tar.gz
-  patch -p0 < async_mode_nginx_1.22.1.patch
-```
-
-* Generate patch against github official read-only mirror
-
-```bash
-  git clone https://github.com/intel/asynch_mode_nginx.git
-  wget https://github.com/nginx/nginx/archive/release-1.22.1.tar.gz
-  tar -xvzf release-1.22.1.tar.gz
-  diff -Naru -x .git -x .hgtags nginx-release-1.22.1 asynch_mode_nginx > async_mode_nginx_1.22.1.patch
-```
-
-* Apply patch to the github release pachage.
-
-```bash
-  wget https://github.com/nginx/nginx/archive/release-1.22.1.tar.gz
-  tar -xvzf release-1.22.1.tar.gz
-  patch -p0 < async_mode_nginx_1.22.1.patch
-```
-
-* Asynch Mode for NGINX\* SSL engine framework provides new directives:
-
-**Directives**
-```bash
-Syntax:     ssl_asynch on | off;
-Default:    ssl_asynch off;
-Context:    stream, mail, http, server
-
-    Enables SSL/TLS asynchronous mode
-```
-**Example**
-
-file: conf/nginx.conf
-
-```bash
-    http {
-        ssl_asynch  on;
-        server {...}
-    }
-```
-
-```bash
-    stream {
-        ssl_asynch  on;
-        server {...}
-    }
-```
-
-**Directives**
-```bash
-Syntax:     proxy_ssl_asynch on | off;
-Default:    proxy_ssl_asynch off;
-Context:    stream, http, server
-
-Enables the SSL/TLS protocol asynchronous mode for connections to a proxied server.
-```
-
-**Example**
-
-file: conf/nginx.conf
-
-```bash
-    http {
-        server {
-            location /ssl {
-                proxy_pass https://127.0.0.1:8082/outer;
-                proxy_ssl_asynch on;
-            }
-        }
-    }
-```
-
-**Directives**
-```bash
-Syntax:     grpc_ssl_asynch on | off;
-Default:    grpc_ssl_asynch off;
-Context:    http, server
-
-Enables the SSL/TLS protocol asynchronous mode for connections to a grpc server.
-```
-
-**Example**
-
-file: conf/nginx.conf
-
-```bash
-    http {
-        server {
-            location /grpcs {
-                grpc_pass https://127.0.0.1:8082/outer;
-                grpc_ssl_asynch on;
-            }
-        }
-    }
-```
-
-* Asynch Mode for NGINX\* provide new option `asynch` for `listen` directive.
-
-**Example**
-
-file: conf/nginx.conf
-
-```bash
-    http {
-        server{ listen 443 asynch; }
-    }
-```
-
-* Support OpenSSL Cipher PIPELINE feature (Deitals information about the pipeline
-  settings, please refer to [OpenSSL Docs][6])
-
-**Directives**
-```bash
-Syntax:     ssl_max_pipelines size;
-Default:    ssl_max_pipelines 0;
-Context:    server
-
-Set MAX number of pipelines
-```
-
-**Directives**
-```bash
-Syntax:     ssl_split_send_fragment size;
-Default:    ssl_split_send_fragment 0;
-Context:    server
-
-Set split size of sending fragment
-```
-
-**Directives**
-```bash
-Syntax:     ssl_max_send_fragment size;
-Default:    ssl_max_send_fragment 0;
-Context:    server
-
-Set max number of sending fragment
-```
-
-* [White Paper: Intel&reg; Quickassist Technology and OpenSSL-1.1.0:Performance][3]
-
-[3]: https://01.org/sites/default/files/downloads/intelr-quickassist-technology/intelquickassisttechnologyopensslperformance.pdf
-[6]: https://www.openssl.org/docs/man1.1.1/man3/SSL_CTX_set_split_send_fragment.html
-
-## Limitations
-
-* Nginx supports `reload` operation, when QAT hardware is involved for crypto
-  offload, user should ensure that there are enough number of QAT instances.
-  For example, the available qat instance number should be 2x equal or more than
-  Nginx worker process number.
-
-    For example, in Nginx configuration file (`nginx.conf`) worker process number
-is configured as
-
-    ```bash
-       worker_processes 16;
-    ```
-
-    Then the instance configuration in QAT driver configuration file should be
-
-    ```bash
-        [SHIM]
-        NumberCyInstances = 1
-        NumberDcInstances = 0
-        NumProcesses = 32
-        LimitDevAccess = 0
-    ```
-
-* When configure "worker_process auto", Asynch Mode for NGINX\* will need instance number equal or larger than
-  2 times of CPU core number. Otherwise, Asynch Mode for NGINX\* might show various issue caused by leak of
-  instance.
-
-* Nginx supports QAT engine and QATzip module. By default, they use User Space
-  DMA-able Memory (USDM) Component. The USDM component is located within the
-  Upstream Intel&reg; QAT Driver source code in the following subdirectory:
-  `quickassist/utilities/libusdm_drv`. We should have this component enabled
-  and assignd enough memory before using nginx_qat_module or
-  nginx_qatzip_module, for example:
-
-    ```bash
-        echo 2048 > /sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages
-        insmod ./usdm_drv.ko max_huge_pages=2048 max_huge_pages_per_process=32
-    ```
-
-* AES-CBC-HMAC-SHA algorithm won't be offloaded to QAT_HW if Encrypt then MAC(ETM) mode 
-  is used for SSL connection(by default). Refer to [QAT_Engine] for more details.
-
-[QAT_Engine]: https://github.com/intel/QAT_Engine/blob/master/docs/limitations.md#limitations
-
-* QATzip module supports GZIP compression acceleration now, does not support
-  user define dictionary compression yet.
-
-* The HTTP2 protocol does not support asynchronous functionality.
+* [OpenSSL-3.0.14](https://github.com/openssl/openssl)
+* [QAT engine v1.6.2](https://github.com/intel/QAT_Engine)
+* [QATzip v1.2.0](https://github.com/intel/QATzip)
 
 ## Installation Instructions
 
-### Asynch Mode for NGINX\* Installation
+Pre-requisties: Install OpenSSL and QAT Engine(for Crypto using QAT_HW & QAT_SW) and QATZip(for Compression)
+using the [QAT engine](https://github.com/intel/QAT_Engine#installation-instructions)
+and [QATzip](https://github.com/intel/QATzip#installation-instructions) installation instructions. 
 
 **Set the following environmental variables:**
 
@@ -301,115 +82,68 @@ is configured as
 
 `QZ_ROOT` is the directory where the QATzip has been compiled to
 
-**Configure nginx for compilation:**
-
-    Configure Nginx against OpenSSL 3.0
-    ```bash
-    ./configure \
-        --prefix=$NGINX_INSTALL_DIR \
-        --with-http_ssl_module \
-        --add-dynamic-module=modules/nginx_qatzip_module \
-        --add-dynamic-module=modules/nginx_qat_module/ \
-        --with-cc-opt="-DNGX_SECURE_MEM -I$OPENSSL_LIB/include -I$ICP_ROOT/quickassist/include -I$ICP_ROOT/quickassist/include/dc -I$QZ_ROOT/include -Wno-error=deprecated-declarations" \
-        --with-ld-opt="-Wl,-rpath=$OPENSSL_LIB/lib64 -L$OPENSSL_LIB/lib64 -L$QZ_ROOT/src -lqatzip -lz"
-    ```
-
-**Compile and Install:**
+**Configure and build nginx with QAT Engine and QATZip**
 
 ```bash
-    make
-    make install
+./configure \
+  --prefix=$NGINX_INSTALL_DIR \
+  --with-http_ssl_module \
+  --add-dynamic-module=modules/nginx_qatzip_module \
+  --add-dynamic-module=modules/nginx_qat_module/ \
+  --with-cc-opt="-DNGX_SECURE_MEM -I$OPENSSL_LIB/include -I$ICP_ROOT/quickassist/include -I$ICP_ROOT/quickassist/include/dc -I$QZ_ROOT/include -Wno-error=deprecated-declarations" \
+  --with-ld-opt="-Wl,-rpath=$OPENSSL_LIB/lib64 -L$OPENSSL_LIB/lib64 -L$QZ_ROOT/src -lqatzip -lz"
+  make
+  make install
 ```
 
-**Nginx supports setting worker to non-root user, for example:**
+* Refer QAT Settings [here](https://intel.github.io/quickassist/GSG/2.X/installation.html#running-applications-as-non-root-user) for running Nginx
+under non-root user.
 
-    Add user qat in group qat, for example run below command in your terminal:
-    ```bash
-        groupadd qat
-        useradd -g qat qat
-    ```
+## Testing
 
-    In nginx.conf, you can set worker as qat, qat is the user you added before:
-    ```bash
-        user qat qat;
-    ```
+### Official Unit tests
 
-    Then we need to give non-root worker enough permission to enable qat, you need to run folow
-    connamds in your terminal:
-    ```bash
-        chgrp qat /dev/qat_*
-        chmod 660 /dev/qat_*
-        chgrp qat /dev/usdm_drv
-        chmod 660 /dev/usdm_drv
-        chgrp qat /dev/uio*
-        chmod 660 /dev/uio*
-        chgrp qat /dev/hugepages
-        chmod 770 /dev/hugepages
-        chgrp qat /usr/local/lib/libqat_s.so
-        chgrp qat /usr/local/lib/libusdm_drv_s.so
-    ```
+These instructions can be found on [Official test](https://github.com/intel/asynch_mode_nginx/blob/master/test/README.md)
 
-### Build OpenSSL\* and QAT engine
+### Performance Testing
 
-These instructions can be found on [QAT engine][4]
+Performance Testing with Async mode Nginx along with best known build and
+runtime configuration along with scripts available [here](https://intel.github.io/quickassist/qatlib/asynch_nginx.html)
 
-[4]: https://github.com/intel/QAT_Engine#installation-instructions
+## QAT Configuration
 
-### Build QATzip
+Refer Sample Configuration file `conf/nginx.QAT-sample.conf` with QAT configured which includes
 
-These instructions can be found on [QATzip][5]
+* SSL QAT engine in heuristic mode.
+* HTTPS in asynchronous mode.
+* QATZip Module for compression acceleration.
+* TLS1.3 Support as default.
 
-[5]: https://github.com/intel/QATzip#installation-instructions
+* The QAT Hardware driver configuration needs crypto and compression instance configured
 
-### Run Nginx official test
-
-These instructions can be found on [Official test][8]
-
-[8]: https://github.com/intel/asynch_mode_nginx/blob/master/test/README.md
-
-### Performance Testing Best Known Methodology
-
-These instruction can be found on [9]
-[9]: https://github.com/intel/asynch_mode_nginx/blob/master/test/performance_bkm/README.md
-
-## SSL Engine Framework for Configuration
-
-As QAT engine is implemented as a standard OpenSSL\* engine, its behavior can be
-controlled from the OpenSSL\* configuration file (`openssl.conf`), which can be
-found on [QAT engine][7].
-
-[7]: https://github.com/intel/QAT_Engine#using-the-openssl-configuration-file-to-loadinitialize-engines
-
-**Note**:
-From v0.3.2 and later, this kind of configuration in `openssl.conf` will not be
-effective for Nginx. Please use the following method to configure Nginx SSL
-engine, such as Intel&reg; QAT.
-
+### SSL Engine (QAT Engine) configuration
 An SSL Engine Framework is introduced to provide a more powerful and flexible
 mechanism to configure Nginx SSL engine directly in the Nginx configuration file
 (`nginx.conf`).
 
-### ssl_engine configuration
+Loading Engine via OpenSSL.cnf is not viable in Nginx. Please use the SSL Engine
+Framework which provides a more powerful and flexible mechanism to configure
+Nginx SSL engine such as Intel&reg; QAT Engine directly in the Nginx
+configuration file (`nginx.conf`).
+
 A new configuration block is introduced as `ssl_engine` which provides two
 general directives:
 
 Sets the engine module and engine id for OpenSSL async engine. For example:
 ```bash
-Syntax:     use_engine [engine module name] [engine id];
+Syntax:     use_engine [engine_module_name] [engine_id];
 Default:    N/A
 Context:    ssl_engine
 Description:
             Specify the engine module name against engine id
 ```
-Sets the engine module and engine id for OpenSSL async engine by only providing
-the engine id. The engine module should be the same as engine id in this case.
-```bash
-Syntax:     use_engine [engine id];
-Default:    N/A
-Context:    ssl_engine
-Description:
-            Specify the engine id
-```
+
+where engine_module_name is optional and should be same as engine id if it is not used.
 
 ```bash
 Syntax:     default_algorithms [ALL/RSA/EC/...];
@@ -419,12 +153,14 @@ Description:
             Specify the algorithms need to be offloaded to the engine
             More details information please refer to OpenSSL engine
 ```
+If Handshake only acceleration is preferred then default_algorithms should `RSA EC DH DSA PKEY`
+and if symmetric only is preferred then use `CIPHERS`. If all algorithms are preferred then `ALL`
+must be specified.
 
 A following configuration sub-block can be used to set engine specific
 configuration. The name of the sub-block should have a prefix using the
 engine name specified in `use_engine`, such as `[engine_name]_engine`.
 
-### nginx_qat_module
 Any 3rd party modules can be integrated into this framework. By default, a
 reference module `dasync_module` is provided in `src/engine/modules`
 and a QAT module `nginx_qat_module` is provided in `modules/nginx_qat_modules`.
@@ -448,7 +184,7 @@ An example configuration in the `nginx.conf`:
 For more details directives of `nginx_qat_module`, please refer to
 `modules/nginx_qat_modules/README`.
 
-## Support for Nginx Side Polling
+## Nginx Side Polling
 The qat_module provides two kinds of Nginx side polling for QAT engine,
 
 * external polling mode
@@ -557,16 +293,15 @@ file: `conf/nginx.conf`
     }
 ```
 
-## QATzip Module Configuration
+### QATzip Module Configuration
 
 This module is developed to accelerate GZIP compression with QAT accelerators
 through QATzip stream API released in v0.2.6.
-Software fallback feature of QATzip is released in v1.0.0.
 
 **Note:**
 
 * This mode is only available when using QATzip v1.0.0 or later.
-* This mode relys on gzip module for SW fallback feature.
+* This mode relies on gzip module for SW fallback feature.
 * The qatzip_sw is set to failover by default, do not load QATzip module if you
 do not want to enable qatzip. Or else it would be enabled and set to failover.
 
@@ -617,20 +352,182 @@ file: `conf/nginx.conf`
 For more details directives of `nginx_qatzip_module`, please refer to
 `modules/nginx_qatzip_modules/README`.
 
-## QAT Sample Configuration
+## Additional Information
 
-file: `conf/nginx.QAT-sample.conf`
+### Generating Async mode Patch
+* Asynch Mode for NGINX\* is developed based on Nginx-1.26.2. Refer steps below
+to generate patch to apply on top of official Nginx-1.26.2.
 
-This is a sample configure file shows how to configure QAT in nginx.conf. This file includes:
+#### Generating the patch with package from Nginx download page
+```bash
+  git clone https://github.com/intel/asynch_mode_nginx.git asynch_mode_nginx
+  wget http://nginx.org/download/nginx-1.26.2.tar.gz
+  tar -xvzf nginx-1.26.2.tar.gz
+  diff -Naru -x .git nginx-1.26.2 asynch_mode_nginx > async_mode_nginx_1.26.2.patch
+  # Apply Patch
+  cd nginx-1.26.2
+  patch -p1 < ../async_mode_nginx_1.26.2.patch
+```
 
-* Enable SSL QAT engine in heretic mode.
-* Support HTTPS async mode.
-* Enable QATzip support.
-* Select TLS-1.2 as the default ssl_protocols.
+#### Generating the patch with package from Github Mirror page
 
-**Note:**
+```bash
+  git clone https://github.com/intel/asynch_mode_nginx.git
+  wget https://github.com/nginx/nginx/archive/release-1.26.2.tar.gz
+  tar -xvzf release-1.26.2.tar.gz
+  diff -Naru -x .git -x .hgtags nginx-release-1.26.2 asynch_mode_nginx > async_mode_nginx_1.26.2.patch
+  # Apply Patch
+  patch -p0 < async_mode_nginx_1.26.2.patch
+```
 
-* The QAT configuration needs crypto and compression instance for the user space application.
+### New Async Directives
+
+**Directives**
+```bash
+Syntax:     ssl_asynch on | off;
+Default:    ssl_asynch off;
+Context:    stream, mail, http, server
+
+    Enables SSL/TLS asynchronous mode
+```
+**Example**
+
+file: conf/nginx.conf
+
+```bash
+    http {
+        ssl_asynch  on;
+        server {...}
+    }
+
+    stream {
+        ssl_asynch  on;
+        server {...}
+    }
+```
+
+**Directives**
+```bash
+Syntax:     proxy_ssl_asynch on | off;
+Default:    proxy_ssl_asynch off;
+Context:    stream, http, server
+
+Enables the SSL/TLS protocol asynchronous mode for connections to a proxied server.
+```
+
+**Example**
+
+file: conf/nginx.conf
+
+```bash
+    http {
+        server {
+            location /ssl {
+                proxy_pass https://127.0.0.1:8082/outer;
+                proxy_ssl_asynch on;
+            }
+        }
+    }
+```
+
+**Directives**
+```bash
+Syntax:     grpc_ssl_asynch on | off;
+Default:    grpc_ssl_asynch off;
+Context:    http, server
+
+Enables the SSL/TLS protocol asynchronous mode for connections to a grpc server.
+```
+
+**Example**
+
+file: conf/nginx.conf
+
+```bash
+    http {
+        server {
+            location /grpcs {
+                grpc_pass https://127.0.0.1:8082/outer;
+                grpc_ssl_asynch on;
+            }
+        }
+    }
+```
+
+* OpenSSL Cipher PIPELINE Capability. Refer [OpenSSL Docs](https://docs.openssl.org/1.1.1/man3/SSL_CTX_set_split_send_fragment)
+for detailed information.
+
+**Directives**
+```bash
+Syntax:     ssl_max_pipelines size;
+Default:    ssl_max_pipelines 0;
+Context:    server
+
+Set MAX number of pipelines
+
+Syntax:     ssl_split_send_fragment size;
+Default:    ssl_split_send_fragment 0;
+Context:    server
+
+Set split size of sending fragment
+
+Syntax:     ssl_max_send_fragment size;
+Default:    ssl_max_send_fragment 0;
+Context:    server
+
+Set max number of sending fragment
+```
+
+## Limitations
+
+* Nginx supports `reload` operation, when QAT hardware is involved for crypto
+  offload, user should ensure that there are enough number of QAT instances.
+  For example, the available qat instance number should be 2x equal or more than
+  Nginx worker process number.
+
+  For example, in Nginx configuration file (`nginx.conf`) worker process number
+  is configured as
+
+    ```bash
+       worker_processes 16;
+    ```
+
+    Then the instance configuration in QAT driver configuration file should be
+
+    ```bash
+        [SHIM]
+        NumberCyInstances = 1
+        NumberDcInstances = 0
+        NumProcesses = 32
+        LimitDevAccess = 0
+    ```
+
+* When configure "worker_process auto", Asynch Mode for NGINX\* will need instance number equal or larger than
+  2 times of CPU core number. Otherwise, Asynch Mode for NGINX\* might show various issue caused by leak of
+  instance.
+
+* Nginx supports QAT engine and QATzip module. By default, they use User Space
+  DMA-able Memory (USDM) Component. The USDM component is located within the
+  Upstream Intel&reg; QAT Driver source code in the following subdirectory:
+  `quickassist/utilities/libusdm_drv`. We should have this component enabled
+  and assigned enough memory before using nginx_qat_module or
+  nginx_qatzip_module, for example:
+
+    ```bash
+        echo 2048 > /sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages
+        insmod ./usdm_drv.ko max_huge_pages=2048 max_huge_pages_per_process=32
+    ```
+
+* AES-CBC-HMAC-SHA algorithm won't be offloaded to QAT_HW if Encrypt then MAC(ETM) mode
+  is used for SSL connection(by default). Refer to [QAT_Engine Limitations](https://github.com/intel/QAT_Engine/blob/master/docs/limitations.md#limitations)
+  for more details.
+
+* QATzip module supports GZIP compression acceleration now, does not support
+  user define dictionary compression yet.
+
+* The HTTP2 protocol does not support asynchronous functionality.
+
+* QUIC is not supported for Async nginx with QAT.
 
 ## Known Issues
 **'Orphan ring' errors in `dmesg` output when Nginx exit**<br/>
@@ -659,7 +556,7 @@ This is a sample configure file shows how to configure QAT in nginx.conf. This f
 **Performance drop under OpenSSL 3.0**<br/>
    * Both ECDH and PRF cause performance drop under OpenSSL 3.0.
    * Due to changes in the OpenSSL 3.0 framework, TLS handshake performance is significantly degraded. 
-   See [this issue](https://github.com/openssl/openssl/issues/21833) for details.
+     Refer [#21833](https://github.com/openssl/openssl/issues/21833) and associated issues for more details.
 
 **The 0-RTT (early data) issue**<br/>
   The 0-RTT (early data) feature does not support async mode in current asynch_mode_nginx,
@@ -669,34 +566,15 @@ This is a sample configure file shows how to configure QAT in nginx.conf. This f
   With the bottleneck of memory allocation, the throughput of CHACHA-Poly and
   AES-GCM can not reach the peak value when running with 4 or more QAT devices.
 
-## Intended Audience
+## Licensing
 
-The target audience may be software developers, test and validation engineers,
-system integrators, end users and consumers for Asynch Mode for NGINX\* integrated
-Intel&reg; Quick Assist Technology.
+Released under BSD License. Please see the `LICENSE` file contained in the top
+level folder. Further details can be found in the file headers of the relevant files.
 
 ## Legal
 
-Intel disclaims all express and implied warranties, including without
-limitation, the implied warranties of merchantability, fitness for a
-particular purpose, and non-infringement, as well as any warranty arising
-from course of performance, course of dealing, or usage in trade.
+Intel, Intel Atom, and Xeon are trademarks of Intel Corporation in the U.S. and/or other countries.
 
-This document contains information on products, services and/or processes in
-development.  All information provided here is subject to change without
-notice. Contact your Intel representative to obtain the latest forecast
-, schedule, specifications and roadmaps.
+*Other names and brands may be claimed as the property of others.
 
-The products and services described may contain defects or errors known as
-errata which may cause deviations from published specifications. Current
-characterized errata are available on request.
-
-Copies of documents which have an order number and are referenced in this
-document may be obtained by calling 1-800-548-4725 or by visiting
-www.intel.com/design/literature.htm.
-
-Intel, the Intel logo are trademarks of Intel Corporation in the U.S.
-and/or other countries.
-
-\*Other names and brands may be claimed as the property of others
-
+Copyright © 2014-2024, Intel Corporation. All rights reserved.
