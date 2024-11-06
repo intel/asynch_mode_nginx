@@ -1,0 +1,81 @@
+worker_processes  1;
+master_process on;
+load_module /var/www/modules/ngx_http_qatzip_filter_module.so;
+load_module /var/www/modules/ngx_ssl_engine_qat_module.so;
+
+ssl_engine {
+    use_engine qatengine;
+    default_algorithms ALL;
+    #default_algorithms RSA,EC,DH,DSA,PKEY; // For Assymmetric PKE only offload
+    #default algorithm CIPHERS; // For symmetric Ciphers only Offload
+    qat_engine {
+        qat_sw_fallback off;
+        qat_offload_mode async;
+        qat_notify_mode poll;
+        qat_poll_mode heuristic;
+    }
+}
+
+worker_rlimit_nofile 1000000;
+
+events {
+    use epoll;
+    worker_connections  204800;
+    multi_accept on;
+    accept_mutex on;
+}
+
+http {
+    include       mime.types;
+    default_type  application/octet-stream;
+    sendfile        on;
+    keepalive_timeout  0;
+    keepalive_requests 0;
+    ssl_buffer_size 65536;
+    gzip_http_version   1.0;
+
+    gzip_proxied any;
+    qatzip_sw no;
+    qatzip_min_length 128;
+    qatzip_comp_level     4;
+    qatzip_buffers 16 8k;
+    qatzip_types text/css text/javascript text/xml text/plain text/x-component application/javascript application/json application/xml application/rss+xml font/truetype font/opentype application/vnd.ms-fontobject image/svg+xml application/octet-stream image/jpeg;
+    qatzip_chunk_size   64k;
+    qatzip_stream_size     256k;
+    qatzip_sw_threshold 256;
+
+    server {
+        listen    8080 backlog=131072 reuseport so_keepalive=off ssl; // For crypto or crypto + compression
+        #listen    8080; // For compression alone
+        server_name  localhost;
+
+        sendfile on;
+        keepalive_timeout 0s;
+        tcp_nopush on;
+        tcp_nodelay on;
+        ssl_verify_client off;
+        ssl_session_tickets on;
+        access_log  off;
+        lingering_close off;
+        lingering_time 1;
+
+        ssl_certificate      /etc/ssl/certs/TestServer.cert.pem;
+        ssl_certificate_key  /etc/ssl/certs/TestServer.key.pem;
+        ssl_session_cache    off;
+        ssl_dhparam          /etc/ssl/certs/dhparam8k.pem;
+        ssl_asynch on;
+        ssl_buffer_size 64k;
+        ssl_session_timeout  300s;
+        ssl_protocols TLSv1.3;
+        ssl_ciphers            ALL;
+        ssl_prefer_server_ciphers   on;
+
+        location / {
+            index  index.html index.htm;
+        }
+
+        error_page   500 502 503 504  /50x.html;
+        location = /50x.html {
+        }
+    }
+}
