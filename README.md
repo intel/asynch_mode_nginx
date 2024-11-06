@@ -99,6 +99,8 @@ and [QATzip](https://github.com/intel/QATzip#installation-instructions) installa
 * Refer QAT Settings [here](https://intel.github.io/quickassist/GSG/2.X/installation.html#running-applications-as-non-root-user) for running Nginx
 under non-root user.
 
+Also there is dockerfile available for Async mode nginx with QATlib which can be built into docker images. Please refer [here](dockerfiles/README.md) for more details.
+
 ## Testing
 
 ### Official Unit tests
