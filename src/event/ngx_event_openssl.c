@@ -101,7 +101,6 @@ int  ngx_ssl_next_certificate_index;
 int  ngx_ssl_certificate_name_index;
 int  ngx_ssl_stapling_index;
 
-
 extern ngx_uint_t ngx_no_ssl_init;
 
 
@@ -408,9 +407,11 @@ ngx_ssl_create(ngx_ssl_t *ssl, ngx_uint_t protocols, void *data)
     SSL_CTX_set_mode(ssl->ctx, SSL_MODE_NO_AUTO_CHAIN);
 #endif
 
+#ifndef OPENSSL_IS_BORINGSSL
     if(ssl->asynch) {
         SSL_CTX_set_mode(ssl->ctx, SSL_MODE_ASYNC);
     }
+#endif
 
     SSL_CTX_set_read_ahead(ssl->ctx, 1);
 
@@ -1706,6 +1707,7 @@ ngx_ssl_create_connection(ngx_ssl_t *ssl, ngx_connection_t *c, ngx_uint_t flags)
     sc->buffer_size = ssl->buffer_size;
 
     sc->session_ctx = ssl->ctx;
+#ifndef OPENSSL_IS_BORINGSSL
 
     if (ssl->max_pipelines > 0) {
         SSL_CTX_set_max_pipelines(ssl->ctx, ssl->max_pipelines);
@@ -1724,6 +1726,7 @@ ngx_ssl_create_connection(ngx_ssl_t *ssl, ngx_connection_t *c, ngx_uint_t flags)
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, ssl->log, 0,
                 "Set max_send_fragment = %d", ssl->max_send_fragment);
     }
+#endif
 
 #ifdef SSL_READ_EARLY_DATA_SUCCESS
     if (SSL_CTX_get_max_early_data(ssl->ctx)) {
@@ -1763,9 +1766,24 @@ ngx_ssl_create_connection(ngx_ssl_t *ssl, ngx_connection_t *c, ngx_uint_t flags)
 
     if(ssl->asynch && !c->asynch) {
         c->asynch = ssl->asynch;
-    } else if (c->asynch) {
-        SSL_set_mode(sc->connection,SSL_MODE_ASYNC);
     }
+    if (c->asynch) {
+    /* Pass ssl->asynch flag to engine module */
+#ifdef OPENSSL_IS_BORINGSSL
+        /* engine not load, so async not supported by BoringSSL SW */
+        if (ngx_ssl_engine_support_async == 0) {
+            c->asynch = !c->asynch;
+        } else {
+            ngx_ssl_engine_ex_set_async_mode(c->ssl->connection, &c->asynch);
+        }
+#else
+        SSL_set_mode(c->ssl->connection, SSL_MODE_ASYNC);
+#endif
+    }
+
+#if (NGX_QUIC || NGX_COMPAT)
+    c->ssl->async_in_flight = 0;
+#endif
 
     return NGX_OK;
 }
@@ -1812,8 +1830,10 @@ ngx_ssl_set_session(ngx_connection_t *c, ngx_ssl_session_t *session)
 ngx_int_t
 ngx_ssl_async_process_fds(ngx_connection_t *c)
 {
-    OSSL_ASYNC_FD *add_fds = NULL;
-    OSSL_ASYNC_FD *del_fds = NULL;
+
+    int           *add_fds = NULL;
+    int           *del_fds = NULL;
+
     size_t        num_add_fds = 0;
     size_t        num_del_fds = 0;
     unsigned      loop = 0;
@@ -1827,11 +1847,17 @@ ngx_ssl_async_process_fds(ngx_connection_t *c)
         return 0;
     }
 
-    SSL_get_changed_async_fds(c->ssl->connection, NULL, &num_add_fds,
+    #ifndef OPENSSL_IS_BORINGSSL
+        SSL_get_changed_async_fds(c->ssl->connection, NULL, &num_add_fds,
                               NULL, &num_del_fds);
-
+    #else
+        ngx_ssl_engine_ex_get_changed_async_fds(c->ssl->connection, NULL, &num_add_fds,
+                                          NULL, &num_del_fds);
+    #endif
+ ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "changed fds: %ui to add, %ui to del", num_add_fds, num_del_fds);
     if (num_add_fds) {
-        add_fds = ngx_alloc(num_add_fds * sizeof(OSSL_ASYNC_FD), c->log);
+        add_fds = ngx_alloc(num_add_fds * sizeof(int), c->log);
         if (add_fds == NULL) {
             ngx_ssl_error(NGX_LOG_ALERT, c->log, 0,
                           "Memory Allocation Error");
@@ -1840,7 +1866,7 @@ ngx_ssl_async_process_fds(ngx_connection_t *c)
     }
 
     if (num_del_fds) {
-        del_fds = ngx_alloc(num_del_fds * sizeof(OSSL_ASYNC_FD), c->log);
+        del_fds = ngx_alloc(num_del_fds * sizeof(int), c->log);
         if (del_fds == NULL) {
             ngx_ssl_error(NGX_LOG_ALERT, c->log, 0,
                           "Memory Allocation Error");
@@ -1850,8 +1876,13 @@ ngx_ssl_async_process_fds(ngx_connection_t *c)
         }
     }
 
-    SSL_get_changed_async_fds(c->ssl->connection, add_fds, &num_add_fds,
+     #ifndef OPENSSL_IS_BORINGSSL
+        SSL_get_changed_async_fds(c->ssl->connection, add_fds, &num_add_fds,
                               del_fds, &num_del_fds);
+    #else
+        ngx_ssl_engine_ex_get_changed_async_fds(c->ssl->connection, add_fds, &num_add_fds,
+                                          del_fds, &num_del_fds);
+    #endif
 
     if (num_del_fds) {
         for (loop = 0; loop < num_del_fds; loop++) {
@@ -1860,9 +1891,13 @@ ngx_ssl_async_process_fds(ngx_connection_t *c)
                 ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0, "%s: deleting fd = %d", __func__, c->async_fd);
                 ngx_del_async_conn(c, NGX_DISABLE_EVENT);
                 c->num_async_fds--;
+                ngx_ssl_engine_ex_async_ctx_exit(c->ssl->connection);
+
             }
         }
     }
+
+
     if (num_add_fds) {
         for (loop = 0; loop < num_add_fds; loop++) {
             if (c->num_async_fds == 0) {
@@ -2023,8 +2058,11 @@ ngx_ssl_handshake(ngx_connection_t *c)
         return NGX_AGAIN;
     }
 
-    if (c->asynch && sslerr == SSL_ERROR_WANT_ASYNC)
-    {
+#ifdef OPENSSL_IS_BORINGSSL
+    if (c->asynch && sslerr == SSL_ERROR_WANT_PRIVATE_KEY_OPERATION) {
+#else
+    if (c->asynch && sslerr == SSL_ERROR_WANT_ASYNC) {
+#endif
         c->async->ready = 0;
         c->async->handler = ngx_ssl_handshake_async_handler;
         if (c->read->handler != ngx_ssl_empty_handler) {
@@ -2207,8 +2245,12 @@ ngx_ssl_try_early_data(ngx_connection_t *c)
 
         return NGX_AGAIN;
     }
-    if (c->asynch && sslerr == SSL_ERROR_WANT_ASYNC)
-    {
+
+#ifdef OPENSSL_IS_BORINGSSL
+    if (c->asynch && sslerr == SSL_ERROR_WANT_PRIVATE_KEY_OPERATION) {
+#else
+    if (c->asynch && sslerr == SSL_ERROR_WANT_ASYNC) {
+#endif
         c->async->ready = 0;
         c->async->handler = ngx_ssl_handshake_async_handler;
         if (c->read->handler != ngx_ssl_empty_handler) {
@@ -2813,7 +2855,11 @@ ngx_ssl_handle_recv(ngx_connection_t *c, int n)
         return NGX_AGAIN;
     }
 
+#ifdef OPENSSL_IS_BORINGSSL
+    if (c->asynch && sslerr == SSL_ERROR_WANT_PRIVATE_KEY_OPERATION) {
+#else
     if (c->asynch && sslerr == SSL_ERROR_WANT_ASYNC) {
+#endif
         c->async->ready = 0;
         c->async->handler = ngx_ssl_read_async_handler;
         if (c->read->handler != ngx_ssl_empty_handler) {
@@ -3195,7 +3241,11 @@ ngx_ssl_write(ngx_connection_t *c, u_char *data, size_t size)
         return NGX_AGAIN;
     }
 
+#ifdef OPENSSL_IS_BORINGSSL
+    if(c->asynch && sslerr == SSL_ERROR_WANT_PRIVATE_KEY_OPERATION) {
+#else
     if(c->asynch && sslerr == SSL_ERROR_WANT_ASYNC) {
+#endif
         c->async->ready = 0;
         c->async->handler = ngx_ssl_write_async_handler;
         if (c->read->handler != ngx_ssl_empty_handler) {
@@ -3582,7 +3632,7 @@ ngx_ssl_shutdown(ngx_connection_t *c)
         return NGX_OK;
     }
 
-#if (NGX_QUIC)
+#if NGX_QUIC
     if (c->quic) {
         /* QUIC streams inherit SSL object */
         return NGX_OK;
@@ -3618,9 +3668,16 @@ ngx_ssl_shutdown(ngx_connection_t *c)
                     c->num_async_fds--;
                 }
             }
+            /* Remove these lines to avoid disabling
+             * listening socket fd in quic scenario
+             */
+            #ifndef NGX_QUIC
+
             if(ngx_del_conn && c->read->active) {
                 ngx_del_conn(c, NGX_DISABLE_EVENT);
             }
+            #endif
+
         }
 
         goto done;
@@ -3675,9 +3732,14 @@ ngx_ssl_shutdown(ngx_connection_t *c)
                         c->num_async_fds--;
                     }
                 }
-                if(ngx_del_conn && c->read->active) {
-                    ngx_del_conn(c, NGX_DISABLE_EVENT);
-                }
+            /* Remove these lines to avoid disabling
+             * listening socket fd in quic scenario
+             */
+            #ifndef NGX_QUIC
+            if(ngx_del_conn && c->read->active) {
+                ngx_del_conn(c, NGX_DISABLE_EVENT);
+            }
+            #endif
             }
 
             goto done;
@@ -3695,9 +3757,14 @@ ngx_ssl_shutdown(ngx_connection_t *c)
                         c->num_async_fds--;
                     }
                 }
-                if(ngx_del_conn && c->read->active) {
-                    ngx_del_conn(c, NGX_DISABLE_EVENT);
-                }
+            /* Remove these lines to avoid disabling
+             * listening socket fd in quic scenario
+             */
+            #ifndef NGX_QUIC
+            if(ngx_del_conn && c->read->active) {
+                ngx_del_conn(c, NGX_DISABLE_EVENT);
+            }
+            #endif
             }
             continue;
         }
@@ -3709,7 +3776,11 @@ ngx_ssl_shutdown(ngx_connection_t *c)
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
                        "SSL_get_error: %d", sslerr);
         if(c->asynch && n == -1) {
+#ifdef OPENSSL_IS_BORINGSSL
+            if (sslerr == SSL_ERROR_WANT_PRIVATE_KEY_OPERATION) {
+#else
             if (sslerr == SSL_ERROR_WANT_ASYNC) {
+#endif
                 c->async->ready = 0;
                 c->async->handler = ngx_ssl_shutdown_async_handler;
                 c->read->saved_handler = ngx_ssl_shutdown_handler;
@@ -3740,8 +3811,15 @@ ngx_ssl_shutdown(ngx_connection_t *c)
 
             if(retries_err) {
                 if(ngx_del_conn && c->read->active) {
-                    ngx_del_conn(c, NGX_DISABLE_EVENT);
-                 }
+                /* Remove these lines to avoid disabling
+                * listening socket fd in quic scenario
+                */
+                    #ifndef NGX_QUIC
+                    if(ngx_del_conn && c->read->active) {
+                            ngx_del_conn(c, NGX_DISABLE_EVENT);
+                        }
+                    #endif
+                }
             }
         }
 
@@ -3787,20 +3865,27 @@ ngx_ssl_shutdown(ngx_connection_t *c)
 
         if (sslerr == SSL_ERROR_ZERO_RETURN || ERR_peek_error() == 0) {
             if(c->asynch) {
-                /* Ignore errors from ngx_ssl_async_process_fds as
-                   we want to carry on and close the SSL connection
-                   anyway. */
-                ngx_ssl_async_process_fds(c);
-                if (ngx_del_async_conn) {
-                    if (c->num_async_fds) {
-                        ngx_del_async_conn(c, NGX_DISABLE_EVENT);
-                        c->num_async_fds--;
+                    /* Ignore errors from ngx_ssl_async_process_fds as
+                    we want to carry on and close the SSL connection
+                    anyway. */
+                    ngx_ssl_async_process_fds(c);
+                    if (ngx_del_async_conn) {
+                        if (c->num_async_fds) {
+                            ngx_del_async_conn(c, NGX_DISABLE_EVENT);
+                            c->num_async_fds--;
+                        }
+                    }
+                    if(ngx_del_conn && c->read->active) {
+                        /* Remove these lines to avoid disabling
+                        * listening socket fd in quic scenario
+                        */
+                        #ifndef NGX_QUIC
+                            if(ngx_del_conn && c->read->active) {
+                                ngx_del_conn(c, NGX_DISABLE_EVENT);
+                            }
+                        #endif
                     }
                 }
-                if(ngx_del_conn && c->read->active) {
-                    ngx_del_conn(c, NGX_DISABLE_EVENT);
-                }
-            }
 
             goto done;
         }
@@ -3822,6 +3907,13 @@ done:
         c->ssl->shutdown_without_free = 0;
         c->recv = ngx_recv;
         return rc;
+    }
+
+    if (c->asynch) {
+        /* Clear async flag which set in ssl ex-data by ngx_create_connection */
+        ngx_ssl_engine_ex_set_async_mode(c->ssl->connection, NULL);
+        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                       "Clear async flag from ssl ex-data");
     }
 
     SSL_free(c->ssl->connection);

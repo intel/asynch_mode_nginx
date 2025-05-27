@@ -8,7 +8,11 @@
 #include <ngx_core.h>
 #include <ngx_event.h>
 #include <ngx_event_quic_connection.h>
+#include <ngx_ssl_engine.h>
 
+
+#define NGX_QUIC_MAX_UDP_PAYLOAD_OUT   1252
+#define NGX_QUIC_MAX_UDP_PAYLOAD_OUT6  1232
 
 #define NGX_QUIC_MAX_UDP_SEGMENT_BUF  65487 /* 65K - IPv6 header */
 #define NGX_QUIC_MAX_SEGMENTS            64 /* UDP_MAX_SEGMENTS */
@@ -63,6 +67,21 @@ static ssize_t ngx_quic_send(ngx_connection_t *c, u_char *buf, size_t len,
     struct sockaddr *sockaddr, socklen_t socklen);
 static void ngx_quic_set_packet_number(ngx_quic_header_t *pkt,
     ngx_quic_send_ctx_t *ctx);
+
+
+size_t
+ngx_quic_max_udp_payload(ngx_connection_t *c)
+{
+    /* TODO: path MTU discovery */
+
+#if (NGX_HAVE_INET6)
+    if (c->sockaddr->sa_family == AF_INET6) {
+        return NGX_QUIC_MAX_UDP_PAYLOAD_OUT6;
+    }
+#endif
+
+    return NGX_QUIC_MAX_UDP_PAYLOAD_OUT;
+}
 
 
 ngx_int_t
@@ -518,6 +537,18 @@ ngx_quic_output_packet(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
 
     if (ngx_queue_empty(&ctx->frames)) {
         return 0;
+    }
+
+    /* Skip packet sending while waiting for async event to reduce one
+       time send out. This change targets the BoringSSL case which only
+       offloads the asynchronous RSA/ECDSA sign operation.
+       Need to distinguish with the cipher offloading during the SSL r/w
+       when the OpenSSL is enabled, in which case a blocked async event
+       may impact the transmission of other SSL streams. */
+    if (c->asynch) {
+        if (ngx_ssl_waiting_for_async(c)) {
+            return 0;
+        }
     }
 
     ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,

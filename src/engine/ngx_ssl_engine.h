@@ -3,7 +3,7 @@
  *
  *   BSD LICENSE
  *
- *   Copyright(c) 2016-2024 Intel Corporation.
+ *   Copyright(c) 2016-2025 Intel Corporation.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -43,6 +43,18 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 
+#ifdef OPENSSL_IS_BORINGSSL
+/* Export essential interfaces for external calling */
+typedef struct {
+    int       (*wait_for_async)(void *ssl);
+    int       (*ssl_want_async)(const void *ssl);
+    int       (*get_changed_fds)(void *ssl, int *addfd,
+                size_t *numaddfds, int *delfd, size_t *numdelfds);
+    int       (*set_default_string)(const char *def_list);
+    ngx_int_t (*async_ctx_finish)(void *ssl);
+    ngx_int_t (*save_async_flag)(void *ssl, void *ssl_async);
+} ngx_bssl_qat_ex_actions_t;
+#endif
 
 typedef struct {
     ngx_int_t  (*init)(ngx_cycle_t *cycle);
@@ -50,6 +62,9 @@ typedef struct {
     ngx_int_t  (*register_handler)(ngx_cycle_t *cycle);
     ngx_int_t  (*release)(ngx_cycle_t *cycle);
     void       (*heuristic_poll)(ngx_log_t *log);
+#ifdef OPENSSL_IS_BORINGSSL
+    ngx_bssl_qat_ex_actions_t ex_actions ;
+#endif
 } ngx_ssl_engine_actions_t;
 
 extern ngx_uint_t                       ngx_use_ssl_engine;
@@ -62,6 +77,34 @@ extern ngx_flag_t                       ngx_ssl_engine_reload_processed;
 #define ngx_ssl_engine_register_handler ngx_ssl_engine_actions.register_handler
 #define ngx_ssl_engine_release          ngx_ssl_engine_actions.release
 #define ngx_ssl_engine_heuristic_poll   ngx_ssl_engine_actions.heuristic_poll
+
+#ifdef OPENSSL_IS_BORINGSSL
+/* No engine, no async mode for BoringSSL enabled */
+#define ngx_ssl_engine_support_async    ngx_use_ssl_engine
+#define ngx_ssl_engine_ex_get_changed_async_fds \
+    ngx_ssl_engine_actions.ex_actions.get_changed_fds
+#define ngx_ssl_engine_ex_async_ctx_exit \
+    ngx_ssl_engine_actions.ex_actions.async_ctx_finish
+#define ngx_ssl_waiting_for_async(c) \
+    ngx_ssl_engine_actions.ex_actions.wait_for_async(c->ssl->connection)
+#define SSL_want_async ngx_ssl_engine_actions.ex_actions.ssl_want_async
+#define ngx_ssl_engine_ex_set_async_mode \
+    ngx_ssl_engine_actions.ex_actions.save_async_flag
+#define ngx_ssl_engine_ex_set_def_str    \
+    ngx_ssl_engine_actions.ex_actions.set_default_string
+#else
+/* Empty functions for OpenSSL */
+#define ngx_ssl_engine_support_async
+#define ngx_ssl_engine_ex_get_changed_async_fds SSL_get_changed_async_fds
+#define ngx_ssl_engine_ex_async_ctx_exit(ssl)
+/* Defined in OpenSSL libraries
+ * #define ngx_ssl_waiting_for_async(c)
+ * #define SSL_want_async
+ */
+#define ngx_ssl_waiting_for_async(c) SSL_want_async((c)->ssl->connection)
+
+#define ngx_ssl_engine_ex_set_async_mode(ssl,mode)
+#endif
 
 #define NGX_SSL_ENGINE_MODULE           0x55555555
 #define NGX_SSL_ENGINE_CONF             0x02000000
@@ -79,7 +122,7 @@ typedef struct {
     void                     *(*create_conf)(ngx_cycle_t *cycle);
     char                     *(*init_conf)(ngx_cycle_t *cycle, void *conf);
 
-    ngx_ssl_engine_actions_t    actions;
+    ngx_ssl_engine_actions_t    actions ;
 } ngx_ssl_engine_module_t;
 
 

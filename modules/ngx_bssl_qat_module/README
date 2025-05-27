@@ -1,0 +1,34 @@
+# Copyright (C) Intel, Inc.
+
+This module is developed for TLS acceleration by offloading asymmetric
+operations to QAT accelerator within the BoringSSL framework, which is
+powered by Nginx dynamic module framework.
+
+Dependency
+BoringSSL* 23ed9d3852bbc738bebeaa0fe4a0782f91d7873c
+QAT_Engine library v1.9.0
+
+Installation
+1. Add below configuration line into the config.example
+	    --add-dynamic-module=modules/ngx_bssl_qat_module
+2. Build Nginx with the addon modules, for example
+	    $ ./configure --prefix=<path/to/install/dir> --with-http_v3_module --with-cc-opt="-I<path/to/qat_engine/sourcecode> -I<path/to/boringssl/include>" --with-ld-opt="-Wl,-rpath=<path/to/boringssl/lib> -L<path/to/boringssl/lib>" --add-dynamic-module=modules/ngx_bssl_qat_module
+	    $ make && make install
+
+Configuration
+
+1. Add dynamic loading configuration in nginx.conf
+    $ load_module modules/ngx_bssl_qat_module.so;
+
+2. Using ssl_engine block to configure QAT engine
+ssl_engine {
+    use_engine qatengine;
+    default_algorithms RSA,EC;
+    qat_engine {
+        qat_offload_mode async;
+        qat_notify_mode poll;
+        qat_poll_mode internal;
+    }
+}
+
+Note:- External and heuristic qat poll mode is not supported in boringssl

@@ -324,6 +324,7 @@ ngx_quic_handle_crypto_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
     ngx_quic_send_ctx_t      *ctx;
     ngx_quic_connection_t    *qc;
     ngx_quic_crypto_frame_t  *f;
+    ngx_int_t                rc = NGX_OK;
 
     qc = ngx_quic_get_connection(c);
 
@@ -342,6 +343,10 @@ ngx_quic_handle_crypto_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
         return NGX_ERROR;
     }
 
+    /* Bypass the offset check in case of async resumption context,
+     * because the same check has been done in the previous handler */
+    if (!c->ssl->async_in_flight) {
+
     if (last <= ctx->crypto.offset) {
         if (pkt->level == ssl_encryption_initial) {
             /* speeding up handshake completion */
@@ -358,14 +363,26 @@ ngx_quic_handle_crypto_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
 
         return NGX_OK;
     }
+    }
 
-    if (f->offset == ctx->crypto.offset) {
-        if (ngx_quic_crypto_input(c, frame->data, pkt->level) != NGX_OK) {
+    if ((f->offset == ctx->crypto.offset) || c->ssl->async_in_flight) {
+        /* Check async offset */
+        if (c->ssl->async_in_flight && (last != ctx->crypto.offset)) {
+            ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                            "unexpected frame offset during Check async offset resumption"
+                            " last:%d, ctx->crypto.offset:%d",
+                            last, ctx->crypto.offset);
+        }
+
+        if ((rc = ngx_quic_crypto_input(c, frame->data, pkt->level)) != NGX_OK && rc != NGX_AGAIN) {
             return NGX_ERROR;
         }
 
         ngx_quic_skip_buffer(c, &ctx->crypto, last);
 
+        if (rc == NGX_AGAIN) {
+            return NGX_AGAIN;
+        }
     } else {
         if (ngx_quic_write_buffer(c, &ctx->crypto, frame->data, f->length,
                                   f->offset)
@@ -378,11 +395,16 @@ ngx_quic_handle_crypto_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
     cl = ngx_quic_read_buffer(c, &ctx->crypto, (uint64_t) -1);
 
     if (cl) {
-        if (ngx_quic_crypto_input(c, cl, pkt->level) != NGX_OK) {
+        if ((rc = ngx_quic_crypto_input(c, cl, pkt->level)) != NGX_OK && rc != NGX_AGAIN) {
+             ngx_ssl_error(NGX_LOG_ERR, c->log, 0,
+                            "ngx_quic_crypto_input() rc=%d", rc);
             return NGX_ERROR;
         }
 
         ngx_quic_free_chain(c, cl);
+        if (rc == NGX_AGAIN) {
+            return NGX_AGAIN;
+        }
     }
 
     return NGX_OK;
@@ -403,15 +425,23 @@ ngx_quic_crypto_input(ngx_connection_t *c, ngx_chain_t *data,
     qc = ngx_quic_get_connection(c);
 
     ssl_conn = c->ssl->connection;
-
+                   
+    /* Do not need to provide any QUIC data during the async resumption context
+     * given it's already done in the previous round */
+    if (!c->ssl->async_in_flight) {
     for (cl = data; cl; cl = cl->next) {
         b = cl->buf;
+            ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                                        "SSL_provide_quic_data"
+                                        " b->pos:0x%lx, b->last - b->pos:%d",
+                                        b->pos, b->last - b->pos);
 
         if (!SSL_provide_quic_data(ssl_conn, level, b->pos, b->last - b->pos)) {
             ngx_ssl_error(NGX_LOG_INFO, c->log, 0,
                           "SSL_provide_quic_data() failed");
             return NGX_ERROR;
         }
+    }
     }
 
     n = SSL_do_handshake(ssl_conn);
@@ -423,6 +453,17 @@ ngx_quic_crypto_input(ngx_connection_t *c, ngx_chain_t *data,
 
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL_get_error: %d",
                        sslerr);
+
+#ifdef OPENSSL_IS_BORINGSSL
+        if (sslerr == SSL_ERROR_WANT_PRIVATE_KEY_OPERATION) {
+#else
+        if (sslerr == SSL_ERROR_WANT_ASYNC) {
+#endif
+            ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                "quic async SSL_do_handshake want async");
+
+            return NGX_AGAIN;
+        }
 
         if (sslerr != SSL_ERROR_WANT_READ) {
 
@@ -453,6 +494,12 @@ ngx_quic_crypto_input(ngx_connection_t *c, ngx_chain_t *data,
 #if (NGX_DEBUG)
     ngx_ssl_handshake_log(c);
 #endif
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic ssl cipher:%s", SSL_get_cipher(ssl_conn));
+
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic handshake completed successfully");
 
     c->ssl->handshaked = 1;
 
@@ -529,7 +576,7 @@ ngx_quic_init_connection(ngx_connection_t *c)
         quic_method.set_read_secret = ngx_quic_set_read_secret;
         quic_method.set_write_secret = ngx_quic_set_write_secret;
 #else
-        quic_method.set_encryption_secrets = ngx_quic_set_encryption_secrets;
+       quic_method.set_encryption_secrets = ngx_quic_set_encryption_secrets;
 #endif
         quic_method.add_handshake_data = ngx_quic_add_handshake_data;
         quic_method.flush_flight = ngx_quic_flush_flight;

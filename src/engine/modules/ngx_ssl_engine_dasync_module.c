@@ -3,7 +3,7 @@
  *
  *   BSD LICENSE
  *
- *   Copyright(c) 2016-2024 Intel Corporation.
+ *   Copyright(c) 2016-2025 Intel Corporation.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -106,13 +106,17 @@ ngx_ssl_engine_module_t  ngx_ssl_engine_dasync_module_ctx = {
     &ssl_engine_dasync_name,
     ngx_ssl_engine_dasync_create_conf,               /* create configuration */
     ngx_ssl_engine_dasync_init_conf,                 /* init configuration */
-
     {
         NULL,
         ngx_ssl_engine_dasync_send_ctrl,
         ngx_ssl_engine_dasync_register_handler,
         NULL,
-        NULL
+        #ifndef OPENSSL_IS_BORINGSSL
+                NULL
+        #else
+                NULL,
+                { NULL ,NULL,NULL,NULL,NULL,NULL }
+        #endif
     }
 };
 
@@ -135,23 +139,25 @@ ngx_module_t  ngx_ssl_engine_dasync_module = {
 static ngx_int_t
 ngx_ssl_engine_dasync_send_ctrl(ngx_cycle_t *cycle)
 {
-    const char *engine_id = "dasync";
-    ENGINE     *e;
+    #ifndef OPENSSL_IS_BORINGSSL
+        const char *engine_id = "dasync";
+        ENGINE     *e;
 
-    e = ENGINE_by_id(engine_id);
-    if (e == NULL) {
-        ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
-                      "ENGINE_by_id(\"dasync\") failed");
-        return NGX_ERROR;
-    }
+        e = ENGINE_by_id(engine_id);
+        if (e == NULL) {
+            ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                        "ENGINE_by_id(\"dasync\") failed");
+            return NGX_ERROR;
+        }
 
-    /* send ctrl before engine init */
+        /* send ctrl before engine init */
 
-    /* ssl engine global variable set */
+        /* ssl engine global variable set */
 
-    ENGINE_free(e);
+        ENGINE_free(e);
+    #endif
 
-    return NGX_OK;
+        return NGX_OK;
 }
 
 
@@ -232,5 +238,7 @@ ngx_ssl_engine_dasync_init_conf(ngx_cycle_t *cycle, void *conf)
 static void
 ngx_ssl_engine_dasync_process_exit(ngx_cycle_t *cycle)
 {
-    ENGINE_cleanup();
+    #ifndef OPENSSL_IS_BORINGSSL
+        ENGINE_cleanup();
+    #endif
 }

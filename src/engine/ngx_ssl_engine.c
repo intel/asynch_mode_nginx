@@ -3,7 +3,7 @@
  *
  *   BSD LICENSE
  *
- *   Copyright(c) 2016-2024 Intel Corporation.
+ *   Copyright(c) 2016-2025 Intel Corporation.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -53,13 +53,15 @@ static char *ngx_ssl_engine_default_algorithms(ngx_conf_t *cf,
 
 static void *ngx_ssl_engine_core_create_conf(ngx_cycle_t *cycle);
 
+#ifndef OPENSSL_IS_BORINGSSL
 static void ngx_ssl_engine_table_cleanup(ENGINE *e);
+#endif
 static char * ngx_ssl_engine_init_check(ngx_cycle_t *cycle, void *conf);
 
 /* indicating whether to use ssl engine: 0 or 1 */
 ngx_uint_t                  ngx_use_ssl_engine;
 
-ngx_ssl_engine_actions_t    ngx_ssl_engine_actions;
+ngx_ssl_engine_actions_t    ngx_ssl_engine_actions ;
 ngx_uint_t                  ngx_ssl_engine_enable_heuristic_polling;
 
 ngx_str_t                   ngx_ssl_engine_name_curr = {
@@ -134,7 +136,11 @@ ngx_ssl_engine_module_t  ngx_ssl_engine_core_module_ctx = {
     ngx_ssl_engine_core_create_conf,        /* create configuration */
     NULL,                                   /* init configuration */
 
+#ifndef OPENSSL_IS_BORINGSSL
     { NULL, NULL, NULL, NULL, NULL }
+#else
+    { NULL, NULL, NULL, NULL, NULL, { NULL, NULL, NULL, NULL, NULL, NULL, } }
+#endif
 };
 
 ngx_module_t  ngx_ssl_engine_core_module = {
@@ -158,6 +164,7 @@ ngx_module_t  ngx_ssl_engine_core_module = {
  * It needs to unregister all algorithms before applying new configuration
  * Especially for remove some algorithms from previous configuation
  */
+#ifndef OPENSSL_IS_BORINGSSL
 static void
 ngx_ssl_engine_table_cleanup(ENGINE *e)
 {
@@ -169,6 +176,7 @@ ngx_ssl_engine_table_cleanup(ENGINE *e)
     ENGINE_unregister_RSA(e);
     ENGINE_unregister_DH(e);
 }
+#endif
 
 char *
 ngx_ssl_engine_name_record(ngx_str_t *name, ngx_pool_t *pool)
@@ -195,6 +203,7 @@ ngx_ssl_engine_name_record(ngx_str_t *name, ngx_pool_t *pool)
 char *
 ngx_ssl_engine_unload_check(ngx_cycle_t *cycle)
 {
+#ifndef OPENSSL_IS_BORINGSSL
     ENGINE      *e;
 
     if (NGX_PROCESS_SINGLE == ngx_process ||
@@ -245,6 +254,7 @@ ngx_ssl_engine_unload_check(ngx_cycle_t *cycle)
             }
             ENGINE_free(e);
     }
+#endif
 
     return NGX_CONF_OK;
 }
@@ -254,7 +264,9 @@ ngx_ssl_engine_set(ngx_cycle_t *cycle)
 {
     ngx_ssl_engine_conf_t *secf;
 
+#ifndef OPENSSL_IS_BORINGSSL
     ENGINE      *e;
+#endif
     ngx_str_t   *value;
     ngx_uint_t   i;
 
@@ -272,6 +284,7 @@ ngx_ssl_engine_set(ngx_cycle_t *cycle)
         return NGX_ERROR;
     }
 
+#ifndef OPENSSL_IS_BORINGSSL
     e = ENGINE_by_id((const char *) secf->ssl_engine_id.data);
 
     if (e == NULL) {
@@ -303,17 +316,27 @@ ngx_ssl_engine_set(ngx_cycle_t *cycle)
         ENGINE_free(e);
         return NGX_ERROR;
     }
+#endif
 
     if (secf->default_algorithms != NGX_CONF_UNSET_PTR) {
         value = secf->default_algorithms->elts;
         for (i = 0; i < secf->default_algorithms->nelts; i++) {
+        #ifdef OPENSSL_IS_BORINGSSL
+            if (!ngx_ssl_engine_ex_set_def_str((const char *) value[i].data)) {
+                ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                            "ngx_ssl_engine_ex_set_default_string failed");
+        #else
             if (!ENGINE_set_default_string(e, (const char *) value[i].data)) {
                 ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
-                              "ENGINE_set_default_string failed");
+                            "ENGINE_set_default_string failed");
                 ENGINE_free(e);
+        #endif
                 return NGX_ERROR;
             }
         }
+#ifdef OPENSSL_IS_BORINGSSL
+    }
+#else
     } else {
         if (!ENGINE_set_default(e, ENGINE_METHOD_ALL)) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
@@ -324,6 +347,7 @@ ngx_ssl_engine_set(ngx_cycle_t *cycle)
     }
 
     ENGINE_free(e);
+#endif
     return NGX_OK;
 }
 
@@ -406,7 +430,11 @@ ngx_ssl_engine_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     /* ssl engine set must before parsing http conf */
+#ifndef OPENSSL_IS_BORINGSSL
     if (ngx_use_ssl_engine && !cf->cycle->no_ssl_init) {
+#else
+    if (ngx_use_ssl_engine) {
+#endif
         if (ngx_ssl_engine_set(cf->cycle) != NGX_OK) {
             ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "ssl engine set failed");
             return NGX_CONF_ERROR;
@@ -430,8 +458,9 @@ ngx_ssl_engine_process_init(ngx_cycle_t *cycle)
     if (ngx_use_ssl_engine) {
         if (ngx_ssl_engine_register_handler(cycle) != NGX_OK) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
-                          "ssl engine register handler failed");
-            return NGX_ERROR;
+                           "ssl engine register handler failed, it will try again");
+            ngx_quit = 1;
+            sleep(1);
         }
     }
 
@@ -442,10 +471,16 @@ ngx_ssl_engine_process_init(ngx_cycle_t *cycle)
 static void
 ngx_ssl_engine_master_exit(ngx_cycle_t *cycle)
 {
+#ifndef OPENSSL_IS_BORINGSSL
 #if OPENSSL_VERSION_NUMBER < 0x10100003L
     EVP_cleanup();
 #endif
     ENGINE_cleanup();
+#else
+    if (ngx_use_ssl_engine) {
+        ngx_ssl_engine_release(cycle);
+    }
+#endif
 }
 
 
@@ -478,7 +513,7 @@ ngx_ssl_engine_use(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                     secf->ssl_engine_id = value[1];
                 }
                 ngx_use_ssl_engine = 1;
-                ngx_ssl_engine_actions = module->actions;
+               ngx_ssl_engine_actions = module->actions;
 
                 ngx_ssl_engine_name_record(module->name, cf->pool);
 

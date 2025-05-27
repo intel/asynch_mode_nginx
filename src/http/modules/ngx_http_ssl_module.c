@@ -743,7 +743,6 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     conf->ssl.log = cf->log;
 
-    conf->ssl.asynch = conf->enable_asynch;
         if (conf->certificates) {
 
         if (conf->certificate_keys == NULL
@@ -760,6 +759,7 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     } else if (!conf->reject_handshake) {
         return NGX_CONF_OK;
     }
+    conf->ssl.asynch = conf->enable_asynch;
 
     if (ngx_ssl_create(&conf->ssl, conf->protocols, conf) != NGX_OK) {
         return NGX_CONF_ERROR;

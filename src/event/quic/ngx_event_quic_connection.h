@@ -278,6 +278,26 @@ struct ngx_quic_connection_s {
     ngx_uint_t                        shutdown_code;
     const char                       *shutdown_reason;
 
+    /* The async handshake breaks QUIC handler into 2 phases working on the
+     * same input UDP packet
+     * This UDP packet can be a reference of data in nginx connection buffer,
+     * which is a constant buffer as part of heap memory that would not be
+     * freed till connection tear down.
+     * Or the UDP packet has to be saved in a metadata_buf in the earlier
+     * handler and be resumed for the subsequent handshake processing in
+     * the later async event handler
+     */
+    unsigned                          in_heap:1;
+    ngx_buf_t                        *metadata_buf;
+
+    u_char                           *pkt;  /* ngx_quic_header_t */
+    off_t                             pkt_offset;
+
+    /* tmp variables used to re-enter ngx_quic_handle_frames */
+    ngx_uint_t                        do_close;
+    ngx_uint_t                        nonprobing;
+    off_t                             frame_offset;
+
     unsigned                          error_app:1;
     unsigned                          send_timer_set:1;
     unsigned                          closing:1;

@@ -133,6 +133,11 @@ struct ngx_ssl_connection_s {
     unsigned                    in_ocsp:1;
     unsigned                    early_preread:1;
     unsigned                    write_blocked:1;
+
+#if (NGX_QUIC || NGX_COMPAT)
+    /* indicate async event is being processed */
+    unsigned                    async_in_flight:1;
+#endif
 };
 
 
@@ -265,7 +270,6 @@ ngx_ssl_session_t *ngx_ssl_get0_session(ngx_connection_t *c);
 
 ngx_int_t ngx_ssl_check_host(ngx_connection_t *c, ngx_str_t *name);
 
-#define ngx_ssl_waiting_for_async(c) SSL_waiting_for_async(c->ssl->connection)
 
 ngx_int_t ngx_ssl_get_protocol(ngx_connection_t *c, ngx_pool_t *pool,
     ngx_str_t *s);

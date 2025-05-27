@@ -150,6 +150,10 @@ else
 
                 ngx_feature="OpenSSL QUIC support"
                 ngx_feature_name="NGX_QUIC"
+                ngx_feature_run=no
+                ngx_feature_incs="#include <openssl/ssl.h>"
+                ngx_feature_path=
+                ngx_feature_libs="-lssl -lcrypto $NGX_LIBDL $NGX_LIBPTHREAD"
                 ngx_feature_test="SSL_set_quic_method(NULL, NULL)"
                 . auto/feature
 

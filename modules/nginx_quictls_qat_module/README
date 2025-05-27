@@ -1,0 +1,88 @@
+# Copyright (C) Intel, Inc.
+
+This module is developed of QAT engine in Nginx engine framework.
+
+
+Installation
+
+1. Add below configuration line with ./configure
+    --add-dynamic-module=modules/nginx_quictls_engine_qat_module/
+2. Build Nginx with the addon modules
+    $ ./configure --with-http_v3_module --with-http_ssl_module --add-dynamic-module=modules/nginx_quictls_qat_module --with-cc-opt="-I<quictls_install_path>/include -Wno-error=deprecated-declarations" --with-ld-opt="-L<quictls_install_path>/lib64"
+    $ make && make install
+
+
+Configuration
+
+1. Add dynamic loading configuration in nginx.conf
+    $ load_module modules/ngx_quictls_engine_qat_module.so;
+
+2. Using ssl_engine block to configure QAT engine
+ssl_engine {
+    use_engine qatengine;
+    default_algorithms RSA,EC;
+    qat_engine {
+        qat_offload_mode async;
+        qat_notify_mode poll;
+        qat_poll_mode internal;
+    }
+}
+
+
+
+Directives
+
+    Syntax:     qat_offload_mode async | sync;
+    Default:    async
+    Dependency: Consistent with the use of "ssl_asynch" directive
+    Description:
+                Synchronous or Asynchronous mode
+
+    Syntax:     qat_notify_mode event | poll;
+    Default:    poll
+    Dependency: N/A
+    Description:
+                QAT engine uses event driven polling feature or not
+
+    Syntax:     qat_poll_mode inline | internal;
+    Default:    internal
+    Dependency: N/A
+    Description:
+                Different kinds of polling mode to check for messages from the
+                hardware accelerator
+                * inline: a busy loop is used, currently only available in the
+                synchronous RSA computation
+                * internal: a internal polling thread is created by QAT engine
+
+    Syntax:     qat_internal_poll_interval time;
+    Default:    10000
+    Dependency: Valid if (qat_poll_mode=internal)
+    Description:
+                Internal polling time interval (ns)
+                Valid value: 1 ~ 10000000
+
+Note
+
+    1. Not all the combinations of offload mode, notify mode and poll mode are
+    valid. Please refer to the following tables to check the validity.
+
+    +-------+--------+----------+
+    | sync  | inline | internal |
+    +-------+--------+----------+
+    | event |    N   |     Y    |
+    +-------+--------+----------+
+    | poll  |    Y   |     Y    |
+    +-------+--------+----------+
+
+    +-------+--------+----------+
+    | async | inline | internal |
+    +-------+--------+----------+
+    | event |    N   |     Y    |
+    +-------+--------+----------+
+    | poll  |    N   |     Y    |
+    +-------+--------+----------+
+
+
+    2. Changing polling mode will not be effective until Nginx restart. It is
+    not possible to change the polling mode via soft restart, such as
+    'nginx -s reload' or 'kill -HUP [master-pid]'

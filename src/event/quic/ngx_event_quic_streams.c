@@ -757,6 +757,9 @@ ngx_quic_create_stream(ngx_connection_t *c, uint64_t id)
 
     sc->read->log = log;
     sc->write->log = log;
+#if (NGX_SSL)
+    sc->async->log = log;
+#endif
 
     sc->read->handler = ngx_quic_empty_handler;
     sc->write->handler = ngx_quic_empty_handler;

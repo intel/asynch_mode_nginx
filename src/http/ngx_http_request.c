@@ -331,6 +331,7 @@ ngx_http_init_connection(ngx_connection_t *c)
     if (hc->addr_conf->ssl) {
         hc->ssl = 1;
         c->log->action = "SSL handshaking";
+        c->asynch = hc->addr_conf->asynch;
         rev->handler = ngx_http_ssl_handshake;
     }
 #endif

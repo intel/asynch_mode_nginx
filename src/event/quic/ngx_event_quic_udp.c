@@ -25,7 +25,11 @@ ngx_quic_recvmsg(ngx_event_t *ev)
     ngx_log_t          *log;
     ngx_err_t           err;
     socklen_t           socklen, local_socklen;
+#if (NGX_SSL)
+    ngx_event_t        *rev, *wev, *aev;
+#else
     ngx_event_t        *rev, *wev;
+#endif
     struct iovec        iov[1];
     struct msghdr       msg;
     ngx_sockaddr_t      sa, lsa;
@@ -273,12 +277,19 @@ ngx_quic_recvmsg(ngx_event_t *ev)
 
         rev = c->read;
         wev = c->write;
-
+#if (NGX_SSL)
+        aev = c->async;
+#endif
         rev->active = 1;
         wev->ready = 1;
-
+#if (NGX_SSL)
+        aev->active = 1;
+#endif
         rev->log = log;
         wev->log = log;
+#if (NGX_SSL)
+        aev->log = log;
+#endif
 
         /*
          * TODO: MT: - ngx_atomic_fetch_add()

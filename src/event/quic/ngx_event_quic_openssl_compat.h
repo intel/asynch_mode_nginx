@@ -35,6 +35,9 @@ typedef struct ssl_quic_method_st {
     int (*set_write_secret)(SSL *ssl, enum ssl_encryption_level_t level,
                             const SSL_CIPHER *cipher,
                             const uint8_t *wsecret, size_t secret_len);
+     int (*set_encryption_secrets)(SSL *ssl, enum ssl_encryption_level_t level,
+                            const uint8_t *rsecret,
+                            const uint8_t *wsecret, size_t secret_len);
     int (*add_handshake_data)(SSL *ssl, enum ssl_encryption_level_t level,
                               const uint8_t *data, size_t len);
     int (*flush_flight)(SSL *ssl);

@@ -1,6 +1,7 @@
 
 /*
  * Copyright (C) Nginx, Inc.
+ * Copyright (C) Intel, Inc.
  */
 
 
@@ -8,6 +9,7 @@
 #include <ngx_core.h>
 #include <ngx_event.h>
 #include <ngx_event_quic_connection.h>
+#include <ngx_ssl_engine.h>
 
 
 static ngx_quic_connection_t *ngx_quic_new_connection(ngx_connection_t *c,
@@ -16,6 +18,9 @@ static ngx_int_t ngx_quic_handle_stateless_reset(ngx_connection_t *c,
     ngx_quic_header_t *pkt);
 static void ngx_quic_input_handler(ngx_event_t *rev);
 static void ngx_quic_close_handler(ngx_event_t *ev);
+static void ngx_quic_empty_handler(ngx_event_t *rev);
+static void ngx_quic_set_async_event(ngx_connection_t *c);
+
 
 static ngx_int_t ngx_quic_handle_datagram(ngx_connection_t *c, ngx_buf_t *b,
     ngx_quic_conf_t *conf);
@@ -30,6 +35,13 @@ static ngx_int_t ngx_quic_handle_frames(ngx_connection_t *c,
 
 static void ngx_quic_push_handler(ngx_event_t *ev);
 
+static ngx_int_t ngx_quic_async_context_save(ngx_connection_t *c,
+    ngx_quic_header_t *pkt, ngx_buf_t *b, ngx_int_t pkt_offset);
+static ngx_int_t ngx_quic_async_context_restore(ngx_connection_t *c,
+    ngx_quic_header_t *pkt, ngx_buf_t *input_buf);
+static void ngx_quic_async_context_release(ngx_connection_t *c);
+
+#define NGX_ASYNC_EVENT_TIMEOUT 10000
 
 static ngx_core_module_t  ngx_quic_module_ctx = {
     ngx_string("quic"),
@@ -150,6 +162,11 @@ ngx_quic_apply_transport_params(ngx_connection_t *c, ngx_quic_tp_t *ctp)
                       "quic maximum packet size is invalid");
         return NGX_ERROR;
     }
+    else if (ctp->max_udp_payload_size > ngx_quic_max_udp_payload(c)) {
+        ctp->max_udp_payload_size = ngx_quic_max_udp_payload(c);
+        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                       "quic client maximum packet size truncated");
+    }
 
     if (ctp->active_connection_id_limit < 2) {
         qc->error = NGX_QUIC_ERR_TRANSPORT_PARAMETER_ERROR;
@@ -202,7 +219,7 @@ ngx_quic_run(ngx_connection_t *c, ngx_quic_conf_t *conf)
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "quic run");
 
     rc = ngx_quic_handle_datagram(c, c->buffer, conf);
-    if (rc != NGX_OK) {
+    if (rc != NGX_OK && rc != NGX_AGAIN) {
         ngx_quic_close_connection(c, rc);
         return;
     }
@@ -213,12 +230,16 @@ ngx_quic_run(ngx_connection_t *c, ngx_quic_conf_t *conf)
     ngx_add_timer(c->read, qc->tp.max_idle_timeout);
 
     if (!qc->streams.initialized) {
+        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "quic run Timer !qc->streams.initialized");
         ngx_add_timer(&qc->close, qc->conf->handshake_timeout);
     }
 
-    ngx_quic_connstate_dbg(c);
 
     c->read->handler = ngx_quic_input_handler;
+    if (rc == NGX_AGAIN && c->asynch) {
+        ngx_quic_set_async_event(c);
+    }
+    ngx_quic_connstate_dbg(c);
 
     return;
 }
@@ -338,6 +359,17 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_conf_t *conf,
     c->idle = 1;
     ngx_reusable_connection(c, 1);
 
+  /* Data is stored in ngx_connection heap instead of temporary stack buffer */
+    qc->in_heap = 1;
+    qc->metadata_buf = NULL;
+
+    qc->pkt = NULL;
+    qc->pkt_offset = 0;
+
+    qc->do_close = 0;
+    qc->nonprobing = 0;
+    qc->frame_offset = 0;
+
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic connection created");
 
@@ -392,6 +424,43 @@ ngx_quic_handle_stateless_reset(ngx_connection_t *c, ngx_quic_header_t *pkt)
 }
 
 
+static void ngx_quic_set_async_event(ngx_connection_t *c) {
+    /* prepare and wait the async event */
+
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                "quic async set async event");
+
+    if(ngx_ssl_async_process_fds(c) == 0) {
+        ngx_quic_close_connection(c, NGX_ERROR);
+        return;
+    }
+
+    c->async->ready = 0;
+    c->async->handler = ngx_quic_input_handler;
+
+    ngx_add_timer(c->async, NGX_ASYNC_EVENT_TIMEOUT);
+}
+
+
+static void
+ngx_quic_empty_handler(ngx_event_t *rev)
+{
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, rev->log, 0, "quic empty handler");
+
+    if(rev->timedout &&
+       rev->saved_handler &&
+       rev->saved_handler != ngx_quic_empty_handler ) {
+        rev->saved_handler(rev);
+    }
+
+    return;
+}
+
+/* Process incoming events after ngx_quic_new_connection is done
+ * - IN event, indicating a new UDP packet stored in a temporary stack buffer
+ * - ASYNC event, indicating the completion of private key operation while
+ *   the associated UDP packet is stored in metadata buffer
+ */
 static void
 ngx_quic_input_handler(ngx_event_t *rev)
 {
@@ -401,10 +470,13 @@ ngx_quic_input_handler(ngx_event_t *rev)
     ngx_quic_connection_t  *qc;
 
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, rev->log, 0, "quic input handler");
+ngx_log_debug1(NGX_LOG_DEBUG_EVENT, rev->log, 0,
+                       "quic value P rev->async before get_conn:%i,", rev->async);
 
     c = rev->data;
     qc = ngx_quic_get_connection(c);
-
+ngx_log_debug1(NGX_LOG_DEBUG_EVENT, rev->log, 0,
+                       "quic value P rev->async after get_conn:%i,", rev->async);
     c->log->action = "handling quic input";
 
     if (rev->timedout) {
@@ -416,27 +488,60 @@ ngx_quic_input_handler(ngx_event_t *rev)
 
     if (c->close) {
         c->close = 0;
-
+        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, rev->log, 0, "quic input handler c close ");
         if (!ngx_exiting || !qc->streams.initialized) {
             qc->error = NGX_QUIC_ERR_NO_ERROR;
             qc->error_reason = "graceful shutdown";
             ngx_quic_close_connection(c, NGX_ERROR);
+                ngx_log_debug0(NGX_LOG_DEBUG_EVENT, rev->log, 0, "return quic input handler c close ");
+
             return;
         }
 
         if (!qc->closing && qc->conf->shutdown) {
             qc->conf->shutdown(c);
         }
+                ngx_log_debug0(NGX_LOG_DEBUG_EVENT, rev->log, 0, "return if (!qc->closing && qc->conf->shutdown quic input handler c close ");
 
         return;
     }
 
-    b = c->udp->buffer;
-    if (b == NULL) {
-        return;
+	if (!c->asynch) {
+        b = c->udp->buffer;
+        if (b == NULL) {
+            ngx_log_debug0(NGX_LOG_DEBUG_EVENT, rev->log, 0, "NULL return from input handler");
+            return;
+        }
     }
+
+    if (c->asynch)
+    {
+        /* handle async event */
+        if (rev->async) {
+            c->ssl->async_in_flight = 1;
+            rev->handler = ngx_quic_empty_handler;
+        }
+        else {
+            c->ssl->async_in_flight = 0;
+
+            /* keep awaiting async context intact during the async procedure */
+            if (!ngx_ssl_waiting_for_async(c)) {
+                qc->in_heap = 0;
+            }
+        }
+    }
+
+    b = (c->ssl->async_in_flight) ?
+        ((qc->in_heap) ? c->buffer : qc->metadata_buf) :
+       // c->udp->dgram->buffer;
+        c->udp->buffer;
 
     rc = ngx_quic_handle_datagram(c, b, NULL);
+    if (rc == NGX_AGAIN && c->asynch) {
+        ngx_quic_set_async_event(c);
+
+        return;
+    }
 
     if (rc == NGX_ERROR) {
         ngx_quic_close_connection(c, NGX_ERROR);
@@ -444,6 +549,8 @@ ngx_quic_input_handler(ngx_event_t *rev)
     }
 
     if (rc == NGX_DONE) {
+         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, rev->log, 0, "Async NGX_DONE  input handler");
+
         return;
     }
 
@@ -590,6 +697,15 @@ ngx_quic_close_connection(ngx_connection_t *c, ngx_int_t rc)
     c->udp = NULL;
 
 quic_done:
+    if (c->asynch) {
+        if (ngx_ssl_waiting_for_async(c)) {
+            /* add a handler to wait the return of async event */
+            ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                        "quic async forcely shutdown before async event back");
+        }
+
+        ngx_quic_async_context_release(c);
+    }
 
     if (c->ssl) {
         (void) ngx_ssl_shutdown(c);
@@ -641,6 +757,7 @@ ngx_quic_shutdown_connection(ngx_connection_t *c, ngx_uint_t err,
     ngx_quic_connection_t  *qc;
 
     qc = ngx_quic_get_connection(c);
+
     qc->shutdown = 1;
     qc->shutdown_code = err;
     qc->shutdown_reason = reason;
@@ -659,6 +776,142 @@ ngx_quic_close_handler(ngx_event_t *ev)
     c = ev->data;
 
     ngx_quic_close_connection(c, NGX_OK);
+}
+
+
+
+static ngx_int_t
+ngx_quic_async_context_save(ngx_connection_t *c, ngx_quic_header_t *pkt,
+                            ngx_buf_t *b, ngx_int_t pkt_offset)
+{
+    ngx_quic_connection_t  *qc = NULL;
+    u_char                 *pkt_payload_data = NULL;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
+        "quic async save async context");
+
+    qc = ngx_quic_get_connection(c);
+
+    if (qc == NULL) {
+        ngx_quic_close_connection(c, NGX_ERROR);
+        return NGX_ERROR;
+    }
+
+    if (!qc->in_heap) {
+        /* create memory buffer to save the data being processed */
+        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
+            "quic async create quic metadata buffer");
+
+        qc->metadata_buf = ngx_pcalloc(c->pool, sizeof(ngx_buf_t));
+        if (qc->metadata_buf == NULL) {
+            return NGX_ERROR;
+        }
+        ngx_memcpy(qc->metadata_buf, b, sizeof(ngx_buf_t));
+
+        qc->metadata_buf->start = ngx_pcalloc(c->pool, b->end - b->start);
+        if (qc->metadata_buf->start == NULL) {
+            return NGX_ERROR;
+        }
+        ngx_memcpy(qc->metadata_buf->start, b->start, b->end - b->start);
+
+        qc->metadata_buf->pos = qc->metadata_buf->start + (b->pos - b->start);
+        qc->metadata_buf->last = qc->metadata_buf->start + (b->last - b->start);
+        qc->metadata_buf->end = qc->metadata_buf->start + (b->end - b->start);
+    }
+
+    /* async context to reenter the handshake */
+    if (!qc->pkt) {
+        qc->pkt = ngx_pcalloc(c->pool, sizeof(ngx_quic_header_t));
+        if (qc->pkt == NULL) {
+            return NGX_ERROR;
+        }
+        ngx_memcpy(qc->pkt, pkt, sizeof(ngx_quic_header_t));
+
+        pkt_payload_data = ngx_pcalloc(c->pool, pkt->payload.len);
+        if (pkt_payload_data == NULL) {
+            return NGX_ERROR;
+        }
+        ngx_memcpy(pkt_payload_data, pkt->payload.data, pkt->payload.len);
+        ((ngx_quic_header_t *)qc->pkt)->payload.data = pkt_payload_data;
+
+        qc->pkt_offset = pkt_offset;
+    }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_quic_async_context_restore(ngx_connection_t *c, ngx_quic_header_t *pkt,
+                               ngx_buf_t *input_buf)
+{
+    ngx_quic_connection_t  *qc = NULL;
+
+    qc = ngx_quic_get_connection(c);
+
+    if (qc == NULL) {
+        ngx_quic_close_connection(c, NGX_ERROR);
+        return NGX_ERROR;
+    }
+
+    /* recover the quic header context */
+    ngx_memcpy(pkt, qc->pkt, sizeof(ngx_quic_header_t));
+    pkt->raw = input_buf;
+
+    /* current packet should be the original one containing CRYPTO frame */
+    pkt->data = input_buf->start + qc->pkt_offset;
+
+    pkt->plaintext = NULL;
+
+    return NGX_OK;
+}
+
+
+static void
+ngx_quic_async_context_release(ngx_connection_t *c)
+{
+    ngx_quic_connection_t *qc = NULL;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
+        "quic async release async context");
+
+    qc = ngx_quic_get_connection(c);
+
+    if (qc == NULL) {
+        return;
+    }
+
+    if(c->asynch && ngx_ssl_async_process_fds(c) == 0) {
+        return;
+    }
+
+    if (qc->metadata_buf) {
+        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
+            "quic async delete quic metadata buffer");
+
+        if (qc->metadata_buf->start) {
+            ngx_pfree(c->pool, qc->metadata_buf->start);
+            qc->metadata_buf->start = NULL;
+        }
+        ngx_pfree(c->pool, qc->metadata_buf);
+        qc->metadata_buf = NULL;
+    }
+
+    qc->in_heap = 0;
+
+    qc->pkt_offset = 0;
+
+    if (qc->pkt) {
+        if (((ngx_quic_header_t *)qc->pkt)->payload.data) {
+            ngx_pfree(c->pool, ((ngx_quic_header_t *)qc->pkt)->payload.data);
+        }
+        ngx_pfree(c->pool, qc->pkt);
+        qc->pkt = NULL;
+    }
+
+    qc->do_close = 0;
+    qc->nonprobing = 0;
+    qc->frame_offset = 0;
 }
 
 
@@ -693,6 +946,13 @@ ngx_quic_handle_datagram(ngx_connection_t *c, ngx_buf_t *b,
         pkt.flags = p[0];
         pkt.raw->pos++;
 
+        if (c->asynch && c->ssl->async_in_flight) {
+            rc = ngx_quic_async_context_restore(c, &pkt, b);
+            if (rc == NGX_ERROR) {
+                return NGX_ERROR;
+            }
+        }
+
         rc = ngx_quic_handle_packet(c, conf, &pkt);
 
 #if (NGX_DEBUG)
@@ -707,6 +967,21 @@ ngx_quic_handle_datagram(ngx_connection_t *c, ngx_buf_t *b,
                            "quic packet done rc:%i parse failed", rc);
         }
 #endif
+
+        if (c->asynch && rc == NGX_AGAIN) {
+            rc = ngx_quic_async_context_save(c, &pkt, b, p - b->start);
+            if (rc == NGX_ERROR) {
+                return NGX_ERROR;
+            }
+
+            return NGX_AGAIN;
+        }
+
+        if (c->asynch && c->ssl->async_in_flight) {
+            ngx_quic_async_context_release(c);
+            /* clean up in flight flag after async process done */
+            c->ssl->async_in_flight = 0;
+        }
 
         if (rc == NGX_ERROR || rc == NGX_DONE) {
             return rc;
@@ -776,6 +1051,11 @@ ngx_quic_handle_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
     ngx_quic_connection_t  *qc;
 
     c->log->action = "parsing quic packet";
+
+    if (c->asynch && c->ssl->async_in_flight) {
+        /* in async resumption context, continue to process the payload */
+        return ngx_quic_handle_payload(c, pkt);
+    }
 
     rc = ngx_quic_parse_packet(pkt);
 
@@ -950,6 +1230,10 @@ ngx_quic_handle_payload(ngx_connection_t *c, ngx_quic_header_t *pkt)
     ngx_quic_send_ctx_t    *ctx;
     ngx_quic_connection_t  *qc;
     static u_char           buf[NGX_QUIC_MAX_UDP_PAYLOAD_SIZE];
+
+    if (c->asynch && c->ssl->async_in_flight) {
+        return ngx_quic_handle_frames(c, pkt);
+    }
 
     qc = ngx_quic_get_connection(c);
 
@@ -1151,6 +1435,54 @@ ngx_quic_check_csid(ngx_quic_connection_t *qc, ngx_quic_header_t *pkt)
 
 
 static ngx_int_t
+ngx_quic_handle_frame_async(ngx_connection_t *c, ngx_quic_header_t *pkt) {
+    u_char                 *end, *p;
+    ssize_t                 len;
+    ngx_buf_t               buf;
+    ngx_chain_t             chain;
+    ngx_quic_frame_t        frame;
+    ngx_quic_connection_t  *qc;
+    ngx_int_t               rc;
+
+    qc = ngx_quic_get_connection(c);
+
+    p = pkt->payload.data + qc->frame_offset;
+    end = p + pkt->payload.len;
+
+    c->log->action = "quic async re-parse crypto frames";
+
+    ngx_memzero(&frame, sizeof(ngx_quic_frame_t));
+    ngx_memzero(&buf, sizeof(ngx_buf_t));
+    buf.temporary = 1;
+
+    chain.buf = &buf;
+    chain.next = NULL;
+    frame.data = &chain;
+
+    len = ngx_quic_parse_frame(pkt, p, end, &frame);
+
+    if (len < 0) {
+        qc->error = pkt->error;
+        return NGX_ERROR;
+    }
+
+    ngx_quic_log_frame(c->log, &frame, 0);
+
+    rc = ngx_quic_handle_crypto_frame(c, pkt, &frame);
+    if (rc != NGX_OK) {
+        if (rc == NGX_AGAIN) {
+            return NGX_AGAIN;
+        }
+        return NGX_ERROR;
+    }
+
+    qc->frame_offset += len;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
 ngx_quic_handle_frames(ngx_connection_t *c, ngx_quic_header_t *pkt)
 {
     u_char                 *end, *p;
@@ -1160,6 +1492,7 @@ ngx_quic_handle_frames(ngx_connection_t *c, ngx_quic_header_t *pkt)
     ngx_chain_t             chain;
     ngx_quic_frame_t        frame;
     ngx_quic_connection_t  *qc;
+    ngx_int_t               rc;
 
     qc = ngx_quic_get_connection(c);
 
@@ -1168,6 +1501,22 @@ ngx_quic_handle_frames(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
     do_close = 0;
     nonprobing = 0;
+
+    if (c->asynch && c->ssl->async_in_flight) {
+        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
+            "The QUIC async task continues processing the crypto frame");
+
+        rc = ngx_quic_handle_frame_async(c, pkt);
+        if (rc != NGX_OK) {
+            return rc;
+        }
+
+        /* Deal with following frames after the CRYPTO frame */
+        p += qc->frame_offset;
+
+        do_close = qc->do_close;
+        nonprobing = qc->nonprobing;
+    }
 
     while (p < end) {
 
@@ -1233,8 +1582,15 @@ ngx_quic_handle_frames(ngx_connection_t *c, ngx_quic_header_t *pkt)
         switch (frame.type) {
 
         case NGX_QUIC_FT_CRYPTO:
-
-            if (ngx_quic_handle_crypto_frame(c, pkt, &frame) != NGX_OK) {
+ 
+            rc = ngx_quic_handle_crypto_frame(c, pkt, &frame);
+            if (rc != NGX_OK) {
+                if (rc == NGX_AGAIN) {
+                    /* Save the address of CRYPTO frame */
+                    p -= len;
+                    qc->frame_offset = p - pkt->payload.data;
+                    return NGX_AGAIN;
+                }
                 return NGX_ERROR;
             }
 
