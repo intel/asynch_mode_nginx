@@ -1,11 +1,6 @@
-# Asynch Mode for NGINX\*
+# Async Mode for NGINX\*
 
-Nginx ("engine x") is an HTTP web server, reverse proxy, content cache,
-load balancer, TCP/UDP proxy server, and mail proxy server.
-Originally written by Igor Sysoev and distributed under the 2-clause BSD License.
-This project provides async capabilities to Nginx using OpenSSL\* ASYNC infrastructure.
-The Async mode Nginx\* with Intel&reg; QuickAssist Technology (QAT) Acceleration can
-provide significant performance improvements.
+NGINX (pronounced "engine x") is the world's most popular Web Server, high performance Load Balancer, Reverse Proxy, API Gateway and Content Cache. NGINX is free and open source software, distributed under the terms of a simplified 2-clause BSD-like license, this project extends NGINX with asynchronous capabilities using the OpenSSL\* ASYNC infrastructure. Async Mode for NGINX\* with Intel&reg; QuickAssist Technology (QAT) Acceleration can deliver significant performance improvements.
 
 ## Table of Contents
 
@@ -14,7 +9,7 @@ provide significant performance improvements.
 - [Software Requirements](#software-requirements)
 - [Installation Instructions](#installation-instructions)
 - [Testing](#testing)
-    - [Official Unit tests](#official-unit-tests)
+    - [Official Unit Tests](#official-unit-tests)
     - [Performance Testing](#performance-testing)
 - [QAT Configuration](#qat-configuration)
     - [SSL Engine (QAT Engine) Configuration](#ssl-engine-qat-engine-configuration)
@@ -28,49 +23,42 @@ provide significant performance improvements.
 
 ## Features
 
-* Asynchronous Mode in SSL/TLS processing (including http/stream/mail/proxy module)
-* Support QAT_HW and QAT_SW PKE and symmetric Crypto acceleration
-* Support QAT_HW GZIP compression acceleration
-* SSL Engine Framework for engine configuration
-* Support for external polling mode and heuristic polling mode
-* Release hardware resource during worker is shutting down (For more details
-  information, please read modules/nginx_qat_module/README)
-* Support OpenSSL Cipher PIPELINE Capability.
-* Support software fallback for asymmetric cryptography algorithms(Linux & FreeBSD) and symmetric
-  algorithms (FreeBSD only)
+* Asynchronous SSL/TLS processing across HTTP, Stream, Mail, and Proxy modules
+* Acceleration of public key and symmetric cryptography using QAT_HW and QAT_SW
+* Hardware-accelerated GZIP compression via QAT_HW
+* Flexible SSL Engine Framework for advanced engine configuration
+* Support for both external and heuristic polling modes
+* Automatic release of hardware resources during worker shutdown (see `modules/nginx_qat_module/README` for details)
+* OpenSSL Cipher PIPELINE capability support
+* Software fallback for asymmetric cryptography (Linux & FreeBSD) and symmetric algorithms (FreeBSD only)
+* QUIC support using BoringSSL, quictls, and OpenSSL 3.5 libraries.
 
 ## Hardware Requirements
 
-Asynch Mode for NGINX\* supports QAT_HW Crypto and Compression acceleration
-on the platforms with the following QAT devices
+Async Mode for NGINX\* supports QAT_HW Crypto and Compression acceleration on platforms with the following QAT devices:
+* [Intel® QuickAssist 4xxx Series](https://www.intel.com/content/www/us/en/products/details/processors/xeon.html)
+* [Intel® QuickAssist Adapter 8970](https://www.intel.com/content/www/us/en/products/sku/125200/intel-quickassist-adapter-8970/downloads.html)
+* [Intel® QuickAssist Adapter 8960](https://www.intel.com/content/www/us/en/products/sku/125199/intel-quickassist-adapter-8960/downloads.html)
+* [Intel® QuickAssist Adapter 8950](https://www.intel.com/content/www/us/en/products/sku/80371/intel-communications-chipset-8950/specifications.html)
+* [Intel® Atom™ Processor C3000](https://www.intel.com/content/www/us/en/design/products-and-solutions/processors-and-chipsets/denverton/ns/atom-processor-c3000-series.html)
+* [Intel® Atom™ Processor P5900](https://www.intel.com/content/www/us/en/ark/products/series/202693/intel-atom-processor-p-series.html)
 
-* [Intel® QuickAssist 4xxx Series][1]
-* [Intel® QuickAssist Adapter 8970][2]
-* [Intel® QuickAssist Adapter 8960][3]
-* [Intel® QuickAssist Adapter 8950][4]
-* [Intel® Atom&trade; Processor C3000][5]
-
-QAT_SW acceleration is supported in the platforms starting with [3rd Generation Intel&reg; Xeon&reg; Scalable Processors family][6] and later.
-
-[1]:https://www.intel.com/content/www/us/en/products/details/processors/xeon/scalable.html
-[2]:https://www.intel.com/content/www/us/en/products/sku/125200/intel-quickassist-adapter-8970/downloads.html
-[3]:https://www.intel.com/content/www/us/en/products/sku/125199/intel-quickassist-adapter-8960/downloads.html
-[4]:https://www.intel.com/content/www/us/en/products/sku/80371/intel-communications-chipset-8950/specifications.html
-[5]:https://www.intel.com/content/www/us/en/design/products-and-solutions/processors-and-chipsets/denverton/ns/atom-processor-c3000-series.html
-[6]:https://www.intel.com/content/www/us/en/products/docs/processors/xeon/3rd-gen-xeon-scalable-processors-brief.html
+QAT_SW Crypto acceleration is supported on platforms starting with the [3rd Generation Intel® Xeon® Scalable Processors](https://www.intel.com/content/www/us/en/products/docs/processors/xeon/3rd-gen-xeon-scalable-processors-brief.html) and later.
 
 ## Software Requirements
 
 This release was validated on the following and its dependent libraries
 mentioned QAT Engine and QATZip software Requirements section.
 
-* [OpenSSL-3.0.14](https://github.com/openssl/openssl)
-* [QAT engine v1.6.2](https://github.com/intel/QAT_Engine)
-* [QATzip v1.2.0](https://github.com/intel/QATzip)
+* [QAT engine v1.9.0](https://github.com/intel/QAT_Engine)
+* [QATzip v1.3.1](https://github.com/intel/QATzip)
+* [OpenSSL-3.0.16 & OpenSSL-3.5.0](https://github.com/openssl/openssl)
+* BoringSSL\* commit - [23ed9d3](https://github.com/google/boringssl/commit/23ed9d3852bbc738bebeaa0fe4a0782f91d7873c)
+* quictls - [OpenSSL 3.3.0+quic](https://github.com/quictls/openssl/releases/tag/openssl-3.3.0-quic1)
 
 ## Installation Instructions
 
-Pre-requisties: Install OpenSSL and QAT Engine(for Crypto using QAT_HW & QAT_SW) and QATZip(for Compression)
+Pre-requisites: Install OpenSSL and QAT Engine(for Crypto using QAT_HW & QAT_SW) and QATZip(for Compression)
 using the [QAT engine](https://github.com/intel/QAT_Engine#installation-instructions)
 and [QATzip](https://github.com/intel/QATzip#installation-instructions) installation instructions. 
 
@@ -95,6 +83,8 @@ and [QATzip](https://github.com/intel/QATzip#installation-instructions) installa
   make
   make install
 ```
+
+* To enable QUIC support, include `--with-http_v3_module` in your configuration. Add either `--add-dynamic-module=modules/nginx_quictls_qat_module` for quictls/OpenSSL 3.5 QUIC, or `--add-dynamic-module=modules/ngx_bssl_qat_module` for BoringSSL, depending on your chosen QUIC library. For detailed instructions, refer to the `README.md` file in the corresponding module directory.
 
 * Refer QAT Settings [here](https://intel.github.io/quickassist/GSG/2.X/installation.html#running-applications-as-non-root-user) for running Nginx
 under non-root user.
@@ -233,26 +223,18 @@ file: conf/nginx.conf
     }
 ```
 
-
 ### Heuristic Polling Mode
+Heuristic polling mode is an enhancement over the timer-based external polling approach and is recommended for optimal communication with QAT accelerators due to its superior performance characteristics. By leveraging awareness of offload traffic, heuristic polling dynamically adjusts the response collection rate to align with the request submission rate. This maximizes system efficiency, maintains moderate latency, and adapts effectively to varying network traffic patterns.
 
-This mode can be regarded as an improvement of the timer-based external polling.
-It is the recommended polling mode to communicate with QAT accelerators because
-of its performance advantages. With the knowledge of the offload traffic, it
-controls the response reaping rate to match the request submission rate so as to
-maximize system efficiency with moderate latency, and adapt well to diverse
-types of network traffics.
+**Notes:**
 
-**Note:**
+* Heuristic polling mode requires QAT engine version v0.5.35 or later.
+* When heuristic polling is enabled, the external polling timer is also active by default.
 
-* This mode is only available when using QAT engine v0.5.35 or later.
-* External polling timer is enabled by default when heuristic polling mode is enabled.
+In heuristic polling mode, polling operations are triggered only under specific conditions to balance efficiency and responsiveness:
 
-In the heuristic polling mode, a polling operation is only triggered at a proper moment:
-
-* Number of in-flight offload requests reaches a pre-defined threshold (in consideration of efficiency)
-* All the active SSL connections have submitted their cryptographic requests and been waiting for
-the corresponding responses (in consideration of timeliness).
+* The number of in-flight offload requests reaches a configurable threshold.
+* All active SSL connections have submitted their cryptographic requests and are awaiting responses.
 
 **Directives in the qat_module**
 ```bash
@@ -297,15 +279,12 @@ file: `conf/nginx.conf`
 
 ### QATzip Module Configuration
 
-This module is developed to accelerate GZIP compression with QAT accelerators
-through QATzip stream API released in v0.2.6.
+The QATzip module enables hardware-accelerated GZIP compression using QAT accelerators via the QATzip stream API (introduced in v0.2.6).
 
-**Note:**
+**Notes:**
 
-* This mode is only available when using QATzip v1.0.0 or later.
-* This mode relies on gzip module for SW fallback feature.
-* The qatzip_sw is set to failover by default, do not load QATzip module if you
-do not want to enable qatzip. Or else it would be enabled and set to failover.
+* Software fallback is provided through the standard gzip module from QAzip v1.0.0 or newer.
+* By default, `qatzip_sw` is set to `failover`. To disable QATzip, do not load the QATzip module; otherwise, it will be enabled with failover mode.
 
 **Directives in the qatzip_module**
 ```bash
@@ -357,7 +336,7 @@ For more details directives of `nginx_qatzip_module`, please refer to
 ## Additional Information
 
 ### Generating Async mode Patch
-* Asynch Mode for NGINX\* is developed based on Nginx-1.26.2. Refer steps below
+* Async Mode for NGINX\* is developed based on Nginx-1.26.2. Refer steps below
 to generate patch to apply on top of official Nginx-1.26.2.
 
 #### Generating the patch with package from Nginx download page
@@ -481,92 +460,56 @@ Set max number of sending fragment
 ```
 
 ## Limitations
-
-* Nginx supports `reload` operation, when QAT hardware is involved for crypto
-  offload, user should ensure that there are enough number of QAT instances.
-  For example, the available qat instance number should be 2x equal or more than
-  Nginx worker process number.
-
-  For example, in Nginx configuration file (`nginx.conf`) worker process number
-  is configured as
+* When using QAT hardware for crypto offload, ensure that the number of available QAT instances is at least twice the number of Nginx worker processes. For example, if your `nginx.conf` specifies:
 
     ```bash
-       worker_processes 16;
+    worker_processes 16;
     ```
 
-    Then the instance configuration in QAT driver configuration file should be
+    Then, in your QAT driver configuration file, set:
 
     ```bash
-        [SHIM]
-        NumberCyInstances = 1
-        NumberDcInstances = 0
-        NumProcesses = 32
-        LimitDevAccess = 0
+    [SHIM]
+    NumberCyInstances = 1
+    NumberDcInstances = 0
+    NumProcesses = 32
+    LimitDevAccess = 0
     ```
 
-* When configure "worker_process auto", Asynch Mode for NGINX\* will need instance number equal or larger than
-  2 times of CPU core number. Otherwise, Asynch Mode for NGINX\* might show various issue caused by leak of
-  instance.
+* If `worker_processes auto` is configured, the number of QAT instances should be equal to or greater than twice the number of CPU cores. Insufficient instances may cause issues due to resource shortages.
 
-* Nginx supports QAT engine and QATzip module. By default, they use User Space
-  DMA-able Memory (USDM) Component. The USDM component is located within the
-  Upstream Intel&reg; QAT Driver source code in the following subdirectory:
-  `quickassist/utilities/libusdm_drv`. We should have this component enabled
-  and assigned enough memory before using nginx_qat_module or
-  nginx_qatzip_module, for example:
+* The QAT engine and QATzip module use the User Space DMA-able Memory (USDM) component by default. USDM is located in `quickassist/utilities/libusdm_drv` within the Intel® QAT Driver source. Ensure USDM is enabled and sufficient memory is allocated before using `nginx_qat_module` or `nginx_qatzip_module`. For example:
 
     ```bash
-        echo 2048 > /sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages
-        insmod ./usdm_drv.ko max_huge_pages=2048 max_huge_pages_per_process=32
+    echo 2048 > /sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages
+    insmod ./usdm_drv.ko max_huge_pages=2048 max_huge_pages_per_process=32
     ```
 
-* AES-CBC-HMAC-SHA algorithm won't be offloaded to QAT_HW if Encrypt then MAC(ETM) mode
-  is used for SSL connection(by default). Refer to [QAT_Engine Limitations](https://github.com/intel/QAT_Engine/blob/master/docs/limitations.md#limitations)
-  for more details.
+* The AES-CBC-HMAC-SHA algorithm is not offloaded to QAT_HW when Encrypt-then-MAC (ETM) mode is used for SSL connections (the default). See [QAT_Engine Limitations](https://github.com/intel/QAT_Engine/blob/master/docs/limitations.md#limitations) for details.
 
-* QATzip module supports GZIP compression acceleration now, does not support
-  user define dictionary compression yet.
+* The QATzip module currently supports GZIP compression acceleration but does not support user-defined dictionary compression.
 
-* The HTTP2 protocol does not support asynchronous functionality.
+* HTTP/2 protocol is not supported for asynchronous functionality.
 
-* QUIC is not supported for Async nginx with QAT.
+* External and Heuristic polling is not supported with QUIC enabled through BoringSSL library.
 
 ## Known Issues
-**'Orphan ring' errors in `dmesg` output when Nginx exit**<br/>
-   Working with current QAT driver, Nginx workers exit with 'Orphan ring'
-   errors. This issue has been fixed in future QAT driver release.
 
-**Cache manager/loader process will allocate QAT instance via QAT engine**<br/>
-   According to current QAT engine design, child process forked by master
-   process will initialize QAT engine automatically in QAT engine `atfork`
-   hook function. If cache manager/loader processes are employed, QAT instances
-   will be allocated in the same way as worker process. Cache manager/loader
-   processes do not perform modules' `exit process` method in Nginx native design
-   which will introduce "Orphan ring" error message in `dmesg` output.
+- **QAT instance allocation by cache manager/loader processes:**
+    Due to the QAT engine's `atfork` hook, child processes (such as cache manager/loader) automatically initialize the QAT engine and allocate QAT instances, similar to worker processes. However, these processes do not invoke the modules' `exit process` method, which can result in "Orphan ring" messages in `dmesg`.
 
-**Segment fault happens while sending HUP signal when QAT instances not enough**<br/>
-   If the available qat instance number is less than 2x Nginx worker process number, segment fault
-   happens while sending HUP signal to Asynch Mode for NGINX\*. Using `qat_sw_fallback on;` in qat_engine
-   directive as a workaround for this issue. And it needs special attention if the QAT instances
-   are enough when setting `worker_processes auto;`.
+- **Segmentation fault on HUP signal with insufficient QAT instances:**
+    If the number of available QAT instances is less than twice the number of Nginx worker processes, sending a HUP signal may cause a segmentation fault. As a workaround, enable `qat_sw_fallback on;` in the `qat_engine` directive. Ensure sufficient QAT instances, especially when using `worker_processes auto;`.
+    Running Nginx without adequate hardware resources (memory or disk space) can cause a core dump when a HUP signal is received during the handshake phase. Ensure enough resources are allocated before starting Nginx.
 
-**Insufficient HW resources would cause segment fault while sending HUP signal**<br/>
-   Before running nginx, please make sure you have arranged enough HW resources for nginx, including
-   memory and hard disk space. Disk space exhausted or out of memory would cause core dump when
-   nginx receives HUP signal during handshake phase.
+- **Performance degradation with OpenSSL 3.0:**
+    ECDH and PRF operations may experience performance drops under OpenSSL 3.0. TLS handshake performance is significantly reduced due to framework changes. See [#21833](https://github.com/openssl/openssl/issues/21833) for details.
 
-**Performance drop under OpenSSL 3.0**<br/>
-   * Both ECDH and PRF cause performance drop under OpenSSL 3.0.
-   * Due to changes in the OpenSSL 3.0 framework, TLS handshake performance is significantly degraded. 
-     Refer [#21833](https://github.com/openssl/openssl/issues/21833) and associated issues for more details.
+- **0-RTT (early data) not supported in async mode:**
+    The 0-RTT (early data) feature is not supported with async mode in asynch_mode_nginx. Avoid using async offload to QAT hardware during early data processing.
 
-**The 0-RTT (early data) issue**<br/>
-  The 0-RTT (early data) feature does not support async mode in current asynch_mode_nginx,
-  so it's not recommended to use async offload to QAT hardware during early data process.
-
-**CHACHA-POLY and AES-GCM throughput performance issue**<br/>
-  With the bottleneck of memory allocation, the throughput of CHACHA-Poly and
-  AES-GCM can not reach the peak value when running with 4 or more QAT devices.
+- **CHACHA-POLY and AES-GCM throughput limitations:**
+    Memory allocation bottlenecks can limit the throughput of CHACHA-POLY and AES-GCM algorithms when using four or more QAT devices.
 
 ## Licensing
 
@@ -577,6 +520,6 @@ level folder. Further details can be found in the file headers of the relevant f
 
 Intel, Intel Atom, and Xeon are trademarks of Intel Corporation in the U.S. and/or other countries.
 
-*Other names and brands may be claimed as the property of others.
+\*Other names and brands may be claimed as the property of others.
 
-Copyright © 2014-2024, Intel Corporation. All rights reserved.
+Copyright © 2014-2025, Intel Corporation. All rights reserved.
