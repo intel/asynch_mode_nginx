@@ -3,7 +3,7 @@
  *
  *   BSD LICENSE
  *
- *   Copyright(c) 2021-2022 Intel Corporation.
+ *   Copyright(c) 2021-2025 Intel Corporation.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -102,6 +102,9 @@ BSSL_DEFINE_ASYNC_CFG_INIT_EXDATA(SSL);
 
 BSSL_DEFINE_ASYNC_CTX_INIT_EXDATA(SSL);
 
+#if BORINGSSL_API_VERSION > 23
+static ngx_int_t ngx_bssl_qat_setup_ssl_credential(SSL_CTX *ctx, ngx_cycle_t *cycle);
+#endif
 static ngx_int_t ngx_bssl_qat_set_srv_privkey_meth(ngx_cycle_t *cycle);
 static int ngx_bssl_qat_overwrite_default_method(SSL_CTX *ctx);
 static ngx_int_t ngx_bssl_qat_init_async_ctx(SSL *ssl);
@@ -510,6 +513,140 @@ ngx_bssl_qat_process_init(ngx_cycle_t *cycle)
     return NGX_OK;
 }
 
+#if BORINGSSL_API_VERSION > 23
+static ngx_int_t
+ngx_bssl_qat_setup_ssl_credential(SSL_CTX *ctx, ngx_cycle_t *cycle)
+{
+    int cert_chain_created = 0;
+    STACK_OF(X509) *cert_chain = NULL;
+    CRYPTO_BUFFER **crypto_buffers = NULL;
+    SSL_CREDENTIAL *cred = NULL;
+
+    /* Create a new SSL_CREDENTIAL */
+    cred = SSL_CREDENTIAL_new_x509();
+    if (!cred) {
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, 0, "Failed to create SSL_CREDENTIAL.");
+        return NGX_ERROR;
+    }
+
+    /* Load the private key */
+    EVP_PKEY *private_key = SSL_CTX_get0_privatekey(ctx);
+    if (!private_key) {
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, 0, "No private key found in SSL_CTX.");
+        goto cleanup;
+    }
+
+    if (!SSL_CREDENTIAL_set1_private_key(cred, private_key)) {
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, 0, "Failed to set private key on SSL_CREDENTIAL.");
+        goto cleanup;
+    }
+
+    /* Retrieve the certificate chain */
+    if (!SSL_CTX_get0_chain_certs(ctx, &cert_chain)) {
+        ngx_log_debug(NGX_LOG_DEBUG_CORE, cycle->log, 0, "No certificate chain found in SSL_CTX. Falling back to leaf certificate.");
+    }
+
+    /* If no chain is found, use the leaf certificate */
+    if (!cert_chain || sk_X509_num(cert_chain) == 0) {
+        X509 *leaf_cert = SSL_CTX_get0_certificate(ctx);
+        if (!leaf_cert) {
+            ngx_log_error(NGX_LOG_EMERG, cycle->log, 0, "No certificate found in SSL_CTX.");
+            goto cleanup;
+        }
+        /* Create a single-certificate chain */
+        cert_chain = sk_X509_new_null();
+        if (!cert_chain || !sk_X509_push(cert_chain, leaf_cert)) {
+            ngx_log_error(NGX_LOG_EMERG, cycle->log, 0, "Failed to create single-certificate chain.");
+            goto cleanup;
+        }
+        cert_chain_created = 1;
+    }
+
+    /* Convert the certificate chain to CRYPTO_BUFFER */
+    size_t num_certs = sk_X509_num(cert_chain);
+    crypto_buffers = OPENSSL_zalloc(num_certs * sizeof(CRYPTO_BUFFER *));
+    if (!crypto_buffers) {
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, 0, "Failed to allocate memory for CRYPTO_BUFFER array.");
+        goto cleanup;
+    }
+
+    for (size_t i = 0; i < num_certs; i++) {
+        X509 *cert = sk_X509_value(cert_chain, i);
+        if (!cert) {
+            ngx_log_error(NGX_LOG_EMERG, cycle->log, 0, "NULL certificate in chain at index %zu", i);
+            goto cleanup;
+        }
+
+        unsigned char *der = NULL;
+        int der_len = i2d_X509(cert, &der);
+        if (der_len <= 0) {
+            ngx_log_error(NGX_LOG_EMERG, cycle->log, 0, "Failed to convert X509 to DER format.");
+            goto cleanup;
+        }
+
+        crypto_buffers[i] = CRYPTO_BUFFER_new(der, der_len, NULL);
+        OPENSSL_free(der);
+        if (!crypto_buffers[i]) {
+            ngx_log_error(NGX_LOG_EMERG, cycle->log, 0, "Failed to create CRYPTO_BUFFER.");
+            goto cleanup;
+        }
+    }
+
+    /* Set the certificate chain on the SSL_CREDENTIAL */
+    if (!SSL_CREDENTIAL_set1_cert_chain(cred, crypto_buffers, num_certs)) {
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, 0, "Failed to set certificate chain on SSL_CREDENTIAL.");
+        goto cleanup;
+    }
+
+    /* Free the CRYPTO_BUFFER array (the SSL_CREDENTIAL now owns the buffers) */
+    OPENSSL_free(crypto_buffers);
+    crypto_buffers = NULL;
+
+    /* Set the custom private key methods */
+    if (!SSL_CREDENTIAL_set_private_key_method(cred, &ngx_bssl_qat_priv_key_method)) {
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, 0, "Failed to set private key method on SSL_CREDENTIAL.");
+        goto cleanup;
+    }
+
+    /* Add the SSL_CREDENTIAL to the SSL_CTX */
+    if (!SSL_CTX_add1_credential(ctx, cred)) {
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, 0, "Failed to add SSL_CREDENTIAL to SSL_CTX.");
+        goto cleanup;
+    }
+
+    /* Free the cert_chain if it was created */
+    if (cert_chain_created && cert_chain) {
+        sk_X509_free(cert_chain);
+    }
+
+    /* Free the SSL_CREDENTIAL (the SSL_CTX now owns it) */
+    SSL_CREDENTIAL_free(cred);
+
+    return NGX_OK;
+
+cleanup:
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0, "SSL_CREDENTIAL setup cleanup executing");
+
+    if (crypto_buffers) {
+        for (size_t i = 0; i < num_certs; i++) {
+            if (crypto_buffers[i]) {
+                CRYPTO_BUFFER_free(crypto_buffers[i]);
+            }
+        }
+        OPENSSL_free(crypto_buffers);
+    }
+
+    if (cert_chain_created && cert_chain) {
+        sk_X509_free(cert_chain);
+    }
+
+    if (cred) {
+        SSL_CREDENTIAL_free(cred);
+    }
+
+    return NGX_ERROR;
+}
+#endif
 
 #ifdef OPENSSL_IS_BORINGSSL
 static ngx_int_t
@@ -530,13 +667,25 @@ ngx_bssl_qat_set_srv_privkey_meth(ngx_cycle_t *cycle)
     if (!ENGINE_QAT_PTR_GET()) {
         return NGX_ERROR;
     }
+
    /* Set ssl.ctx for each server block */
     for (s = 0; s < cmcf->servers.nelts; s++) {
         sscf = cscf[s]->ctx->srv_conf[ngx_http_ssl_module.ctx_index];
         if (sscf == NULL || sscf->ssl.ctx == NULL) {
             continue;
         }
-        ngx_bssl_qat_overwrite_default_method(sscf->ssl.ctx);
+        SSL_CTX *ctx = sscf->ssl.ctx;
+
+#if BORINGSSL_API_VERSION > 23
+        if (ngx_bssl_qat_setup_ssl_credential(ctx, cycle) != NGX_OK) {
+            return NGX_ERROR;
+        }
+#endif
+        /* Overwrite the default private key method */
+        if (ngx_bssl_qat_overwrite_default_method(ctx)) {
+            ngx_log_error(NGX_LOG_EMERG, cycle->log, 0, "Failed to overwrite default private key method.");
+            return NGX_ERROR;
+        }
     }
 
     return NGX_OK;
@@ -562,7 +711,9 @@ ngx_bssl_qat_overwrite_default_method(SSL_CTX *ctx)
         return 1;
     }
     /* Change private key method of ssl_ctx */
+#if BORINGSSL_API_VERSION <= 23
     SSL_CTX_set_private_key_method(ctx, &ngx_bssl_qat_priv_key_method);
+#endif
 
     return 0;
 }
