@@ -762,6 +762,12 @@ ngx_ssl_load_certificate_key(ngx_pool_t *pool, char **err,
             return NULL;
         }
 
+        if (!ENGINE_init(engine)) {
+            ENGINE_free(engine);
+            *err = "ENGINE_init failed while loading certificate";
+            return NULL;
+        }
+
         *last++ = ':';
 
         pkey = ENGINE_load_private_key(engine, (char *) last, 0, 0);
@@ -772,7 +778,30 @@ ngx_ssl_load_certificate_key(ngx_pool_t *pool, char **err,
             return NULL;
         }
 
+        ENGINE_finish(engine);
         ENGINE_free(engine);
+
+        if (!ngx_no_ssl_init) { 
+            const RSA *rsa = EVP_PKEY_get0_RSA(pkey);
+            if (EVP_PKEY_id(pkey) == EVP_PKEY_RSA &&
+                rsa != NULL &&
+                RSA_get_ex_data(rsa, NGX_SSL_ENGINE_KEY_WRAP_INDEX) &&
+                ENGINE_get_default_RSA() == NULL) {
+                *err = "RSA private key loaded without offloading";
+                EVP_PKEY_free(pkey);
+                return NULL;
+            }
+        
+            const EC_KEY *ec = EVP_PKEY_get0_EC_KEY(pkey);
+            if (EVP_PKEY_id(pkey) == EVP_PKEY_EC &&
+                ec != NULL &&
+                EC_KEY_get_ex_data(ec, NGX_SSL_ENGINE_KEY_WRAP_INDEX) &&
+                ENGINE_get_default_EC() == NULL) {
+                *err = "EC private key loaded without offloading";
+                EVP_PKEY_free(pkey);
+                return NULL;
+            }
+        }
 
         return pkey;
 
