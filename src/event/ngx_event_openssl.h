@@ -196,7 +196,8 @@ typedef struct {
 #define NGX_SSL_CLIENT   2
 
 #define NGX_SSL_BUFSIZE  16384
-
+/* The same with KEY_WRAP_STORAGE_INDEX in KPT lib */
+#define NGX_SSL_ENGINE_KEY_WRAP_INDEX   (143)
 
 ngx_int_t ngx_ssl_init(ngx_log_t *log);
 ngx_int_t ngx_ssl_create(ngx_ssl_t *ssl, ngx_uint_t protocols, void *data);

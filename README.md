@@ -31,7 +31,9 @@ NGINX (pronounced "engine x") is the world's most popular Web Server, high perfo
 * Automatic release of hardware resources during worker shutdown (see `modules/nginx_qat_module/README` for details)
 * OpenSSL Cipher PIPELINE capability support
 * Software fallback for asymmetric cryptography (Linux & FreeBSD) and symmetric algorithms (FreeBSD only)
-* QUIC support using BoringSSL, quictls, and OpenSSL 3.5 libraries.
+* QUIC support using BoringSSL, quictls, and OpenSSL 3.5 libraries
+* Key Protection Technology (KPT) support for enhanced private key security and offload of cryptographic operations using QAT hardware (requires special hardware support; Please refer to the [QAT Engine KPT documentation](https://github.com/intel/QAT_Engine/blob/master/docs/qat_hw_kpt.md)) 
+
 
 ## Hardware Requirements
 
