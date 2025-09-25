@@ -70,7 +70,11 @@ Note: GID is the group id of qat group in the host.
 ### Test using Async Nginx\* crypto utility
 
 ```
+Intree:
 Server command: docker run --rm -it --cpuset-cpus <2-n+1> --cap-add=IPC_LOCK --security-opt seccomp=unconfined --security-opt apparmor=unconfined $(for i in `ls /dev/vfio/*`; do echo --device $i; done) --env QAT_POLICY=1 --ulimit memlock=524288000:524288000 -v /usr/share/nginx/:/usr/share/nginx/ -v /etc/ssl/certs/:/etc/ssl/certs/ -v /var/www/html/:/var/www/html/ -v /var/www/logs/:/var/www/logs/ -d -p 8080:8080 <docker_image_name>
+
+OOT:
+Server command: docker run --rm -it --cpuset-cpus <2-n+1> --cap-add=IPC_LOCK --security-opt seccomp=unconfined --security-opt apparmor=unconfined  --device /dev/qat_adf_ctl --device  /dev/qat_dev_processes --device  /dev/usdm_dr $(for i in `ls /dev/uio*`; do echo --device $i; done) --ulimit memlock=524288000:524288000 -v /usr/share/nginx/:/usr/share/nginx/ -v /etc/ssl/certs/:/etc/ssl/certs/ -v /var/www/html/:/var/www/html/ -v /var/www/logs/:/var/www/logs/ -d -p 8080:8080 <docker_image_name>
 
 Client command: openssl  s_time -connect <server_ip>:8080 -new -cipher AES128-GCM-SHA256 -www /10mb_file.html -time 5
 ```

@@ -35,33 +35,30 @@
 #                                                                         \
 #==========================================================================
 
-ARG UBUNTU_BASE=ubuntu:22.04
+ARG UBUNTU_BASE=ubuntu:24.04
 FROM ${UBUNTU_BASE} AS builder
 
-ARG OPENSSL_VERSION="openssl-3.0.16"
-ARG QATLIB_VERSION="24.02.0"
-ARG QAT_ENGINE_VERSION="v1.9.0"
+ARG OPENSSL_VERSION="openssl-3.0.15"
+ARG QAT_DRIVER="QAT20.L.1.2.30-00090"
+ARG QAT_ENGINE_VERSION="v1.8.0"
 ARG IPSEC_MB_VERSION="v2.0"
-ARG IPP_CRYPTO_VERSION="v1.2.0"
+ARG IPP_CRYPTO_VERSION="v1.0.1"
 ARG QATZIP_VERSION="v1.3.1"
-ARG ASYNC_NGINX_VERSION="v1.0.0"
+ARG ASYNC_NGINX_VERSION="v0.5.3"
 ARG GID
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Install required packages
 RUN apt-get update && \
-    apt-get install -y apt-utils  \
-    software-properties-common  && \
-    add-apt-repository ppa:ubuntu-toolchain-r/test -y  && \
-    apt-get update
+    apt-get install -y apt-utils 
 
 # Upgrade all other packages
 RUN apt-get upgrade -y && \
     apt-get install -y \
+    libboost-all-dev \
+    build-essential \
+    linux-headers-$(uname -r) \
     libudev-dev \
-    make \
-    gcc-13 \
-    g++-13 \
     nasm \
     pkg-config \
     libssl-dev \
@@ -80,28 +77,16 @@ RUN apt-get upgrade -y && \
     libtool \
     libnuma-dev \
     libnuma1 \
-    wget \
-    texinfo \
-    bison && \
+    binutils \
+    wget && \
     git clone --depth 1 -b $OPENSSL_VERSION https://github.com/openssl/openssl.git && \
     git clone --depth 1 -b $QAT_ENGINE_VERSION https://github.com/intel/QAT_Engine && \
     git clone --depth 1 -b $IPP_CRYPTO_VERSION https://github.com/intel/ipp-crypto && \
     git clone --depth 1 -b $IPSEC_MB_VERSION https://github.com/intel/intel-ipsec-mb && \
-    git clone --depth 1 -b $QATLIB_VERSION https://github.com/intel/qatlib && \
     git clone --depth 1 -b $QATZIP_VERSION https://github.com/intel/QATzip.git && \
-    git clone --depth 1 -b $ASYNC_NGINX_VERSION https://github.com/intel/asynch_mode_nginx
+    git clone --depth 1 -b $ASYNC_NGINX_VERSION https://github.com/intel/asynch_mode_nginx 
 
-
-# Add the GCC 13 alternative to the update-alternatives filesystem
-RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-13 10 --slave /usr/bin/g++ g++ /usr/bin/g++-13
-
-# Install binutils 2.40
-RUN wget https://sourceware.org/pub/binutils/releases/binutils-2.40.tar.gz && \
-    tar -zxvf binutils-2.40.tar.gz
-WORKDIR /binutils-2.40
-RUN ./configure && \
-    make -j && \
-    make install -j
+RUN  wget https://downloadmirror.intel.com/852759/$QAT_DRIVER.tar.gz
 
 # Create a non-root user and group
 RUN groupadd -r appuser && useradd -r -g appuser -s /bin/bash appuser
@@ -112,12 +97,16 @@ RUN ./config && \
     make -j && \
     make install -j
 
-# Build and Install QATLib
-WORKDIR /qatlib
-RUN ./autogen.sh && \
-    ./configure --enable-systemd=no && \
-    make -j && \
-    make install samples-install && \
+# Build and Install QAT Driver
+WORKDIR /
+RUN mkdir ${QAT_DRIVER} && \
+     tar -zxvf $QAT_DRIVER.tar.gz -C ${QAT_DRIVER} && \
+     apt install -y libboost-all-dev \
+                    libc6-dev
+
+WORKDIR /${QAT_DRIVER}
+RUN ./configure && \
+    make -j && \ 
     groupadd qat -g ${GID} && \
     usermod -a -G qat appuser
 
@@ -125,7 +114,7 @@ RUN ./autogen.sh && \
 WORKDIR /ipp-crypto/sources/ippcp/crypto_mb
 RUN cmake . -B"../build" \
     -DOPENSSL_INCLUDE_DIR=/usr/local/include \
-    -DOPENSSL_LIBRARIES=/usr/local/lib64 \
+    -DOPENSSL_LIBRARIES=/usr/local/lib \
     -DOPENSSL_ROOT_DIR=/openssl
 
 WORKDIR /ipp-crypto/sources/ippcp/build
@@ -140,14 +129,14 @@ WORKDIR /QAT_Engine
 RUN ./autogen.sh && \
     ./configure \
     --with-openssl_install_dir=/usr/local/ \
-    --with-qat-hw-dir=/usr/local/ \
+    --with-qat-hw-dir=/$QAT_DRIVER \
     --enable-qat_sw && \
     make -j && make install -j
 
 # Build & Install QATzip
 WORKDIR /QATzip
 RUN ./autogen.sh && \
-    ./configure && \
+    ./configure --with-ICP_ROOT=/$QAT_DRIVER && \
     make -j && make install -j
 
 # Build & Install Asynch_mode_nginx
@@ -160,7 +149,7 @@ RUN ./configure \
     --with-http_stub_status_module \
     --add-dynamic-module=modules/nginx_qatzip_module \
     --add-dynamic-module=modules/nginx_qat_module/ \
-    --with-cc-opt="-DNGX_SECURE_MEM -I/usr/local/include -I/usr/local/include/qat -Wno-error=deprecated-declarations" \
+    --with-cc-opt="-DNGX_SECURE_MEM -I/usr/local/include -I/QATzip/include -Wno-error=deprecated-declarations" \
     --with-ld-opt="-Wl,-rpath=/usr/local/lib64 -L/usr/local/lib64 -L/QATzip/src -lqatzip -lz" && \
     make -j && \
     make install -j
@@ -170,17 +159,25 @@ RUN apt-get purge -y linux-libc-dev
 
 FROM ${UBUNTU_BASE}
 
+ARG QAT_DRIVER="QAT20.L.1.2.30-00090"
+
 RUN apt-get update && \
     apt-get upgrade -y && \
     apt-get install -y \
-    libnuma1 && \
+    libnuma1 \
+    libpcre3-dev
+
+#Added to remove libc library for vulnerability issue
+RUN apt-get purge -y linux-libc-dev && \
+    apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /usr/local/lib/libqat.so.4.2.0 /usr/lib/
-COPY --from=builder /usr/local/lib/libusdm.so.0.1.0 /usr/lib/
+COPY --from=builder /$QAT_DRIVER/build/libqat_s.so /usr/lib/
+COPY --from=builder /$QAT_DRIVER/build/libusdm_drv_s.so /usr/lib/
 COPY --from=builder /usr/local/lib/libIPSec_MB.so.2.0.0 /usr/lib/x86_64-linux-gnu/
 COPY --from=builder /usr/local/lib64/libcrypto.so.3 /usr/lib/x86_64-linux-gnu/
-COPY --from=builder /usr/local/lib/intel64/libcrypto_mb.so.12.2 /usr/lib/x86_64-linux-gnu/
+COPY --from=builder /usr/local/lib/libcrypto_mb.so.12.0 /usr/lib/x86_64-linux-gnu/
+COPY --from=builder /$QAT_DRIVER/build/adf_ctl /usr/bin
 COPY --from=builder /usr/local/bin/openssl /usr/bin/
 COPY --from=builder /usr/local/lib64/engines-3/qatengine.so /usr/lib/x86_64-linux-gnu/engines-3/qatengine.so
 COPY --from=builder /var/www/ /var/www/
@@ -192,6 +189,7 @@ COPY --from=builder /usr/local/bin/qzip /usr/bin/qzip
 COPY --from=builder /usr/local/bin/qatzip-test /usr/bin/qatzip-test
 COPY --from=builder /etc/group /etc/group
 COPY --from=builder /etc/passwd /etc/passwd
+COPY --from=builder /usr/lib/x86_64-linux-gnu/libstdc++.so.6 /usr/lib/x86_64-linux-gnu/libstdc++.so.6 
 RUN touch /var/www/logs/error.log /var/www/logs/nginx.pid /var/www/logs/access.log && chown appuser /var/www/logs/error.log /var/www/logs/nginx.pid /var/www/logs/access.log
 
 RUN ldconfig
@@ -209,7 +207,6 @@ USER appuser
 
 ENV OPENSSL_ENGINES="/usr/lib/x86_64-linux-gnu/engines-3/"
 ENV LD_LIBRARY_PATH="/usr/lib/x86_64-linux-gnu/"
-ENV QAT_POLICY=1
 
 #Expose ports
 EXPOSE 8080 
