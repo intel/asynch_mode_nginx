@@ -208,6 +208,7 @@ typedef struct {
     unsigned                       proxy_protocol:1;
 } ngx_stream_addr_conf_t;
 
+
 typedef struct {
     in_addr_t                      addr;
     ngx_stream_addr_conf_t         conf;

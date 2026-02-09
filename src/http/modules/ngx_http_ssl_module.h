@@ -20,6 +20,7 @@ typedef struct {
     ngx_ssl_t                       ssl;
 
     ngx_flag_t                      prefer_server_ciphers;
+    ngx_flag_t                      certificate_compression;
     ngx_flag_t                      early_data;
     ngx_flag_t                      reject_handshake;
 
@@ -32,7 +33,6 @@ typedef struct {
     size_t                          max_pipelines;
     size_t                          split_send_fragment;
     size_t                          max_send_fragment;
-
     ssize_t                         builtin_session_cache;
 
     time_t                          session_timeout;
@@ -42,6 +42,8 @@ typedef struct {
 
     ngx_array_t                    *certificate_values;
     ngx_array_t                    *certificate_key_values;
+
+    ngx_ssl_cache_t                *certificate_cache;
 
     ngx_str_t                       dhparam;
     ngx_str_t                       ecdh_curve;

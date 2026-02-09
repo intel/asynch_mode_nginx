@@ -19,6 +19,7 @@ typedef struct {
     ngx_msec_t       handshake_timeout;
 
     ngx_flag_t       prefer_server_ciphers;
+    ngx_flag_t        certificate_compression;
     ngx_flag_t       reject_handshake;
 
     ngx_ssl_t        ssl;
@@ -40,6 +41,8 @@ typedef struct {
     ngx_array_t     *certificate_values;
     ngx_array_t     *certificate_key_values;
 
+    ngx_ssl_cache_t  *certificate_cache;
+
     ngx_str_t        dhparam;
     ngx_str_t        ecdh_curve;
     ngx_str_t        client_certificate;
@@ -56,6 +59,15 @@ typedef struct {
 
     ngx_flag_t       session_tickets;
     ngx_array_t     *session_ticket_keys;
+
+    ngx_uint_t        ocsp;
+    ngx_str_t         ocsp_responder;
+    ngx_shm_zone_t   *ocsp_cache_zone;
+
+    ngx_flag_t        stapling;
+    ngx_flag_t        stapling_verify;
+    ngx_str_t         stapling_file;
+    ngx_str_t         stapling_responder;
 } ngx_stream_ssl_srv_conf_t;
 
 

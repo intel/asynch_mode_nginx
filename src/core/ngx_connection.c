@@ -767,6 +767,8 @@ ngx_configure_listening_sockets(ngx_cycle_t *cycle)
 
 #if (NGX_HAVE_KEEPALIVE_TUNABLE)
 
+#if !(NGX_DARWIN)
+
         if (ls[i].keepidle) {
             value = ls[i].keepidle;
 
@@ -783,6 +785,8 @@ ngx_configure_listening_sockets(ngx_cycle_t *cycle)
                               value, &ls[i].addr_text);
             }
         }
+
+#endif
 
         if (ls[i].keepintvl) {
             value = ls[i].keepintvl;

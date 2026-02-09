@@ -10,6 +10,7 @@
 
 #include <ngx_config.h>
 #include <ngx_core.h>
+
 #include <linux/bpf.h>
 
 
@@ -40,4 +41,3 @@ int ngx_bpf_map_delete(int fd, const void *key);
 int ngx_bpf_map_lookup(int fd, const void *key, void *value);
 
 #endif /* _NGX_BPF_H_INCLUDED_ */
-

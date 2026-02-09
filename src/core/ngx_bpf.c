@@ -6,7 +6,6 @@
 
 #include <ngx_config.h>
 #include <ngx_core.h>
-#include <ngx_bpf.h>
 
 #define NGX_BPF_LOGBUF_SIZE  (16 * 1024)
 
@@ -142,4 +141,3 @@ ngx_bpf_map_lookup(int fd, const void *key, void *value)
 
     return ngx_bpf(BPF_MAP_LOOKUP_ELEM, &attr, sizeof(attr));
 }
-

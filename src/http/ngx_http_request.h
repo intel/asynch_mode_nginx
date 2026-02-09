@@ -74,6 +74,7 @@
 #define NGX_HTTP_CONTINUE                  100
 #define NGX_HTTP_SWITCHING_PROTOCOLS       101
 #define NGX_HTTP_PROCESSING                102
+#define NGX_HTTP_EARLY_HINTS               103
 
 #define NGX_HTTP_OK                        200
 #define NGX_HTTP_CREATED                   201
@@ -329,6 +330,8 @@ typedef struct {
 
     ngx_chain_t                      *free;
 
+    ngx_msec_t                        keepalive_timeout;
+
     unsigned                          ssl:1;
     unsigned                          proxy_protocol:1;
 } ngx_http_connection_t;
@@ -457,6 +460,8 @@ struct ngx_http_request_s {
     ngx_http_log_handler_pt           log_handler;
 
     ngx_http_cleanup_t               *cleanup;
+
+    in_port_t                         port;
 
     unsigned                          count:16;
     unsigned                          subrequests:8;

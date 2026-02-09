@@ -108,6 +108,13 @@ static ngx_command_t  ngx_mail_ssl_commands[] = {
       0,
       NULL },
 
+    { ngx_string("ssl_certificate_compression"),
+      NGX_MAIL_MAIN_CONF|NGX_MAIL_SRV_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_MAIL_SRV_CONF_OFFSET,
+      offsetof(ngx_mail_ssl_conf_t, certificate_compression),
+      NULL },
+
     { ngx_string("ssl_dhparam"),
       NGX_MAIL_MAIN_CONF|NGX_MAIL_SRV_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_str_slot,
@@ -326,6 +333,7 @@ ngx_mail_ssl_create_conf(ngx_conf_t *cf)
     scf->passwords = NGX_CONF_UNSET_PTR;
     scf->conf_commands = NGX_CONF_UNSET_PTR;
     scf->prefer_server_ciphers = NGX_CONF_UNSET;
+    scf->certificate_compression = NGX_CONF_UNSET;
     scf->verify = NGX_CONF_UNSET_UINT;
     scf->verify_depth = NGX_CONF_UNSET_UINT;
     scf->builtin_session_cache = NGX_CONF_UNSET;
@@ -356,10 +364,11 @@ ngx_mail_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_value(conf->prefer_server_ciphers,
                          prev->prefer_server_ciphers, 0);
 
+    ngx_conf_merge_value(conf->certificate_compression,
+                         prev->certificate_compression, 0);
+
     ngx_conf_merge_bitmask_value(conf->protocols, prev->protocols,
-                         (NGX_CONF_BITMASK_SET
-                          |NGX_SSL_TLSv1|NGX_SSL_TLSv1_1
-                          |NGX_SSL_TLSv1_2|NGX_SSL_TLSv1_3));
+                         (NGX_CONF_BITMASK_SET|NGX_SSL_DEFAULT_PROTOCOLS));
 
     ngx_conf_merge_uint_value(conf->verify, prev->verify, 0);
     ngx_conf_merge_uint_value(conf->verify_depth, prev->verify_depth, 1);
@@ -461,11 +470,22 @@ ngx_mail_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
         return NGX_CONF_ERROR;
     }
 
+    if (ngx_ssl_certificate_compression(cf, &conf->ssl,
+                                        conf->certificate_compression)
+        != NGX_OK)
+    {
+        return NGX_CONF_ERROR;
+    }
+
     if (conf->verify) {
 
-        if (conf->client_certificate.len == 0 && conf->verify != 3) {
+        if (conf->verify != 3
+            && conf->client_certificate.len == 0
+            && conf->trusted_certificate.len == 0)
+        {
             ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                          "no ssl_client_certificate for ssl_verify_client");
+                          "no ssl_client_certificate or "
+                          "ssl_trusted_certificate for ssl_verify_client");
             return NGX_CONF_ERROR;
         }
 

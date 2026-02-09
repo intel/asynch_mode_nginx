@@ -510,6 +510,13 @@ static ngx_command_t  ngx_http_core_commands[] = {
       0,
       NULL },
 
+    { ngx_string("keepalive_min_timeout"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_msec_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_core_loc_conf_t, keepalive_min_timeout),
+      NULL },
+
     { ngx_string("keepalive_requests"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_num_slot,
@@ -662,6 +669,13 @@ static ngx_command_t  ngx_http_core_commands[] = {
       ngx_conf_set_flag_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_core_loc_conf_t, etag),
+      NULL },
+
+    { ngx_string("early_hints"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_1MORE,
+      ngx_http_set_predicate_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_core_loc_conf_t, early_hints),
       NULL },
 
     { ngx_string("error_page"),
@@ -1852,6 +1866,37 @@ ngx_http_send_header(ngx_http_request_t *r)
 
 
 ngx_int_t
+ngx_http_send_early_hints(ngx_http_request_t *r)
+{
+    ngx_int_t                  rc;
+    ngx_http_core_loc_conf_t  *clcf;
+
+    if (r->post_action) {
+        return NGX_OK;
+    }
+
+    if (r->header_sent) {
+        ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                      "header already sent");
+        return NGX_ERROR;
+    }
+
+    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
+    rc = ngx_http_test_predicates(r, clcf->early_hints);
+
+    if (rc != NGX_DECLINED) {
+        return rc;
+    }
+
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http send early hints \"%V?%V\"", &r->uri, &r->args);
+
+    return ngx_http_top_early_hints_filter(r);
+}
+
+
+ngx_int_t
 ngx_http_output_filter(ngx_http_request_t *r, ngx_chain_t *in)
 {
     ngx_int_t          rc;
@@ -2321,6 +2366,7 @@ ngx_http_subrequest(ngx_http_request_t *r,
     ngx_connection_t              *c;
     ngx_http_request_t            *sr;
     ngx_http_core_srv_conf_t      *cscf;
+    ngx_http_posted_request_t     *posted;
     ngx_http_postponed_request_t  *pr, *p;
 
     if (r->subrequests == 0) {
@@ -2371,6 +2417,11 @@ ngx_http_subrequest(ngx_http_request_t *r,
                       sizeof(ngx_table_elt_t))
         != NGX_OK)
     {
+        return NGX_ERROR;
+    }
+
+    posted = ngx_palloc(r->pool, sizeof(ngx_http_posted_request_t));
+    if (posted == NULL) {
         return NGX_ERROR;
     }
 
@@ -2432,10 +2483,6 @@ ngx_http_subrequest(ngx_http_request_t *r,
     }
 
     if (!sr->background) {
-        if (c->data == r && r->postponed == NULL) {
-            c->data = sr;
-        }
-
         pr = ngx_palloc(r->pool, sizeof(ngx_http_postponed_request_t));
         if (pr == NULL) {
             return NGX_ERROR;
@@ -2444,6 +2491,10 @@ ngx_http_subrequest(ngx_http_request_t *r,
         pr->request = sr;
         pr->out = NULL;
         pr->next = NULL;
+
+        if (c->data == r && r->postponed == NULL) {
+            c->data = sr;
+        }
 
         if (r->postponed) {
             for (p = r->postponed; p->next; p = p->next) { /* void */ }
@@ -2492,7 +2543,7 @@ ngx_http_subrequest(ngx_http_request_t *r,
         ngx_http_update_location_config(sr);
     }
 
-    return ngx_http_post_request(sr, NULL);
+    return ngx_http_post_request(sr, posted);
 }
 
 
@@ -3607,6 +3658,7 @@ ngx_http_core_create_loc_conf(ngx_conf_t *cf)
     clcf->keepalive_time = NGX_CONF_UNSET_MSEC;
     clcf->keepalive_timeout = NGX_CONF_UNSET_MSEC;
     clcf->keepalive_header = NGX_CONF_UNSET;
+    clcf->keepalive_min_timeout = NGX_CONF_UNSET_MSEC;
     clcf->keepalive_requests = NGX_CONF_UNSET_UINT;
     clcf->lingering_close = NGX_CONF_UNSET_UINT;
     clcf->lingering_time = NGX_CONF_UNSET_MSEC;
@@ -3624,6 +3676,7 @@ ngx_http_core_create_loc_conf(ngx_conf_t *cf)
     clcf->chunked_transfer_encoding = NGX_CONF_UNSET;
     clcf->etag = NGX_CONF_UNSET;
     clcf->server_tokens = NGX_CONF_UNSET_UINT;
+    clcf->early_hints = NGX_CONF_UNSET_PTR;
     clcf->types_hash_max_size = NGX_CONF_UNSET_UINT;
     clcf->types_hash_bucket_size = NGX_CONF_UNSET_UINT;
 
@@ -3845,6 +3898,8 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
                               prev->keepalive_timeout, 75000);
     ngx_conf_merge_sec_value(conf->keepalive_header,
                               prev->keepalive_header, 0);
+    ngx_conf_merge_msec_value(conf->keepalive_min_timeout,
+                              prev->keepalive_min_timeout, 0);
     ngx_conf_merge_uint_value(conf->keepalive_requests,
                               prev->keepalive_requests, 1000);
     ngx_conf_merge_uint_value(conf->lingering_close,
@@ -3877,7 +3932,7 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     if (ngx_conf_merge_path_value(cf, &conf->client_body_temp_path,
                               prev->client_body_temp_path,
                               &ngx_http_client_temp_path)
-        != NGX_OK)
+        != NGX_CONF_OK)
     {
         return NGX_CONF_ERROR;
     }
@@ -3901,6 +3956,8 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_uint_value(conf->server_tokens, prev->server_tokens,
                               NGX_HTTP_SERVER_TOKENS_ON);
+
+    ngx_conf_merge_ptr_value(conf->early_hints, prev->early_hints, NULL);
 
     ngx_conf_merge_ptr_value(conf->open_file_cache,
                               prev->open_file_cache, NULL);

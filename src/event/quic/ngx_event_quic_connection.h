@@ -1,5 +1,6 @@
 /*
  * Copyright (C) Nginx, Inc.
+ * Copyright (C) Intel, Inc.
  */
 
 
@@ -16,6 +17,15 @@
 /* #define NGX_QUIC_DEBUG_FRAMES */   /* dump frames contents */
 /* #define NGX_QUIC_DEBUG_ALLOC */    /* log frames and bufs alloc */
 /* #define NGX_QUIC_DEBUG_CRYPTO */
+
+#define NGX_QUIC_ENCRYPTION_INITIAL          0
+#define NGX_QUIC_ENCRYPTION_EARLY_DATA       1
+#define NGX_QUIC_ENCRYPTION_HANDSHAKE        2
+#define NGX_QUIC_ENCRYPTION_APPLICATION      3
+#define NGX_QUIC_ENCRYPTION_LAST             4
+
+#define NGX_QUIC_SEND_CTX_LAST               (NGX_QUIC_ENCRYPTION_LAST - 1)
+
 
 typedef struct ngx_quic_connection_s  ngx_quic_connection_t;
 typedef struct ngx_quic_server_id_s   ngx_quic_server_id_t;
@@ -46,8 +56,6 @@ typedef struct ngx_quic_keys_s        ngx_quic_keys_t;
 
 #define NGX_QUIC_UNSET_PN                    (uint64_t) -1
 
-#define NGX_QUIC_SEND_CTX_LAST               (NGX_QUIC_ENCRYPTION_LAST - 1)
-
 /*  0-RTT and 1-RTT data exist in the same packet number space,
  *  so we have 3 packet number spaces:
  *
@@ -56,8 +64,8 @@ typedef struct ngx_quic_keys_s        ngx_quic_keys_t;
  *  2 - 0-RTT and 1-RTT
  */
 #define ngx_quic_get_send_ctx(qc, level)                                      \
-    ((level) == ssl_encryption_initial) ? &((qc)->send_ctx[0])                \
-        : (((level) == ssl_encryption_handshake) ? &((qc)->send_ctx[1])       \
+    ((level) == NGX_QUIC_ENCRYPTION_INITIAL) ? &((qc)->send_ctx[0])           \
+        : (((level) == NGX_QUIC_ENCRYPTION_HANDSHAKE) ? &((qc)->send_ctx[1])  \
                                                  : &((qc)->send_ctx[2]))
 
 #define ngx_quic_get_connection(c)                                            \
@@ -168,7 +176,14 @@ typedef struct {
     size_t                            in_flight;
     size_t                            window;
     size_t                            ssthresh;
+    size_t                            w_max;
+    size_t                            w_est;
+    size_t                            w_prior;
+    size_t                            mtu;
     ngx_msec_t                        recovery_start;
+    ngx_msec_t                        idle_start;
+    ngx_msec_t                        k;
+    ngx_uint_t                        idle; /* unsigned  idle:1; */
 } ngx_quic_congestion_t;
 
 
@@ -254,6 +269,7 @@ struct ngx_quic_connection_s {
     ngx_buf_t                        *free_shadow_bufs;
 
     ngx_uint_t                        nframes;
+    ngx_uint_t                        max_frames;
 #ifdef NGX_QUIC_DEBUG_ALLOC
     ngx_uint_t                        nbufs;
     ngx_uint_t                        nshadowbufs;
@@ -271,7 +287,7 @@ struct ngx_quic_connection_s {
     off_t                             received;
 
     ngx_uint_t                        error;
-    enum ssl_encryption_level_t       error_level;
+    ngx_uint_t                        error_level;
     ngx_uint_t                        error_ftype;
     const char                       *error_reason;
 
@@ -306,13 +322,17 @@ struct ngx_quic_connection_s {
     unsigned                          key_phase:1;
     unsigned                          validated:1;
     unsigned                          client_tp_done:1;
+
+#if (NGX_QUIC_OPENSSL_API)
+    unsigned                          read_level:2;
+    unsigned                          write_level:2;
+#endif
 };
 
 
 ngx_int_t ngx_quic_apply_transport_params(ngx_connection_t *c,
     ngx_quic_tp_t *ctp);
-void ngx_quic_discard_ctx(ngx_connection_t *c,
-    enum ssl_encryption_level_t level);
+void ngx_quic_discard_ctx(ngx_connection_t *c, ngx_uint_t level);
 void ngx_quic_close_connection(ngx_connection_t *c, ngx_int_t rc);
 void ngx_quic_shutdown_quic(ngx_connection_t *c);
 
