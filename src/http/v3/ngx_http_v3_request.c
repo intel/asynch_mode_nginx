@@ -965,7 +965,7 @@ ngx_http_v3_init_pseudo_headers(ngx_http_request_t *r)
 
         if (rc == NGX_DECLINED) {
             ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                          "client sent invalid host in request line");
+                          "client sent invalid \":authority\" header");
             goto failed;
         }
 
@@ -979,6 +979,16 @@ ngx_http_v3_init_pseudo_headers(ngx_http_request_t *r)
         }
 
         r->headers_in.server = host;
+
+        p = ngx_strlchr(r->host_start + host.len, r->host_end, ':');
+
+        if (p) {
+            rc = ngx_atoi(p + 1, r->host_end - p - 1);
+
+            if (rc > 0 && rc < 65536) {
+                r->port = rc;
+            }
+        }
     }
 
     if (ngx_list_init(&r->headers_in.headers, r->pool, 20,
@@ -1003,6 +1013,7 @@ ngx_http_v3_process_request_header(ngx_http_request_t *r)
 {
     ssize_t                  n;
     ngx_buf_t               *b;
+    ngx_str_t                host;
     ngx_connection_t        *c;
     ngx_http_v3_session_t   *h3c;
     ngx_http_v3_srv_conf_t  *h3scf;
@@ -1034,11 +1045,13 @@ ngx_http_v3_process_request_header(ngx_http_request_t *r)
         goto failed;
     }
 
-    if (r->headers_in.host) {
-        if (r->headers_in.host->value.len != r->headers_in.server.len
-            || ngx_memcmp(r->headers_in.host->value.data,
-                          r->headers_in.server.data,
-                          r->headers_in.server.len)
+    if (r->headers_in.host && r->host_end) {
+
+        host.len = r->host_end - r->host_start;
+        host.data = r->host_start;
+
+        if (r->headers_in.host->value.len != host.len
+            || ngx_memcmp(r->headers_in.host->value.data, host.data, host.len)
                != 0)
         {
             ngx_log_error(NGX_LOG_INFO, c->log, 0,
@@ -1213,7 +1226,7 @@ ngx_http_v3_construct_cookie_header(ngx_http_request_t *r)
     if (hh->handler(r, h, hh->offset) != NGX_OK) {
         /*
          * request has been finalized already
-         * in ngx_http_process_multi_header_lines()
+         * in ngx_http_process_header_line()
          */
         return NGX_ERROR;
     }
@@ -1583,6 +1596,15 @@ ngx_http_v3_request_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
                 /* rc == NGX_OK */
 
                 if (max != -1 && (uint64_t) (max - rb->received) < st->length) {
+
+                    if (r->headers_in.content_length_n != -1) {
+                        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                                      "client intended to send body data "
+                                      "larger than declared");
+
+                        return NGX_HTTP_BAD_REQUEST;
+                    }
+
                     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                                   "client intended to send too large "
                                   "body: %O+%ui bytes",

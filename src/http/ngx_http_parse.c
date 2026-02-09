@@ -111,6 +111,7 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
         sw_schema,
         sw_schema_slash,
         sw_schema_slash_slash,
+        sw_spaces_before_host,
         sw_host_start,
         sw_host,
         sw_host_end,
@@ -158,6 +159,7 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
             if (ch == ' ') {
                 r->method_end = p - 1;
                 m = r->request_start;
+                state = sw_spaces_before_uri;
 
                 switch (p - m) {
 
@@ -247,6 +249,7 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                     if (ngx_str7_cmp(m, 'C', 'O', 'N', 'N', 'E', 'C', 'T', ' '))
                     {
                         r->method = NGX_HTTP_CONNECT;
+                        state = sw_spaces_before_host;
                     }
 
                     break;
@@ -269,7 +272,6 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                     break;
                 }
 
-                state = sw_spaces_before_uri;
                 break;
             }
 
@@ -345,6 +347,14 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
             }
             break;
 
+        case sw_spaces_before_host:
+
+            if (ch == ' ') {
+                break;
+            }
+
+            /* fall through */
+
         case sw_host_start:
 
             r->host_start = p;
@@ -374,6 +384,15 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
         case sw_host_end:
 
             r->host_end = p;
+
+            if (r->method == NGX_HTTP_CONNECT) {
+                if (ch == ':') {
+                    state = sw_port;
+                    break;
+                }
+
+                return NGX_HTTP_PARSE_INVALID_REQUEST;
+            }
 
             switch (ch) {
             case ':':
@@ -446,7 +465,21 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
 
         case sw_port:
             if (ch >= '0' && ch <= '9') {
+                if (r->port >= 6553 && (r->port > 6553 || (ch - '0') > 5)) {
+                    return NGX_HTTP_PARSE_INVALID_REQUEST;
+                }
+
+                r->port = r->port * 10 + (ch - '0');
                 break;
+            }
+
+            if (r->method == NGX_HTTP_CONNECT) {
+                if (ch == ' ') {
+                    state = sw_http_09;
+                    break;
+                }
+
+                return NGX_HTTP_PARSE_INVALID_REQUEST;
             }
 
             switch (ch) {
@@ -684,6 +717,16 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
         case sw_http_HTTP:
             switch (ch) {
             case '/':
+
+                /*
+                 * use single "/" from request line to preserve pointers,
+                 * if request line will be copied to large client buffer
+                 */
+                if (r->method == NGX_HTTP_CONNECT) {
+                    r->uri_start = p;
+                    r->uri_end = p + 1;
+                }
+
                 state = sw_first_major_digit;
                 break;
             default:
@@ -1961,7 +2004,7 @@ ngx_table_elt_t *
 ngx_http_parse_multi_header_lines(ngx_http_request_t *r,
     ngx_table_elt_t *headers, ngx_str_t *name, ngx_str_t *value)
 {
-    u_char            *start, *last, *end, ch;
+    u_char           *start, *last, *end, ch;
     ngx_table_elt_t  *h;
 
     for (h = headers; h; h = h->next) {
@@ -2031,7 +2074,7 @@ ngx_table_elt_t *
 ngx_http_parse_set_cookie_lines(ngx_http_request_t *r,
     ngx_table_elt_t *headers, ngx_str_t *name, ngx_str_t *value)
 {
-    u_char            *start, *last, *end;
+    u_char           *start, *last, *end;
     ngx_table_elt_t  *h;
 
     for (h = headers; h; h = h->next) {
@@ -2140,7 +2183,7 @@ ngx_http_split_args(ngx_http_request_t *r, ngx_str_t *uri, ngx_str_t *args)
 
 ngx_int_t
 ngx_http_parse_chunked(ngx_http_request_t *r, ngx_buf_t *b,
-    ngx_http_chunked_t *ctx)
+    ngx_http_chunked_t *ctx, ngx_uint_t keep_trailers)
 {
     u_char     *pos, ch, c;
     ngx_int_t   rc;
@@ -2218,6 +2261,9 @@ ngx_http_parse_chunked(ngx_http_request_t *r, ngx_buf_t *b,
                     state = sw_last_chunk_extension_almost_done;
                     break;
                 case LF:
+                    if (keep_trailers) {
+                        goto done;
+                    }
                     state = sw_trailer;
                     break;
                 case ';':
@@ -2297,12 +2343,18 @@ ngx_http_parse_chunked(ngx_http_request_t *r, ngx_buf_t *b,
                 state = sw_last_chunk_extension_almost_done;
                 break;
             case LF:
+                if (keep_trailers) {
+                    goto done;
+                }
                 state = sw_trailer;
             }
             break;
 
         case sw_last_chunk_extension_almost_done:
             if (ch == LF) {
+                if (keep_trailers) {
+                    goto done;
+                }
                 state = sw_trailer;
                 break;
             }
