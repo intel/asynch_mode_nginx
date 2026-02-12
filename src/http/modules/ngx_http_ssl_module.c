@@ -718,7 +718,6 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_value(conf->certificate_compression,
                          prev->certificate_compression, 0);
-
     ngx_conf_merge_value(conf->early_data, prev->early_data, 0);
     ngx_conf_merge_value(conf->reject_handshake, prev->reject_handshake, 0);
 
@@ -730,7 +729,6 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_size_value(conf->max_pipelines, prev->max_pipelines, 0);
     ngx_conf_merge_size_value(conf->split_send_fragment, prev->split_send_fragment, 0);
     ngx_conf_merge_size_value(conf->max_send_fragment, prev->max_send_fragment, 0);
-    
     ngx_conf_merge_uint_value(conf->verify, prev->verify, 0);
     ngx_conf_merge_uint_value(conf->verify_depth, prev->verify_depth, 1);
 

@@ -471,10 +471,9 @@ ngx_ssl_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
 
     mask = 0;
     elm = NULL;
-    
- ngx_ssl_engine_unload_check(cf->cycle);
- 
-retry:
+
+    ngx_ssl_engine_unload_check(cf->cycle);
+    retry:
 
     chain = ngx_ssl_cache_fetch(cf, NGX_SSL_CACHE_CERT | mask,
                                 &err, cert, NULL);
