@@ -167,6 +167,7 @@ my $addr = $s->sockhost();
 my $port = $s->sockport();
 my $saddr = $s->peerhost();
 my $sport = $s->peerport();
+http_get('/addr', socket => $s);
 
 http_get('/binary');
 
