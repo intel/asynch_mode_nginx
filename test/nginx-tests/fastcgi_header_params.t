@@ -60,9 +60,6 @@ $t->run()->waitforsocket('127.0.0.1:' . port(8081));
 like(http_get_headers('/'), qr/SEE-THIS/,
 	'fastcgi request with many ignored headers');
 
-TODO: {
-local $TODO = 'not yet' unless $t->has_version('1.23.0');
-
 my $r;
 
 $r = http(<<EOF);
@@ -88,8 +85,6 @@ like($r, qr/X-Cookie: foo; bar; bazz/,
 
 like($r, qr/X-Foo: foo, bar, bazz/,
 	'fastcgi with multiple unknown headers');
-
-}
 
 ###############################################################################
 
