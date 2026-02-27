@@ -25,7 +25,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http http_v3 proxy rewrite cryptx/)
-	->has_daemon('openssl')->plan(68)
+	->has_daemon('openssl')->plan(75)
 	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
@@ -832,6 +832,18 @@ $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
 is($frame->{headers}->{':status'}, 400, 'incomplete headers');
 
+# no ':authority'
+
+$s = Test::Nginx::HTTP3->new();
+$sid = $s->new_stream({ headers => [
+	{ name => ':method', value => 'GET', mode => 0 },
+	{ name => ':scheme', value => 'http', mode => 0 },
+	{ name => ':path', value => '/', mode => 0 }]});
+$frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
+
+($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
+is($frame->{headers}->{':status'}, 400, 'no authority');
+
 # empty request header ':authority'
 
 $s = Test::Nginx::HTTP3->new();
@@ -844,6 +856,100 @@ $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 
 ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
 is($frame->{headers}->{':status'}, 400, 'empty authority');
+
+# no ':authority' and non-empty 'host'
+
+$s = Test::Nginx::HTTP3->new();
+$sid = $s->new_stream({ headers => [
+	{ name => ':method', value => 'GET', mode => 0 },
+	{ name => ':scheme', value => 'http', mode => 0 },
+	{ name => ':path', value => '/', mode => 0 },
+	{ name => 'host', value => 'localhost', mode => 4 }]});
+$frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
+
+($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
+is($frame->{headers}->{':status'}, 200, 'no authority and non-empty host');
+
+# no ':authority' and non-empty 'host' with port
+
+TODO: {
+local $TODO = 'not yet' unless $t->has_version('1.29.1');
+
+$s = Test::Nginx::HTTP3->new();
+$sid = $s->new_stream({ headers => [
+	{ name => ':method', value => 'GET', mode => 0 },
+	{ name => ':scheme', value => 'http', mode => 0 },
+	{ name => ':path', value => '/', mode => 0 },
+	{ name => 'host', value => 'localhost:1234', mode => 4 }]});
+$frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
+
+($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
+is($frame->{headers}->{':status'}, 200,
+	'no authority and non-empty host with port');
+
+}
+
+# equal ':authority' and 'host'
+
+$s = Test::Nginx::HTTP3->new();
+$sid = $s->new_stream({ headers => [
+	{ name => ':method', value => 'GET', mode => 0 },
+	{ name => ':scheme', value => 'http', mode => 0 },
+	{ name => ':path', value => '/', mode => 0 },
+	{ name => ':authority', value => 'localhost', mode => 2 },
+	{ name => 'host', value => 'localhost', mode => 4 }]});
+$frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
+
+($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
+is($frame->{headers}->{':status'}, 200, 'equal authority and host');
+
+# equal ':authority' and 'host' with port
+
+TODO: {
+local $TODO = 'not yet' unless $t->has_version('1.29.1');
+
+$s = Test::Nginx::HTTP3->new();
+$sid = $s->new_stream({ headers => [
+	{ name => ':method', value => 'GET', mode => 0 },
+	{ name => ':scheme', value => 'http', mode => 0 },
+	{ name => ':path', value => '/', mode => 0 },
+	{ name => ':authority', value => 'localhost:1234', mode => 2 },
+	{ name => 'host', value => 'localhost:1234', mode => 4 }]});
+$frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
+
+($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
+is($frame->{headers}->{':status'}, 200, 'equal authority and host with port');
+
+}
+
+# non-equal ':authority' and 'host'
+
+$s = Test::Nginx::HTTP3->new();
+$sid = $s->new_stream({ headers => [
+	{ name => ':method', value => 'GET', mode => 0 },
+	{ name => ':scheme', value => 'http', mode => 0 },
+	{ name => ':path', value => '/', mode => 0 },
+	{ name => ':authority', value => 'localhost', mode => 2 },
+	{ name => 'host', value => 'localhost2', mode => 4 }]});
+$frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
+
+($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
+is($frame->{headers}->{':status'}, 400, 'non-equal authority and host');
+
+# non-equal ':authority' and 'host' with port
+
+$s = Test::Nginx::HTTP3->new();
+$sid = $s->new_stream({ headers => [
+	{ name => ':method', value => 'GET', mode => 0 },
+	{ name => ':scheme', value => 'http', mode => 0 },
+	{ name => ':path', value => '/', mode => 0 },
+	{ name => ':authority', value => 'localhost:1234', mode => 2 },
+	{ name => 'host', value => 'localhost:5678', mode => 4 }]});
+$frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
+
+($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
+is($frame->{headers}->{':status'}, 400,
+	'non-equal authority and host with port');
 
 # client sent invalid :path header
 

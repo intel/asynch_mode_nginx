@@ -44,12 +44,15 @@ sub new {
 	$self->{token} = $extra{token} || '';
 	$self->{psk_list} = $extra{psk_list} || [];
 	$self->{early_data} = $extra{early_data};
+	$self->{send_ack} = 1;
 
 	$self->{sni} = exists $extra{sni} ? $extra{sni} : 'localhost';
 	$self->{cipher} = 0x1301;
 	$self->{ciphers} = $extra{ciphers} || "\x13\x01";
 	$self->{group} = $extra{group} || 'x25519';
+	$self->{ccomp} = $extra{ccomp} || [];
 	$self->{opts} = $extra{opts};
+	$self->{chaining} = $extra{start_chain} || 0;
 
 	$self->{zero} = pack("x5");
 
@@ -110,7 +113,7 @@ sub retry {
 
 	my $buf = pack("B*", '001' . ipack(5, $extra{capacity} || 400));
 	$self->{encoder_offset} = length($buf) + 1;
-	$buf = "\x08\x02\x02" . $buf;
+	$buf = "\x0a\x02" . build_int(length($buf) + 1) . "\x02" . $buf;
 
 	# RFC 9114, 6.2.1.  Control Streams
 
@@ -172,7 +175,7 @@ sub handshake {
 	my $extens_len = unpack("C*", substr($sh, 6 + 32 + 4, 2)) * 8
 		+ unpack("C*", substr($sh, 6 + 32 + 5, 1));
 	my $extens = substr($sh, 6 + 32 + 4 + 2, $extens_len);
-	my $pub = key_share($extens);
+	my $pub = ext_key_share($extens);
 	Test::Nginx::log_core('||', "pub = " . unpack("H*", $pub));
 
 	my $shared_secret = $self->tls_shared_secret($pub);
@@ -183,7 +186,7 @@ sub handshake {
 	my ($hash, $hlen) = $self->{cipher} == 0x1302 ?
 		('SHA384', 48) : ('SHA256', 32);
 
-	my $psk = pre_shared_key($extens);
+	my $psk = ext_pre_shared_key($extens);
 	$self->{psk} = (defined $psk && $self->{psk_list}[$psk]) || undef;
 	$self->{es_prk} = Crypt::KeyDerivation::hkdf_extract(
 		$self->{psk}->{secret} || pack("x$hlen"), pack("x$hlen"),
@@ -204,6 +207,14 @@ sub handshake {
 		$self->{hs_prk}, $digest);
 
 	$self->read_tls_message(\$buf, \&parse_tls_encrypted_extensions);
+
+	my $ee = $self->{tlsm}{ee};
+	$extens_len = unpack("C*", substr($ee, 4, 1)) * 8
+		+ unpack("C*", substr($ee, 5, 1));
+	$extens = substr($ee, 6, $extens_len);
+	$self->{tp} = ext_transport_parameters($extens);
+	Test::Nginx::log_core('||', "tp = " . unpack("H*", $self->{tp}))
+		if $self->{tp};
 
 	unless (keys %{$self->{psk}}) {
 		$self->read_tls_message(\$buf, \&parse_tls_certificate);
@@ -247,7 +258,7 @@ sub handshake {
 		"resumption = " . unpack("H*", $self->{rms_prk}));
 
 	my $crypto = build_crypto($finished);
-	$self->{socket}->syswrite($self->encrypt_aead($crypto, 2));
+	$self->raw_write($crypto, 2);
 }
 
 sub DESTROY {
@@ -1334,13 +1345,14 @@ sub dehuff {
 }
 
 sub raw_write {
-	my ($self, $message) = @_;
+	my ($self, $message, $level) = @_;
+	$level = 3 if !defined $level;
 
 	if ($self->{chaining}) {
-		return add_chain($self, $message);
+		return add_chain($self, $message, $level);
 	}
 
-	$self->{socket}->syswrite($self->encrypt_aead($message, 3));
+	$self->{socket}->syswrite($self->encrypt_aead($message, $level));
 }
 
 sub start_chain {
@@ -1350,12 +1362,12 @@ sub start_chain {
 }
 
 sub add_chain {
-	my ($self, $buf) = @_;
+	my ($self, $buf, $level) = @_;
 
-	if ($self->{chained_buf}) {
-		$self->{chained_buf} .= $buf;
+	if ($self->{chained_buf}{$level}) {
+		$self->{chained_buf}{$level} .= $buf;
 	} else {
-		$self->{chained_buf} = $buf;
+		$self->{chained_buf}{$level} = $buf;
 	}
 }
 
@@ -1363,7 +1375,11 @@ sub send_chain {
 	my ($self) = @_;
 
 	undef $self->{chaining};
-	$self->raw_write($self->{chained_buf}) if $self->{chained_buf};
+	my $buf = join '', map {
+		$self->encrypt_aead($self->{chained_buf}{$_}, $_)
+			if defined $self->{chained_buf}{$_}
+	} 0 .. 3;
+	$self->{socket}->syswrite($buf) if $buf;
 	undef $self->{chained_buf};
 }
 
@@ -1565,7 +1581,8 @@ sub handle_frames {
 		}
 	}
 
-	$self->{socket}->syswrite($self->encrypt_aead(build_ack($ack), $level));
+	my $send_ack = $self->encrypt_aead(build_ack($ack), $level);
+	$self->{socket}->syswrite($send_ack) if $self->{send_ack};
 
 	for my $pn (keys %$ack) {
 		$ack->{$pn} = $self->{pn}[0][$level] if $ack->{$pn} == -1;
@@ -1672,7 +1689,7 @@ sub save_session_tickets {
 	my $extens_len = unpack("n", substr($nst, 11 + $nonce_len + $len, 2));
 	my $extens = substr($nst, 11 + $nonce_len + $len + 2, $extens_len);
 
-	$psk->{ed} = early_data($extens);
+	$psk->{ed} = ext_early_data($extens);
 	$psk->{secret} = hkdf_expand_label("tls13 resumption", $hash, $hlen,
 		$self->{rms_prk}, $nonce);
 	push @{$self->{psk_list}}, $psk;
@@ -1961,7 +1978,7 @@ sub hkdf_expand_label {
 	Crypt::KeyDerivation::hkdf_expand($prk, $hash, $len, $info);
 }
 
-sub key_share {
+sub ext_key_share {
 	my ($extens) = @_;
 	my $offset = 0;
 	while ($offset < length($extens)) {
@@ -1975,7 +1992,7 @@ sub key_share {
 	}
 }
 
-sub early_data {
+sub ext_early_data {
 	my ($extens) = @_;
 	my $offset = 0;
 	while ($offset < length($extens)) {
@@ -1989,7 +2006,7 @@ sub early_data {
 	}
 }
 
-sub pre_shared_key {
+sub ext_pre_shared_key {
 	my ($extens) = @_;
 	my $offset = 0;
 	while ($offset < length($extens)) {
@@ -1998,6 +2015,22 @@ sub pre_shared_key {
 			unpack("C", substr($extens, $offset + 3, 1));
 		if ($ext eq "\x00\x29") {
 			return unpack("n", substr($extens, $offset + 4, $len));
+		}
+		$offset += 4 + $len;
+	}
+	return;
+}
+
+sub ext_transport_parameters {
+	my ($extens) = @_;
+	my $offset = 0;
+
+	while ($offset < length($extens)) {
+		my $ext = substr($extens, $offset, 2);
+		my $len = unpack("C", substr($extens, $offset + 2, 1)) * 8 +
+			unpack("C", substr($extens, $offset + 3, 1));
+		if ($ext eq "\x00\x39") {
+			return substr($extens, $offset + 4, $len);
 		}
 		$offset += 4 + $len;
 	}
@@ -2262,7 +2295,7 @@ sub parse_tls_certificate {
 		my $len = unpack("n", substr($buf, $off + 2, 2));
 		$content = substr($buf, $off + 4, $len);
 		return 0 if length($content) < $len;
-		last if $type == 11;
+		last if $type == 11 || $type == 25;
 		$off += 4 + $len;
 	}
 	$self->{tlsm}{cert} = substr($buf, $off, 4) . $content;
@@ -2343,6 +2376,7 @@ sub build_tls_client_hello {
 		. build_tlsext_supported_groups($named_group)
 		. build_tlsext_alpn("h3", "hq-interop")
 		. build_tlsext_sigalgs(0x0804, 0x0805, 0x0806)
+		. build_tlsext_certcomp(@{$self->{ccomp}})
 		. build_tlsext_supported_versions(0x0304)
 		. build_tlsext_ke_modes(1)
 		. build_tlsext_key_share($named_group, $key_share)
@@ -2381,6 +2415,13 @@ sub build_tlsext_alpn {
 sub build_tlsext_sigalgs {
 	my $sschemelist = pack('n*', @_ * 2, @_);
 	pack('n2', 13, length($sschemelist)) . $sschemelist;
+}
+
+sub build_tlsext_certcomp {
+	return '' unless scalar @_;
+
+	my $ccalgs = pack('Cn*', @_ * 2, @_);
+	pack('n2', 27, length($ccalgs)) . $ccalgs;
 }
 
 sub build_tlsext_supported_versions {
