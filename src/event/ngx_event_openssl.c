@@ -29,18 +29,20 @@ static void ngx_ssl_cert_compression_free(void *opaque, void *address);
 static int ngx_ssl_verify_callback(int ok, X509_STORE_CTX *x509_store);
 static void ngx_ssl_info_callback(const ngx_ssl_conn_t *ssl_conn, int where,
     int ret);
-static int ngx_ssl_cmp_x509_name(const X509_NAME *const *a,
-    const X509_NAME *const *b);
 static void ngx_ssl_passwords_cleanup(void *data);
+/* BoringSSL: use uintptr_t cast to avoid BullseyeCoverage/GCC conflicts */
+#if defined(OPENSSL_IS_BORINGSSL)
+static int ngx_ssl_cmp_x509_name_impl(const void *a, const void *b);
+#else
+static int ngx_ssl_cmp_x509_name(const X509_NAME *const *a, const X509_NAME *const *b);
+#endif
 static int ngx_ssl_new_client_session(ngx_ssl_conn_t *ssl_conn,
     ngx_ssl_session_t *sess);
-#ifdef SSL_READ_EARLY_DATA_SUCCESS
-static ngx_int_t ngx_ssl_try_early_data(ngx_connection_t *c);
-#endif
 static void ngx_ssl_handshake_handler(ngx_event_t *ev);
 #ifdef SSL_READ_EARLY_DATA_SUCCESS
 static ssize_t ngx_ssl_recv_early(ngx_connection_t *c, u_char *buf,
     size_t size);
+static ngx_int_t ngx_ssl_try_early_data(ngx_connection_t *c);
 #endif
 static ngx_int_t ngx_ssl_handle_recv(ngx_connection_t *c, int n);
 static void ngx_ssl_write_handler(ngx_event_t *wev);
@@ -947,7 +949,12 @@ ngx_ssl_client_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
         return NGX_OK;
     }
 
+    /* BoringSSL: cast via uintptr_t to avoid type punning warnings */
+#if defined(OPENSSL_IS_BORINGSSL)
+    list = sk_X509_NAME_new((void*)(uintptr_t)ngx_ssl_cmp_x509_name_impl);
+#else
     list = sk_X509_NAME_new(ngx_ssl_cmp_x509_name);
+#endif
     if (list == NULL) {
         return NGX_ERROR;
     }
@@ -1343,24 +1350,32 @@ ngx_ssl_info_callback(const ngx_ssl_conn_t *ssl_conn, int where, int ret)
 }
 
 
+#if defined(OPENSSL_IS_BORINGSSL)
+static int
+ngx_ssl_cmp_x509_name_impl(const void *a, const void *b)
+{
+    return X509_NAME_cmp(*(const X509_NAME **)a, *(const X509_NAME **)b);
+}
+#else
 static int
 ngx_ssl_cmp_x509_name(const X509_NAME *const *a, const X509_NAME *const *b)
 {
-    return (X509_NAME_cmp(*a, *b));
+    return X509_NAME_cmp(*a, *b);
 }
+#endif
 
 
 ngx_array_t *
 ngx_ssl_read_password_file(ngx_conf_t *cf, ngx_str_t *file)
 {
     u_char              *p, *last, *end;
-    size_t               len;
-    ssize_t              n;
+    ssize_t              n, len;
     ngx_fd_t             fd;
     ngx_str_t           *pwd;
     ngx_array_t         *passwords;
     ngx_pool_cleanup_t  *cln;
     u_char               buf[NGX_SSL_PASSWORD_BUFFER_SIZE];
+
 
     if (ngx_conf_full_name(cf->cycle, file, 1) != NGX_OK) {
         return NULL;
