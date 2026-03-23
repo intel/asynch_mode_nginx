@@ -3,7 +3,7 @@
  *
  *   BSD LICENSE
  *
- *   Copyright(c) 2021-2025 Intel Corporation.
+ *   Copyright(c) 2021-2026 Intel Corporation.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -707,9 +707,20 @@ static int
 ngx_bssl_qat_overwrite_default_method(SSL_CTX *ctx)
 {
     EVP_PKEY *pkey = SSL_CTX_get0_privatekey(ctx);
-    if (!pkey || bssl_private_key_method_update(pkey)) {
+    if (!pkey) {
         return 1;
     }
+
+    /* bssl_private_key_method_update sets up async key infrastructure.
+     * In inline polling mode all crypto runs synchronously in-thread,
+     * so async setup is not needed and the call will fail.
+     * Skip it and proceed directly to setting the private key method. */
+    if (!qat_engine_enable_inline_polling) {
+        if (bssl_private_key_method_update(pkey)) {
+            return 1;
+        }
+    }
+
     /* Change private key method of ssl_ctx */
 #if BORINGSSL_API_VERSION <= 23
     SSL_CTX_set_private_key_method(ctx, &ngx_bssl_qat_priv_key_method);
