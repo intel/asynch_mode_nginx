@@ -111,4 +111,4 @@ Intel, Intel Atom, and Xeon are trademarks of Intel Corporation in the U.S. and/
 
 *Other names and brands may be claimed as the property of others.
 
-Copyright © 2014-2025, Intel Corporation. All rights reserved.
+Copyright © 2014-2026, Intel Corporation. All rights reserved.
