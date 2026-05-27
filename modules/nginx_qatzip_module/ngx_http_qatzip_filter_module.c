@@ -589,6 +589,7 @@ ngx_http_qatzip_filter_stream_init(ngx_http_request_t *r,
     params.wait_cnt_thrshold = conf->wait_cnt_thrshold;
     params.data_fmt = QZ_DEFLATE_RAW;
     params.sw_backup = conf->sw_fallback_enable;
+    params.comp_lvl = conf->level;
 
     rc = qzInit(&ctx->qzsession, params.sw_backup);
     if (rc != QZ_OK &&
