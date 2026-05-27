@@ -139,7 +139,7 @@ ngx_module_t  ngx_ssl_engine_dasync_module = {
 static ngx_int_t
 ngx_ssl_engine_dasync_send_ctrl(ngx_cycle_t *cycle)
 {
-    #ifndef OPENSSL_IS_BORINGSSL
+#if !defined(OPENSSL_IS_BORINGSSL) && (OPENSSL_VERSION_NUMBER < 0x40000000L) && !defined(OPENSSL_NO_ENGINE)
         const char *engine_id = "dasync";
         ENGINE     *e;
 
@@ -238,7 +238,7 @@ ngx_ssl_engine_dasync_init_conf(ngx_cycle_t *cycle, void *conf)
 static void
 ngx_ssl_engine_dasync_process_exit(ngx_cycle_t *cycle)
 {
-    #ifndef OPENSSL_IS_BORINGSSL
+#if !defined(OPENSSL_IS_BORINGSSL) && (OPENSSL_VERSION_NUMBER < 0x40000000L) && !defined(OPENSSL_NO_ENGINE)
         ENGINE_cleanup();
     #endif
 }

@@ -40,6 +40,11 @@
 #include <ngx_core.h>
 #include <ngx_ssl_engine.h>
 
+#include <openssl/opensslv.h>
+#if (OPENSSL_VERSION_NUMBER < 0x40000000L) && !defined(OPENSSL_NO_ENGINE)
+#include <openssl/engine.h>
+#endif
+
 
 static char *ngx_ssl_engine_block(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
@@ -53,7 +58,7 @@ static char *ngx_ssl_engine_default_algorithms(ngx_conf_t *cf,
 
 static void *ngx_ssl_engine_core_create_conf(ngx_cycle_t *cycle);
 
-#ifndef OPENSSL_IS_BORINGSSL
+#if !defined(OPENSSL_IS_BORINGSSL) && (OPENSSL_VERSION_NUMBER < 0x40000000L) && !defined(OPENSSL_NO_ENGINE)
 static void ngx_ssl_engine_table_cleanup(ENGINE *e);
 #endif
 static char * ngx_ssl_engine_init_check(ngx_cycle_t *cycle, void *conf);
@@ -164,7 +169,7 @@ ngx_module_t  ngx_ssl_engine_core_module = {
  * It needs to unregister all algorithms before applying new configuration
  * Especially for remove some algorithms from previous configuation
  */
-#ifndef OPENSSL_IS_BORINGSSL
+#if !defined(OPENSSL_IS_BORINGSSL) && (OPENSSL_VERSION_NUMBER < 0x40000000L) && !defined(OPENSSL_NO_ENGINE)
 static void
 ngx_ssl_engine_table_cleanup(ENGINE *e)
 {
@@ -203,7 +208,7 @@ ngx_ssl_engine_name_record(ngx_str_t *name, ngx_pool_t *pool)
 char *
 ngx_ssl_engine_unload_check(ngx_cycle_t *cycle)
 {
-#ifndef OPENSSL_IS_BORINGSSL
+#if !defined(OPENSSL_IS_BORINGSSL) && (OPENSSL_VERSION_NUMBER < 0x40000000L) && !defined(OPENSSL_NO_ENGINE)
     ENGINE      *e;
 
     if (NGX_PROCESS_SINGLE == ngx_process ||
@@ -264,7 +269,7 @@ ngx_ssl_engine_set(ngx_cycle_t *cycle)
 {
     ngx_ssl_engine_conf_t *secf;
 
-#ifndef OPENSSL_IS_BORINGSSL
+#if !defined(OPENSSL_IS_BORINGSSL) && (OPENSSL_VERSION_NUMBER < 0x40000000L) && !defined(OPENSSL_NO_ENGINE)
     ENGINE      *e;
 #endif
     ngx_str_t   *value;
@@ -284,7 +289,7 @@ ngx_ssl_engine_set(ngx_cycle_t *cycle)
         return NGX_ERROR;
     }
 
-#ifndef OPENSSL_IS_BORINGSSL
+#if !defined(OPENSSL_IS_BORINGSSL) && (OPENSSL_VERSION_NUMBER < 0x40000000L) && !defined(OPENSSL_NO_ENGINE)
     e = ENGINE_by_id((const char *) secf->ssl_engine_id.data);
 
     if (e == NULL) {
@@ -325,18 +330,26 @@ ngx_ssl_engine_set(ngx_cycle_t *cycle)
             if (!ngx_ssl_engine_ex_set_def_str((const char *) value[i].data)) {
                 ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                             "ngx_ssl_engine_ex_set_default_string failed");
-        #else
+                return NGX_ERROR;
+            }
+#elif (OPENSSL_VERSION_NUMBER < 0x40000000L) && !defined(OPENSSL_NO_ENGINE)
             if (!ENGINE_set_default_string(e, (const char *) value[i].data)) {
                 ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                             "ENGINE_set_default_string failed");
                 ENGINE_free(e);
-        #endif
                 return NGX_ERROR;
             }
+#else
+            (void) value[i];
+            ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                          "\"ssl_engine_default_algorithms\" is not "
+                          "supported: OpenSSL ENGINE API is unavailable");
+            return NGX_ERROR;
+#endif
         }
 #ifdef OPENSSL_IS_BORINGSSL
     }
-#else
+#elif (OPENSSL_VERSION_NUMBER < 0x40000000L) && !defined(OPENSSL_NO_ENGINE)
     } else {
         if (!ENGINE_set_default(e, ENGINE_METHOD_ALL)) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
@@ -347,6 +360,8 @@ ngx_ssl_engine_set(ngx_cycle_t *cycle)
     }
 
     ENGINE_free(e);
+#else
+    }
 #endif
     return NGX_OK;
 }
@@ -475,7 +490,9 @@ ngx_ssl_engine_master_exit(ngx_cycle_t *cycle)
 #if OPENSSL_VERSION_NUMBER < 0x10100003L
     EVP_cleanup();
 #endif
+#if (OPENSSL_VERSION_NUMBER < 0x40000000L) && !defined(OPENSSL_NO_ENGINE)
     ENGINE_cleanup();
+#endif
 #else
     if (ngx_use_ssl_engine) {
         ngx_ssl_engine_release(cycle);
