@@ -57,8 +57,26 @@ if [ $NGX_TEST_BUILD_SOLARIS_SENDFILEV = YES ]; then
 fi
 
 
-SSL_ENGINE_MODULES="$SSL_ENGINE_MODULES $DASYNC_ENGINE_MODULE"
-CORE_SRCS="$CORE_SRCS $DASYNC_ENGINE_SRCS"
+# Detect whether the OpenSSL ENGINE API is available.  It was removed
+# in OpenSSL 4.0, so the dasync sample engine and ENGINE_* call sites
+# are gated out.
+
+ngx_feature="OpenSSL ENGINE API (legacy)"
+ngx_feature_name=
+ngx_feature_run=no
+ngx_feature_incs="#include <openssl/opensslv.h>
+#if defined(OPENSSL_NO_ENGINE) || (OPENSSL_VERSION_NUMBER >= 0x40000000L)
+#error ENGINE API not available
+#endif"
+ngx_feature_path=
+ngx_feature_libs=
+ngx_feature_test="(void) 0"
+. auto/feature
+
+if [ $ngx_found = yes ]; then
+    SSL_ENGINE_MODULES="$SSL_ENGINE_MODULES $DASYNC_ENGINE_MODULE"
+    CORE_SRCS="$CORE_SRCS $DASYNC_ENGINE_SRCS"
+fi
 
 
 if [ $HTTP = YES ]; then

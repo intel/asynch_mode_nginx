@@ -2668,8 +2668,15 @@ static ngx_int_t
 ngx_ssl_ocsp_create_key(ngx_ssl_ocsp_ctx_t *ctx)
 {
     u_char        *p;
-    X509_NAME     *name;
-    ASN1_INTEGER  *serial;
+#if (OPENSSL_VERSION_NUMBER >= 0x40000000L)
+    const X509_NAME     *name;
+    const ASN1_INTEGER  *serial;
+#else
+    X509_NAME           *name;
+    ASN1_INTEGER        *serial;
+#endif
+    int            serial_len;
+    const u_char  *serial_data;
 
     p = ngx_pnalloc(ctx->pool, 60);
     if (p == NULL) {
@@ -2693,12 +2700,19 @@ ngx_ssl_ocsp_create_key(ngx_ssl_ocsp_ctx_t *ctx)
     p += 20;
 
     serial = X509_get_serialNumber(ctx->cert);
-    if (serial->length > 20) {
+#if (OPENSSL_VERSION_NUMBER >= 0x40000000L)
+    serial_len = ASN1_STRING_length(serial);
+    serial_data = ASN1_STRING_get0_data(serial);
+#else
+    serial_len = serial->length;
+    serial_data = serial->data;
+#endif
+    if (serial_len > 20) {
         return NGX_ERROR;
     }
 
-    p = ngx_cpymem(p, serial->data, serial->length);
-    ngx_memzero(p, 20 - serial->length);
+    p = ngx_cpymem(p, serial_data, serial_len);
+    ngx_memzero(p, 20 - serial_len);
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, ctx->log, 0,
                    "ssl ocsp key %xV", &ctx->key);
