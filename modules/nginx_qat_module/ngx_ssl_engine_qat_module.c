@@ -580,8 +580,7 @@ qat_engine_heartbeat_poll_handler(ngx_event_t *ev)
 {
     qat_engine_heartbeat_poll(ev->log);
 
-    if (ngx_event_timer_rbtree.root != ngx_event_timer_rbtree.sentinel ||
-        !ngx_exiting) {
+    if (!ngx_exiting && !ngx_quit) {
         ngx_add_timer(ev, HEARTBEAT_POLL_TIMEOUT);
     }
 }
@@ -609,8 +608,7 @@ qat_engine_external_poll_handler(ngx_event_t *ev)
         qat_engine_poll(ev->log);
     }
 
-    if (ngx_event_timer_rbtree.root != ngx_event_timer_rbtree.sentinel ||
-        !ngx_exiting) {
+    if (!ngx_exiting && !ngx_quit) {
         ngx_add_timer(ev, qat_engine_external_poll_interval);
     }
 }
