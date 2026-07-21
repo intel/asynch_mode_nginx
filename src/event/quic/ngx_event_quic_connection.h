@@ -196,7 +196,7 @@ typedef struct {
  *  are also Initial packets.
  */
 struct ngx_quic_send_ctx_s {
-    enum ssl_encryption_level_t       level;
+    ngx_uint_t                        level;
 
     ngx_quic_buffer_t                 crypto;
     uint64_t                          crypto_sent;
