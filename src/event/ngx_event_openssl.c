@@ -110,6 +110,13 @@ int  ngx_ssl_client_hello_arg_index;
 extern ngx_uint_t ngx_no_ssl_init;
 u_char  ngx_ssl_session_buffer[NGX_SSL_MAX_SESSION_SIZE];
 
+/*
+ * Hot-path polling hook registered by an SSL provider module at worker init.
+ * Inert until a provider registers.
+ */
+ngx_uint_t   ngx_ssl_provider_enable_hotpath_polling;
+void       (*ngx_ssl_provider_hotpath_poll)(ngx_log_t *log);
+
 
 static void
 ngx_ssl_empty_handler(ngx_event_t *ev)
@@ -2220,6 +2227,12 @@ ngx_ssl_async_process_fds(ngx_connection_t *c)
 
     if (ngx_ssl_engine_enable_heuristic_polling) {
         ngx_ssl_engine_heuristic_poll(c->log);
+    }
+
+    if (ngx_ssl_provider_enable_hotpath_polling
+        && ngx_ssl_provider_hotpath_poll)
+    {
+        ngx_ssl_provider_hotpath_poll(c->log);
     }
 
     return 1;
