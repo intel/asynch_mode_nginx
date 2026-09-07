@@ -1414,7 +1414,7 @@ if [ $USE_PCRE = YES ]; then
 fi
 
 
-modules="$CORE_MODULES $EVENT_MODULES $SSL_ENGINE_MODULES"
+modules="$CORE_MODULES $EVENT_MODULES $SSL_ENGINE_MODULES $SSL_PROVIDER_MODULES"
 
 
 # thread pool module should be initialized after events

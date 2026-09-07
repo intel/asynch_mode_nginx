@@ -1,0 +1,27 @@
+# Copyright (C) Intel, Inc.
+
+ngx_addon_name=ngx_ssl_provider_qat_module
+
+if test -n "$ngx_module_link"; then
+    ngx_module_type=SSL_PROVIDER
+    ngx_module_name="ngx_ssl_provider_qat_module ngx_qat_provider_module"
+    if [ "$HTTP" = YES -a "$HTTP_SSL" = YES ]; then
+        ngx_module_name="$ngx_module_name ngx_ssl_provider_qat_http_module"
+    fi
+    if [ "$STREAM" = YES -a "$STREAM_SSL" = YES ]; then
+        ngx_module_name="$ngx_module_name ngx_ssl_provider_qat_stream_module"
+    fi
+    ngx_module_srcs="$ngx_addon_dir/ngx_ssl_provider_qat_module.c"
+    ngx_module_deps="$ngx_addon_dir/ngx_ssl_provider_qat_module.h"
+    . auto/module
+else
+    SSL_PROVIDER_MODULES="$SSL_PROVIDER_MODULES ngx_qat_provider_module ngx_ssl_provider_qat_module"
+    if [ "$HTTP" = YES -a "$HTTP_SSL" = YES ]; then
+        HTTP_MODULES="$HTTP_MODULES ngx_ssl_provider_qat_http_module"
+    fi
+    if [ "$STREAM" = YES -a "$STREAM_SSL" = YES ]; then
+        STREAM_MODULES="$STREAM_MODULES ngx_ssl_provider_qat_stream_module"
+    fi
+    NGX_ADDON_SRCS="$NGX_ADDON_SRCS $ngx_addon_dir/ngx_ssl_provider_qat_module.c"
+    NGX_ADDON_DEPS="$NGX_ADDON_DEPS $ngx_addon_dir/ngx_ssl_provider_qat_module.h"
+fi

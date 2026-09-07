@@ -130,6 +130,8 @@ SSL_ENGINE_INCS="src/engine src/engine/modules"
 SSL_ENGINE_DEPS="src/engine/ngx_ssl_engine.h"
 SSL_ENGINE_SRCS="src/engine/ngx_ssl_engine.c"
 
+SSL_PROVIDER_MODULES=""
+
 DASYNC_ENGINE_MODULE=ngx_ssl_engine_dasync_module
 DASYNC_ENGINE_SRCS=src/engine/modules/ngx_ssl_engine_dasync_module.c
 
