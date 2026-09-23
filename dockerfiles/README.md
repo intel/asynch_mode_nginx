@@ -10,6 +10,8 @@ Refer [here](https://intel.github.io/quickassist/AppNotes/Containers/setup.html)
 for setting up the host for QAT_HW (qatlib intree) if the platform has QAT 4xxx Hardware
 device. Stop QAT service if any running on the host.
 
+Configure the [proxy settings](https://intel.github.io/quickassist/AppNotes/Containers/setup.html#proxy-settings).
+
 ### QAT_HW settings
 
 Follow the below steps to enable required service. The service can be asym only, sym only or both
@@ -50,33 +52,49 @@ in step 2 depending on the particular use case. Configure the required service o
 
 ### Generate certificates
 
-Create the TLS key and certificate for enabling encryption
+Create the TLS key and certificate for enabling encryption. The `conf/nginx_qat.conf` sample expects the
+files to be named `cert.pem` and `cert.key`, placed alongside `nginx.conf` in the bind-mounted conf
+directory (see "Preparing the conf directory for bind-mounting" below):
 
 ```
-openssl genrsa -out rsa1k.key.pem 1024
-openssl req -new -x509 -key rsa1k.key.pem -out rsa1k.cert.pem -days 360 -subj "/C=US/ST=State/L=Locality/O=Company/OU=Section/CN=(1024 bit RSA)/emailAddress=xxx@company.com"
+openssl genrsa -out cert.key 2048
+openssl req -new -x509 -key cert.key -out cert.pem -days 360 -subj "/C=US/ST=State/L=Locality/O=Company/OU=Section/CN=(2048 bit RSA)/emailAddress=xxx@company.com"
 ```
-Note: Replace <path> for the absolute path where you want to save the file(/etc/ssl/certs/).
 
 ### Image creation
 
 Docker images can be build using the below command with appropiate image name.
 
 ```
-docker build --build-arg GID=$(getent group qat | cut -d ':' -f 3) -t <docker_image_name> <path-to-dockerfile> --no-cache
+docker build --build-arg GID=$(getent group qat | cut -d ':' -f 3) -t <docker_image_name> -f <path-to-dockerfile> . --no-cache
 ```
 Note: GID is the group id of qat group in the host.
+
+### Preparing the conf directory for bind-mounting
+
+The "Test using Async Nginx crypto utility" commands below bind-mount `/usr/share/nginx/conf` from the host, so
+the host directory must first be populated with the image's default conf assets (mime.types, fastcgi_params, etc.)
+plus the desired `nginx.conf` and certificate files:
+
+```
+mkdir -p /usr/share/nginx/conf
+docker create --name tmp-extract <docker_image_name>
+docker cp tmp-extract:/usr/share/nginx/conf/. /usr/share/nginx/conf/
+docker rm tmp-extract
+cp conf/nginx_qat.conf /usr/share/nginx/conf/nginx.conf
+cp cert.pem cert.key /usr/share/nginx/conf/
+```
 
 ### Test using Async Nginx\* crypto utility
 
 ```
 Intree:
-Server command: docker run --rm -it --cpuset-cpus <2-n+1> --cap-add=IPC_LOCK --security-opt seccomp=unconfined --security-opt apparmor=unconfined $(for i in `ls /dev/vfio/*`; do echo --device $i; done) --env QAT_POLICY=1 --ulimit memlock=524288000:524288000 -v /usr/share/nginx/:/usr/share/nginx/ -v /etc/ssl/certs/:/etc/ssl/certs/ -v /var/www/html/:/var/www/html/ -v /var/www/logs/:/var/www/logs/ -d -p 8080:8080 <docker_image_name>
+Server command: docker run --rm -it --cpuset-cpus <2-n+1> --cap-add=IPC_LOCK --security-opt seccomp=unconfined --security-opt apparmor=unconfined $(for i in /dev/vfio/*; do [ -e "$i" ] && echo "--device $i"; done) --env QAT_POLICY=1 --ulimit memlock=524288000:524288000 -v /usr/share/nginx/:/usr/share/nginx/ -v /var/www/html/:/var/www/html/ -v /var/www/logs/:/var/www/logs/ -d -p 80:80 -p 443:443 --name <container_name> <docker_image_name>
 
 OOT:
-Server command: docker run --rm -it --cpuset-cpus <2-n+1> --cap-add=IPC_LOCK --security-opt seccomp=unconfined --security-opt apparmor=unconfined  --device /dev/qat_adf_ctl --device  /dev/qat_dev_processes --device  /dev/usdm_dr $(for i in `ls /dev/uio*`; do echo --device $i; done) --ulimit memlock=524288000:524288000 -v /usr/share/nginx/:/usr/share/nginx/ -v /etc/ssl/certs/:/etc/ssl/certs/ -v /var/www/html/:/var/www/html/ -v /var/www/logs/:/var/www/logs/ -d -p 8080:8080 <docker_image_name>
+Server command: docker run --rm -it --cpuset-cpus <2-n+1> --cap-add=IPC_LOCK --security-opt seccomp=unconfined --security-opt apparmor=unconfined  --device /dev/qat_adf_ctl --device  /dev/qat_dev_processes --device  /dev/usdm_dr $(for i in `ls /dev/uio*`; do echo --device $i; done) --ulimit memlock=524288000:524288000 -v /usr/share/nginx/:/usr/share/nginx/ -v /var/www/html/:/var/www/html/ -v /var/www/logs/:/var/www/logs/ -d -p 80:80 -p 443:443 <docker_image_name>
 
-Client command: openssl  s_time -connect <server_ip>:8080 -new -cipher AES128-GCM-SHA256 -www /10mb_file.html -time 5
+Client command: openssl  s_time -connect <server_ip>:443 -new -cipher AES128-GCM-SHA256 -www /10mb_file.html -time 5
 ```
-Note: n is number of process or thread. 8080 port to be used for starting the async nginx container using -v /usr/share/nginx/, /etc/ssl/certs/, /var/www/html/ and /var/www/logs/.
+Note: n is number of process or thread. Port 80 serves plain HTTP and port 443 serves TLS; certificates live alongside `nginx.conf` in the bind-mounted `/usr/share/nginx/` conf directory, so no separate `/etc/ssl/certs/` mount is needed. Use -v /usr/share/nginx/, /var/www/html/ and /var/www/logs/.
 
