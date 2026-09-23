@@ -35,16 +35,16 @@
 #                                                                         \
 #==========================================================================
 
-ARG UBUNTU_BASE=ubuntu:24.04
+ARG UBUNTU_BASE=ubuntu:26.04
 FROM ${UBUNTU_BASE} AS builder
 
-ARG OPENSSL_VERSION="openssl-3.0.17"
-ARG QATLIB_VERSION="25.08.0"
-ARG QAT_ENGINE_VERSION="v2.0.0"
-ARG IPSEC_MB_VERSION="v2.0"
-ARG IPP_CRYPTO_VERSION="v1.2.0"
-ARG QATZIP_VERSION="v1.3.1"
-ARG ASYNC_NGINX_VERSION="v1.0.0"
+ARG OPENSSL_VERSION="openssl-3.5.7"
+ARG QATLIB_VERSION="26.08.0"
+ARG QAT_ENGINE_VERSION="v2.3.0"
+ARG IPSEC_MB_VERSION="v3.0.0"
+ARG IPP_CRYPTO_VERSION="v2.3.0"
+ARG QATZIP_VERSION="v2.0.0"
+ARG ASYNC_NGINX_VERSION="v2.0.0"
 ARG GID
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -62,7 +62,7 @@ RUN apt-get upgrade -y && \
     build-essential \
     pkg-config \
     libssl-dev \
-    libpcre3-dev \
+    libpcre2-dev \
     zlib1g-dev \
     libreadline-dev \
     lua5.4 \
@@ -74,6 +74,7 @@ RUN apt-get upgrade -y && \
     git \
     ca-certificates \
     liblz4-dev \
+    libzstd-dev \
     libtool \
     libnuma-dev \
     libnuma1 \
@@ -83,7 +84,7 @@ RUN apt-get upgrade -y && \
     dpkg-dev && \
     git clone --depth 1 -b $OPENSSL_VERSION https://github.com/openssl/openssl.git && \
     git clone --depth 1 -b $QAT_ENGINE_VERSION https://github.com/intel/QAT_Engine && \
-    git clone --depth 1 -b $IPP_CRYPTO_VERSION https://github.com/intel/ipp-crypto && \
+    git clone --depth 1 -b $IPP_CRYPTO_VERSION https://github.com/intel/cryptography-primitives ipp-crypto && \
     git clone --depth 1 -b $IPSEC_MB_VERSION https://github.com/intel/intel-ipsec-mb && \
     git clone --depth 1 -b $QATLIB_VERSION https://github.com/intel/qatlib && \
     git clone --depth 1 -b $QATZIP_VERSION https://github.com/intel/QATzip.git && \
@@ -120,17 +121,20 @@ RUN cmake . -B"../build" \
     -DOPENSSL_ROOT_DIR=/openssl
 
 WORKDIR /ipp-crypto/sources/ippcp/build
+# ipp-crypto v2.3.0 installs crypto_mb directly into /usr/local/lib, older versions used intel64/.
 RUN make crypto_mb -j && make install -j && \
-    cp /usr/local/lib/intel64/* /usr/local/lib/
+    if [ -d /usr/local/lib/intel64 ]; then cp /usr/local/lib/intel64/* /usr/local/lib/; fi
 
 # Building the Ipsec-MB
-WORKDIR /intel-ipsec-mb
-RUN make -j && make install LIB_INSTALL_DIR=/usr/local/lib
+WORKDIR /intel-ipsec-mb/build
+RUN cmake .. -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_INSTALL_LIBDIR=lib && \
+    cmake --build . --parallel && \
+    cmake --install .
 
 # Build & Install QATEngine
 WORKDIR /QAT_Engine
 RUN ./autogen.sh && \
-    ./configure \
+    ./configure --enable-qat_engine \
     --with-openssl_install_dir=/usr/local/ \
     --with-qat-hw-dir=/usr/local/ \
     --enable-qat_sw && \
@@ -169,25 +173,27 @@ RUN apt-get update && \
     apt-get upgrade -y && \
     apt-get install -y \
     libnuma1 \
-    libpcre3-dev 
+    libpcre2-dev 
 
 #Added to remove libc library for vulnerability issue
 RUN apt-get purge -y linux-libc-dev && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /usr/local/lib/libqat.so.4.4.0 /usr/lib/
-COPY --from=builder /usr/local/lib/libusdm.so.0.1.2 /usr/lib/
-COPY --from=builder /usr/local/lib/libIPSec_MB.so.2.0.0 /usr/lib/x86_64-linux-gnu/
+COPY --from=builder /usr/local/lib/libqat.so.4.6.0 /usr/lib/
+COPY --from=builder /usr/local/lib/libusdm.so.0.2.1 /usr/lib/
+COPY --from=builder /usr/local/lib/libIPSec_MB.so.3.* /usr/lib/x86_64-linux-gnu/
 COPY --from=builder /usr/local/lib64/libcrypto.so.3 /usr/lib/x86_64-linux-gnu/
-COPY --from=builder /usr/local/lib/intel64/libcrypto_mb.so.12.2 /usr/lib/x86_64-linux-gnu/
+# OpenSSL 3.5.x nginx needs the matching libssl; the distro libssl.so.3 lacks the newer symbols.
+COPY --from=builder /usr/local/lib64/libssl.so.3 /usr/lib/x86_64-linux-gnu/
+COPY --from=builder /usr/local/lib/libcrypto_mb.so.13.* /usr/lib/x86_64-linux-gnu/
 COPY --from=builder /usr/local/bin/openssl /usr/bin/
 COPY --from=builder /usr/local/lib64/engines-3/qatengine.so /usr/lib/x86_64-linux-gnu/engines-3/qatengine.so
 COPY --from=builder /var/www/ /var/www/
 COPY --from=builder /usr/bin/nginx /usr/bin/nginx
 COPY --from=builder /usr/share/nginx/conf/* /usr/share/nginx/conf/
 COPY --from=builder /usr/share/nginx/conf/nginx.conf /usr/share/nginx/conf/nginx.conf
-COPY --from=builder /usr/local/lib/libqatzip.so.3.2.0 /usr/lib/x86_64-linux-gnu/
+COPY --from=builder /usr/local/lib/libqatzip.so.3.* /usr/lib/x86_64-linux-gnu/
 COPY --from=builder /usr/local/bin/qzip /usr/bin/qzip
 COPY --from=builder /usr/local/bin/qatzip-test /usr/bin/qatzip-test
 COPY --from=builder /etc/group /etc/group
