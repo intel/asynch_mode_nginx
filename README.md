@@ -7,14 +7,17 @@ NGINX (pronounced "engine x") is the world's most popular Web Server, high perfo
 - [Features](#features)
 - [Hardware Requirements](#hardware-requirements)
 - [Software Requirements](#software-requirements)
+- [Choosing Your Modules](#choosing-your-modules)
 - [Installation Instructions](#installation-instructions)
 - [Testing](#testing)
     - [Official Unit Tests](#official-unit-tests)
     - [Performance Testing](#performance-testing)
 - [QAT Configuration](#qat-configuration)
     - [SSL Engine (QAT Engine) Configuration](#ssl-engine-qat-engine-configuration)
+    - [SSL Provider (QAT Provider) Configuration](#ssl-provider-qat-provider-configuration)
     - [Nginx Side Polling](#nginx-side-polling)
     - [QATzip Module Configuration](#qatzip-module-configuration)
+    - [Module Configuration Reference](#module-configuration-reference)
 - [Additional Information](#additional-information)
 - [Limitations](#limitations)
 - [Known Issues](#known-issues)
@@ -27,6 +30,7 @@ NGINX (pronounced "engine x") is the world's most popular Web Server, high perfo
 * Acceleration of public key and symmetric cryptography using QAT_HW and QAT_SW
 * Hardware-accelerated GZIP compression via QAT_HW
 * Flexible SSL Engine Framework for advanced engine configuration
+* OpenSSL provider (`qatprovider`) support via `nginx_provider_qat_module`, as an alternative to the legacy ENGINE framework
 * Support for both external and heuristic polling modes
 * Automatic release of hardware resources during worker shutdown (see `modules/nginx_qat_module/README` for details)
 * OpenSSL Cipher PIPELINE capability support
@@ -52,11 +56,32 @@ QAT_SW Crypto acceleration is supported on platforms starting with the [3rd Gene
 This release was validated on the following and its dependent libraries
 mentioned QAT Engine and QATZip software Requirements section.
 
-* [QAT engine v1.9.0](https://github.com/intel/QAT_Engine)
-* [QATzip v1.3.1](https://github.com/intel/QATzip)
-* [OpenSSL-3.0.16 & OpenSSL-3.5.0](https://github.com/openssl/openssl)
-* BoringSSL\* commit - [23ed9d3](https://github.com/google/boringssl/commit/23ed9d3852bbc738bebeaa0fe4a0782f91d7873c)
-* quictls - [OpenSSL 3.3.0+quic](https://github.com/quictls/openssl/releases/tag/openssl-3.3.0-quic1)
+* [QAT engine v2.3.0](https://github.com/intel/QAT_Engine)
+* [QATzip v2.0.0](https://github.com/intel/QATzip)
+* [OpenSSL-3.0.21, OpenSSL-3.5.7 & OpenSSL-4.0.1](https://github.com/openssl/openssl)
+* BoringSSL\* - [0.20250415.0](https://github.com/google/boringssl/releases/tag/0.20250415.0)
+* quictls - [openssl-3.5.7](https://github.com/quictls/openssl/releases/tag/openssl-3.5.7)
+
+## Choosing Your Modules
+
+Before you start the installation steps below, decide which capabilities you
+need. This repository ships four independent dynamic modules that can be
+combined in the same build: choose exactly **one** crypto acceleration path
+(Engine or Provider), and optionally add GZIP compression and/or QUIC support
+alongside it. **Note:** GZIP and QUIC can currently be combined only with the
+Engine path; the Provider path is TLS-crypto-only and must be built standalone
+(see [Installation Instructions](#installation-instructions)).
+
+| Capability | Module | Scope | README |
+|---|---|---|---|
+| TLS/crypto offload (legacy) | `nginx_qat_module` | Combinable with GZIP compression and/or QUIC | [modules/nginx_qat_module/README.md](modules/nginx_qat_module/README.md) |
+| TLS/crypto offload (modern) | `nginx_provider_qat_module` | TLS crypto offload only — not yet combinable with GZIP compression, QUIC, or BoringSSL | [modules/nginx_provider_qat_module/README.md](modules/nginx_provider_qat_module/README.md) |
+| GZIP compression offload | `nginx_qatzip_module` | Only supported with the Engine crypto path | [modules/nginx_qatzip_module/README.md](modules/nginx_qatzip_module/README.md) |
+| QUIC/HTTP3 crypto offload | `nginx_quictls_qat_module` / `ngx_bssl_qat_module` | Only supported with the Engine crypto path | [modules/nginx_quictls_qat_module/README.md](modules/nginx_quictls_qat_module/README.md) / [modules/ngx_bssl_qat_module/README.md](modules/ngx_bssl_qat_module/README.md) |
+
+Once you have picked a crypto path, follow [Installation Instructions](#installation-instructions)
+below to build it into Nginx, then continue to [QAT Configuration](#qat-configuration)
+to configure the module you chose (ENGINE vs PROVIDER).
 
 ## Installation Instructions
 
@@ -88,6 +113,23 @@ and [QATzip](https://github.com/intel/QATzip#installation-instructions) installa
 
 * To enable QUIC support, include `--with-http_v3_module` in your configuration. Add either `--add-dynamic-module=modules/nginx_quictls_qat_module` for quictls/OpenSSL 3.5 QUIC, or `--add-dynamic-module=modules/ngx_bssl_qat_module` for BoringSSL, depending on your chosen QUIC library. For detailed instructions, refer to the `README.md` file in the corresponding module directory.
 
+* To use the OpenSSL provider path (`qatprovider`) instead of the legacy ENGINE path above, use `nginx_provider_qat_module` in place of `nginx_qat_module`. This path currently covers TLS crypto offload only — QATzip compression, QUIC, and BoringSSL are not yet supported together with it, so build it standalone:
+
+    ```bash
+    ./configure \
+      --prefix=$NGINX_INSTALL_DIR \
+      --with-http_ssl_module \
+      --add-dynamic-module=modules/nginx_provider_qat_module/ \
+      --with-cc-opt="-DNGX_SECURE_MEM -I$OPENSSL_LIB/include -Wno-error=deprecated-declarations" \
+      --with-ld-opt="-Wl,-rpath=$OPENSSL_LIB/lib64 -L$OPENSSL_LIB/lib64 -L$OPENSSL_LIB/lib64/ossl-modules/"
+    make && make install
+    ```
+
+    At runtime, set `OPENSSL_MODULES=$OPENSSL_LIB/lib64/ossl-modules` so Nginx
+    can locate `qatprovider.so`. See
+    [modules/nginx_provider_qat_module/README.md](modules/nginx_provider_qat_module/README.md)
+    for the full build and runtime instructions.
+
 * Refer QAT Settings [here](https://intel.github.io/quickassist/GSG/2.X/installation.html#running-applications-as-non-root-user) for running Nginx
 under non-root user.
 
@@ -106,14 +148,25 @@ runtime configuration along with scripts available [here](https://intel.github.i
 
 ## QAT Configuration
 
-Refer Sample Configuration file `conf/nginx.QAT-sample.conf` with QAT configured which includes
+Refer to the fully annotated sample configuration files below, which each
+include HTTPS in asynchronous mode with TLS1.3 as default and the QAT Hardware
+driver configured for crypto (and, for the engine sample, compression):
 
-* SSL QAT engine in heuristic mode.
-* HTTPS in asynchronous mode.
-* QATZip Module for compression acceleration.
-* TLS1.3 Support as default.
+* [conf/nginx_qat.conf](conf/nginx_qat.conf) - SSL QAT **Engine** (`ssl_engine`/`qat_engine`) in heuristic mode, plus QATZip compression.
+* [conf/nginx_qat_provider.conf](conf/nginx_qat_provider.conf) - SSL QAT **Provider** (`qat_provider`) in external polling mode.
 
-* The QAT Hardware driver configuration needs crypto and compression instance configured
+Async Mode for NGINX supports two independent integration paths for QAT-accelerated
+cryptography; pick one per deployment:
+
+| Path | Module | Sample config |
+|---|---|---|
+| Engine | [modules/nginx_qat_module](modules/nginx_qat_module/README.md) | [conf/nginx_qat.conf](conf/nginx_qat.conf) |
+| Provider | [modules/nginx_provider_qat_module](modules/nginx_provider_qat_module/README.md) | [conf/nginx_qat_provider.conf](conf/nginx_qat_provider.conf) |
+
+Both paths support QAT_HW acceleration of asymmetric and symmetric TLS
+operations, async offload, and Nginx-driven external/heuristic polling. See
+each module's README (linked in [Module Configuration Reference](#module-configuration-reference))
+for the full directive reference and worked examples.
 
 ### SSL Engine (QAT Engine) configuration
 An SSL Engine Framework is introduced to provide a more powerful and flexible
@@ -176,191 +229,89 @@ An example configuration in the `nginx.conf`:
     }
 ```
 For more details directives of `nginx_qat_module`, please refer to
-`modules/nginx_qat_modules/README`.
+[modules/nginx_qat_module/README.md](modules/nginx_qat_module/README.md).
 
-## Nginx Side Polling
-The qat_module provides two kinds of Nginx side polling for QAT engine,
+### SSL Provider (QAT Provider) Configuration
 
-* external polling mode
-* heuristic polling mode
+An OpenSSL provider framework is also supported for QAT acceleration through
+`nginx_provider_qat_module`, as a modern alternative to the `ssl_engine`
+framework above.
 
-Please refer to the README file in the `modules/nginx_qat_modules` directory
-to install this dynamic module.
-
-**Note**:
-External polling and heuristic polling are unavailable in SSL proxy and stream
-module up to current release.
-
-### External Polling Mode
-
-A timer-based polling is employed in each Nginx worker process to collect
-accelerator's response.
-
-**Directives in the qat_module**
-```bash
-Syntax:     qat_external_poll_interval time;
-Default:    1
-Dependency: Valid if (qat_poll_mode=external)
-Context:    qat_engine
-Description:
-            External polling time interval (ms)
-            Valid value: 1 ~ 1000
-```
-**Example**
-file: conf/nginx.conf
+A new configuration block is introduced as `qat_provider`, a top-level block
+analogous to `ssl_engine`:
 
 ```bash
-    load_module modules/ngx_ssl_engine_qat_module.so;
+    load_module modules/ngx_ssl_provider_qat_module.so;
     ...
-    ssl_engine {
-        use_engine qatengine;
-        default_algorithms ALL;
-        qat_engine {
-            qat_offload_mode async;
-            qat_notify_mode poll;
-
-            qat_poll_mode external;
-            qat_external_poll_interval 1;
-        }
+    qat_provider {
+        qat_offload_mode async;
+        qat_notify_mode poll;
+        qat_poll_mode external;
+        qat_sw_fallback off;
     }
 ```
 
-### Heuristic Polling Mode
-Heuristic polling mode is an enhancement over the timer-based external polling approach and is recommended for optimal communication with QAT accelerators due to its superior performance characteristics. By leveraging awareness of offload traffic, heuristic polling dynamically adjusts the response collection rate to align with the request submission rate. This maximizes system efficiency, maintains moderate latency, and adapts effectively to varying network traffic patterns.
+`load_module modules/ngx_ssl_provider_qat_module.so;` is required in
+`nginx.conf` for every provider deployment. Configure `qat_provider` from
+either `nginx.conf` or `openssl.cnf`; `openssl.cnf` takes priority when it
+configures the provider. For details, see
+[modules/nginx_provider_qat_module/README.md](modules/nginx_provider_qat_module/README.md).
 
-**Notes:**
+### Nginx Side Polling
 
-* Heuristic polling mode requires QAT engine version v0.5.35 or later.
-* When heuristic polling is enabled, the external polling timer is also active by default.
+Both the Engine and Provider paths support Nginx-side external and heuristic
+polling, but expose it through different directives and defaults. Full
+directive references, examples, and notes live in each module's README:
 
-In heuristic polling mode, polling operations are triggered only under specific conditions to balance efficiency and responsiveness:
-
-* The number of in-flight offload requests reaches a configurable threshold.
-* All active SSL connections have submitted their cryptographic requests and are awaiting responses.
-
-**Directives in the qat_module**
-```bash
-Syntax:     qat_heuristic_poll_asym_threshold num;
-Default:    48
-Dependency: Valid if (qat_poll_mode=heuristic)
-Context:    qat_engine
-Description:
-            Threshold of the number of in-flight requests to trigger a polling
-            operation when there are in-flight asymmetric crypto requests
-            Valid value: 1 ~ 512
-
-
-Syntax:     qat_heuristic_poll_sym_threshold num;
-Default:    24
-Dependency: Valid if (qat_poll_mode=heuristic)
-Context:    qat_engine
-Description:
-            Threshold of the number of in-flight requests to trigger a polling
-            operation when there is no in-flight asymmetric crypto request
-            Valid value: 1 ~ 512
-```
-**Example**
-file: `conf/nginx.conf`
-
-```bash
-    load_module modules/ngx_ssl_engine_qat_module.so;
-    ...
-    ssl_engine {
-        use_engine qatengine;
-        default_algorithms ALL;
-        qat_engine {
-            qat_offload_mode async;
-            qat_notify_mode poll;
-
-            qat_poll_mode heuristic;
-            qat_heuristic_poll_asym_threshold 48;
-            qat_heuristic_poll_sym_threshold 24;
-        }
-    }
-```
+* [modules/nginx_qat_module/README.md](modules/nginx_qat_module/README.md) - `qat_external_poll_interval`, `qat_heuristic_poll_asym_threshold`, `qat_heuristic_poll_sym_threshold` (also covers `inline` and event-driven polling, which are Engine-only).
+* [modules/nginx_provider_qat_module/README.md](modules/nginx_provider_qat_module/README.md) - `qat_poll_interval`, `qat_hw_asym_threshold`, `qat_hw_sym_threshold`, `qat_sw_threshold` (also covers the `openssl.cnf` dual-configuration precedence).
 
 ### QATzip Module Configuration
 
-The QATzip module enables hardware-accelerated GZIP compression using QAT accelerators via the QATzip stream API (introduced in v0.2.6).
+The QATzip module enables hardware-accelerated GZIP compression using QAT
+accelerators via the QATzip stream API (introduced in v0.2.6). It is
+currently only supported alongside the Engine crypto path, not the Provider
+path. Directives, notes on software fallback, and a worked example have
+moved to
+[modules/nginx_qatzip_module/README.md](modules/nginx_qatzip_module/README.md).
 
-**Notes:**
+### Module Configuration Reference
 
-* Software fallback is provided through the standard gzip module from QAzip v1.0.0 or newer.
-* By default, `qatzip_sw` is set to `failover`. To disable QATzip, do not load the QATzip module; otherwise, it will be enabled with failover mode.
+Each acceleration path is implemented as a separate dynamic module with its
+own directives, defaults, and examples. Use these links for installation and
+configuration details of each:
 
-**Directives in the qatzip_module**
-```bash
-    Syntax:     qatzip_sw only/failover/no;
-    Default:    qatzip_sw failover;
-    Context:    http, server, location, if in location
-    Description:
-                only: qatzip is disable, using gzip;
-                failover: qatzip is enable, qatzip sfotware fallback feature enable.
-                no: qatzip is enable, qatzip sfotware fallback feature disable.
-
-    Syntax:     qatzip_chunk_size size;
-    Default:    qatzip_chunk_size 64k;
-    Context:    http, server, location
-    Description:
-                Sets the chunk buffer size in which data will be compressed into
-                one deflate block. By default, the buffer size is equal to 64K.
-
-    Syntax:     qatzip_stream_size size;
-    Default:    qatzip_stream_size 256k;
-    Context:    http, server, location
-    Description:
-                Sets the size of stream buffers in which data will be compressed into
-                multiple deflate blocks and only the last block has FINAL bit being set.
-                By default, the stream buffer size is 256K.
-```
-
-**Example**
-file: `conf/nginx.conf`
-
-```bash
-    load_module modules/ngx_http_qatzip_filter_module.so;
-    ...
-
-    gzip_http_version   1.0;
-    gzip_proxied any;
-    qatzip_sw failover;
-    qatzip_min_length 128;
-    qatzip_comp_level 1;
-    qatzip_buffers 16 8k;
-    qatzip_types text/css text/javascript text/xml text/plain text/x-component application/javascript application/json application/xml application/rss+xml font/truetype font/opentype application/vnd.ms-fontobject image/svg+xml application/octet-stream image/jpeg;
-    qatzip_chunk_size   64k;
-    qatzip_stream_size  256k;
-    qatzip_sw_threshold 256;
-```
-For more details directives of `nginx_qatzip_module`, please refer to
-`modules/nginx_qatzip_modules/README`.
+* **QAT Engine** (crypto, legacy ENGINE API) - [modules/nginx_qat_module/README.md](modules/nginx_qat_module/README.md)
+* **QAT Provider** (crypto, OpenSSL provider API) - [modules/nginx_provider_qat_module/README.md](modules/nginx_provider_qat_module/README.md)
+* **QATzip** (GZIP compression) - [modules/nginx_qatzip_module/README.md](modules/nginx_qatzip_module/README.md)
+* **QUIC** (quictls or BoringSSL) - [modules/nginx_quictls_qat_module/README.md](modules/nginx_quictls_qat_module/README.md) or [modules/ngx_bssl_qat_module/README.md](modules/ngx_bssl_qat_module/README.md)
 
 ## Additional Information
 
 ### Generating Async mode Patch
-* Async Mode for NGINX\* is developed based on Nginx-1.26.2. Refer steps below
-to generate patch to apply on top of official Nginx-1.26.2.
+* Async Mode for NGINX\* is developed based on Nginx-1.29.3. Refer steps below
+to generate patch to apply on top of official Nginx-1.29.3.
 
 #### Generating the patch with package from Nginx download page
 ```bash
   git clone https://github.com/intel/asynch_mode_nginx.git asynch_mode_nginx
-  wget http://nginx.org/download/nginx-1.26.2.tar.gz
-  tar -xvzf nginx-1.26.2.tar.gz
-  diff -Naru -x .git nginx-1.26.2 asynch_mode_nginx > async_mode_nginx_1.26.2.patch
+    wget http://nginx.org/download/nginx-1.29.3.tar.gz
+    tar -xvzf nginx-1.29.3.tar.gz
+    diff -Naru -x .git nginx-1.29.3 asynch_mode_nginx > async_mode_nginx_1.29.3.patch
   # Apply Patch
-  cd nginx-1.26.2
-  patch -p1 < ../async_mode_nginx_1.26.2.patch
+    cd nginx-1.29.3
+    patch -p1 < ../async_mode_nginx_1.29.3.patch
 ```
 
 #### Generating the patch with package from Github Mirror page
 
 ```bash
   git clone https://github.com/intel/asynch_mode_nginx.git
-  wget https://github.com/nginx/nginx/archive/release-1.26.2.tar.gz
-  tar -xvzf release-1.26.2.tar.gz
-  diff -Naru -x .git -x .hgtags nginx-release-1.26.2 asynch_mode_nginx > async_mode_nginx_1.26.2.patch
+    wget https://github.com/nginx/nginx/archive/release-1.29.3.tar.gz
+    tar -xvzf release-1.29.3.tar.gz
+    diff -Naru -x .git -x .hgtags nginx-release-1.29.3 asynch_mode_nginx > async_mode_nginx_1.29.3.patch
   # Apply Patch
-  patch -p0 < async_mode_nginx_1.26.2.patch
+    patch -p0 < async_mode_nginx_1.29.3.patch
 ```
 
 ### New Async Directives
@@ -480,7 +431,7 @@ Set max number of sending fragment
 
 * If `worker_processes auto` is configured, the number of QAT instances should be equal to or greater than twice the number of CPU cores. Insufficient instances may cause issues due to resource shortages.
 
-* The QAT engine and QATzip module use the User Space DMA-able Memory (USDM) component by default. USDM is located in `quickassist/utilities/libusdm_drv` within the Intel® QAT Driver source. Ensure USDM is enabled and sufficient memory is allocated before using `nginx_qat_module` or `nginx_qatzip_module`. For example:
+* The QAT engine and QATzip module use the User Space DMA-able Memory (USDM) component by default. USDM is located in `quickassist/utilities/libusdm_drv` within the Intel® QAT Driver source. Ensure USDM is enabled and sufficient memory is allocated before using `nginx_qat_module`, `nginx_provider_qat_module`, or `nginx_qatzip_module`. For example:
 
     ```bash
     echo 2048 > /sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages
@@ -498,10 +449,10 @@ Set max number of sending fragment
 ## Known Issues
 
 - **QAT instance allocation by cache manager/loader processes:**
-    Due to the QAT engine's `atfork` hook, child processes (such as cache manager/loader) automatically initialize the QAT engine and allocate QAT instances, similar to worker processes. However, these processes do not invoke the modules' `exit process` method, which can result in "Orphan ring" messages in `dmesg`.
+    Due to the QAT engine's `atfork` hook, child processes (such as cache manager/loader) automatically initialize the QAT engine and allocate QAT instances, similar to worker processes. However, these processes do not invoke the modules' `exit process` method, which can result in "Orphan ring" messages in `dmesg`. This applies to both the Engine and Provider paths, since `qatprovider` links the same qatengine `atfork` hook.
 
 - **Segmentation fault on HUP signal with insufficient QAT instances:**
-    If the number of available QAT instances is less than twice the number of Nginx worker processes, sending a HUP signal may cause a segmentation fault. As a workaround, enable `qat_sw_fallback on;` in the `qat_engine` directive. Ensure sufficient QAT instances, especially when using `worker_processes auto;`.
+    If the number of available QAT instances is less than twice the number of Nginx worker processes, sending a HUP signal may cause a segmentation fault. As a workaround, enable `qat_sw_fallback on;` in the `qat_engine` directive (Engine path) or the `qat_provider` directive (Provider path). Ensure sufficient QAT instances, especially when using `worker_processes auto;`.
     Running Nginx without adequate hardware resources (memory or disk space) can cause a core dump when a HUP signal is received during the handshake phase. Ensure enough resources are allocated before starting Nginx.
 
 - **Performance degradation with OpenSSL 3.0:**
